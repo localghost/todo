@@ -159,7 +159,14 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.serverError(w, r, err)
 	default:
-		s.render(w, r, http.StatusOK, part{"item", item})
+		// The due date may have changed, so the permission bar comes along.
+		lv, err := s.listView(r.Context(), hideDoneFrom(r))
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		lv.OOB = true
+		s.render(w, r, http.StatusOK, part{"item", item}, part{"oob", lv})
 	}
 }
 

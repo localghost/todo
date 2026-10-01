@@ -26,18 +26,41 @@ document.addEventListener("htmx:afterSettle", () => {
 
 // 2. When focus leaves an edit row, save it. Moving between the fields of
 // the row does not save. Empty text cancels the edit instead.
+// The decision waits one tick: some browsers move focus to <body> first,
+// and the new focus is known only afterwards (for example a native picker).
 document.addEventListener("focusout", (e) => {
   const row = e.target.closest && e.target.closest("li.editing");
-  if (!row || (e.relatedTarget && row.contains(e.relatedTarget))) {
+  if (!row) {
     return;
   }
-  const text = row.querySelector('input[name="text"]');
-  if (text.value.trim() === "") {
-    htmx.trigger(row, "cancel-edit");
-  } else {
-    htmx.trigger(row.querySelector(".edit"), "save-edit");
+  setTimeout(() => {
+    if (!row.isConnected || row.contains(document.activeElement)) {
+      return;
+    }
+    const text = row.querySelector('input[name="text"]');
+    if (text.value.trim() === "") {
+      htmx.trigger(row, "cancel-edit");
+    } else {
+      htmx.trigger(row.querySelector(".edit"), "save-edit");
+    }
+  }, 0);
+});
+
+// A click inside an edit row (a gap, the hint, "Clear") must not take the
+// focus out of the row. Inputs and labels still get focus as usual.
+document.addEventListener("mousedown", (e) => {
+  const row = e.target.closest && e.target.closest("li.editing");
+  if (row && !e.target.closest("input, label")) {
+    e.preventDefault();
   }
 });
+
+// Enter on "Clear" clears the fields; it must not also save the row.
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.matches && e.target.matches(".clear-due")) {
+    e.stopPropagation();
+  }
+}, true);
 
 // "Clear" in an edit row empties both due fields.
 document.addEventListener("click", (e) => {
@@ -46,6 +69,20 @@ document.addEventListener("click", (e) => {
   }
   e.target.closest(".due-line").querySelectorAll("input").forEach((input) => {
     input.value = "";
+  });
+});
+
+// A half-typed date or time stops the save (hx-validate). Say why.
+document.addEventListener("htmx:validation:halted", (e) => {
+  const edit = e.detail.elt;
+  if (!edit.matches(".edit")) {
+    return;
+  }
+  const hint = edit.querySelector(".hint");
+  hint.textContent = "Please choose a valid date and time.";
+  hint.classList.add("error");
+  edit.querySelectorAll('.due-line input').forEach((input) => {
+    input.setAttribute("aria-invalid", input.validity.valid ? "false" : "true");
   });
 });
 
@@ -124,24 +161,38 @@ async function claimDue() {
     return;
   }
   const errorLine = document.getElementById("error");
+  let res;
   try {
-    const res = await fetch("/notifications/claim", { method: "POST", headers: { "HX-Request": "true" } });
-    if (!res.ok) {
-      return;
+    res = await fetch("/notifications/claim", { method: "POST", headers: { "HX-Request": "true" } });
+  } catch (err) {
+    if (errorLine) {
+      errorLine.textContent = NETWORK_ERROR;
     }
-    if (errorLine && errorLine.textContent === NETWORK_ERROR) {
-      errorLine.textContent = "";
-    }
-    for (const item of await res.json()) {
+    return;
+  }
+  if (errorLine && errorLine.textContent === NETWORK_ERROR) {
+    errorLine.textContent = "";
+  }
+  if (!res.ok) {
+    return;
+  }
+  let items;
+  try {
+    items = await res.json();
+  } catch (err) {
+    console.warn("Bad claim response", err);
+    return;
+  }
+  for (const item of items) {
+    try {
       const note = new Notification("Todo: due now", { body: `${item.text} — ${item.due}`, tag: `todo-${item.id}` });
       note.onclick = () => {
         window.focus();
         note.close();
       };
-    }
-  } catch (err) {
-    if (errorLine) {
-      errorLine.textContent = NETWORK_ERROR;
+    } catch (err) {
+      // For example Android Chrome, which allows notifications only from a service worker.
+      console.warn("Cannot show a notification", err);
     }
   }
 }

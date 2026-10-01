@@ -17,7 +17,7 @@
 {{define "item-edit"}}<li id="item-{{.Item.ID}}" class="item editing{{if .Item.Done}} done{{end}}"
   hx-get="/items/{{.Item.ID}}" hx-trigger="keyup[key=='Escape'], cancel-edit" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop">
 <button class="check" type="button" disabled aria-label="Mark done (finish editing first)"><span class="box">{{if .Item.Done}}{{template "check-icon"}}{{end}}</span></button>
-<div class="edit" hx-put="/items/{{.Item.ID}}" hx-trigger="keydown[key=='Enter'], save-edit" hx-include="closest li, #hide-done"
+<div class="edit" hx-put="/items/{{.Item.ID}}" hx-trigger="keydown[key=='Enter'], save-edit" hx-include="closest li, #hide-done" hx-validate="true"
   hx-target="closest li" hx-swap="outerHTML" hx-sync="closest li:drop">
 <input name="text" value="{{.Text}}" aria-label="Edit item" autocomplete="off" autofocus{{if .Error}} aria-invalid="true" aria-describedby="edit-error-{{.Item.ID}}"{{end}}>
 <div class="due-line">
