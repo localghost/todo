@@ -59,6 +59,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 .add button[type="submit"]:hover { background: var(--accent-dark); }
 .error { margin: 6px 0 0; font-size: 14px; color: var(--error); }
+#error { margin: 0; }
+#error:empty { display: none; }
 
 /* Toolbar */
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

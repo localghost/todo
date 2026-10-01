@@ -3,16 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"404","swap":true},{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+<meta name="htmx-config" content='{"historyCacheSize":0,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"404","swap":true},{"code":"422","swap":true},{"code":"5..","swap":true,"error":true,"target":"#error","swapOverride":"innerHTML"},{"code":"[45]..","swap":false,"error":true}]}'>
 <title>Todo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
 <link rel="stylesheet" href="/static/app.css">
 <script src="/static/htmx.min.js" defer></script>
 </head>
-<body>
+<body hx-on::send-error="document.getElementById('error').textContent = 'Cannot reach the server. Please try again.'"
+  hx-on::after-request="if (event.detail.successful) document.getElementById('error').textContent = ''">
 <main>
 <h1>Todo</h1>
+<p id="error" class="error" role="alert"></p>
 {{template "add-form" .Form}}
 {{template "list" .List}}
 </main>

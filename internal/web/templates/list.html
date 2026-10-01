@@ -1,7 +1,7 @@
 {{define "list"}}<section id="list-section">
 {{template "toolbar" .}}
 {{template "empty" .}}
-<ul id="items">{{range .Items}}{{template "item" .}}{{end}}</ul>
+<ul id="items" hx-include="#hide-done">{{range .Items}}{{template "item" .}}{{end}}</ul>
 </section>{{end}}
 
 {{define "toolbar"}}<div id="toolbar" class="toolbar"{{if .OOB}} hx-swap-oob="true"{{end}}>

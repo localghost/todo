@@ -44,7 +44,23 @@ func New(svc *todo.Service, log *slog.Logger) (http.Handler, error) {
 	mux.HandleFunc("GET /items/{id}", s.showItem)
 	mux.HandleFunc("PUT /items/{id}", s.updateItem)
 	mux.HandleFunc("DELETE /items/{id}", s.deleteItem)
-	return mux, nil
+	return sameOriginOnly(mux), nil
+}
+
+// sameOriginOnly rejects changing requests that another website could send
+// (CSRF). A cross-site HTML form cannot set the HX-Request header, and
+// browsers mark cross-site requests in Sec-Fetch-Site.
+func sameOriginOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			site := r.Header.Get("Sec-Fetch-Site")
+			if !isHTMX(r) || (site != "" && site != "same-origin") {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // part is one template to render into a response.

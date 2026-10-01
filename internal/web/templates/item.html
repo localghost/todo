@@ -16,7 +16,7 @@
 <button class="check" type="button" disabled aria-label="Mark done (finish editing first)"><span class="box">{{if .Item.Done}}{{template "check-icon"}}{{end}}</span></button>
 <div class="edit">
 <input name="text" value="{{.Text}}" aria-label="Edit item" autocomplete="off" autofocus{{if .Error}} aria-invalid="true" aria-describedby="edit-error-{{.Item.ID}}"{{end}}
-  hx-put="/items/{{.Item.ID}}" hx-trigger="keyup[key=='Enter'], blur" hx-include="#hide-done"
+  hx-put="/items/{{.Item.ID}}" hx-trigger="keydown[key=='Enter'], blur" hx-include="#hide-done"
   hx-target="closest li" hx-swap="outerHTML" hx-sync="closest li:drop">
 {{if .Error}}<p class="hint error" id="edit-error-{{.Item.ID}}">Text cannot be empty.</p>{{else}}<p class="hint">Enter to save · Esc to cancel</p>{{end}}
 </div>
