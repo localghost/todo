@@ -24,7 +24,7 @@
 <div class="due-line">
 <label for="due-date-{{.Item.ID}}">Due</label>
 <input type="date" id="due-date-{{.Item.ID}}" name="due_date" value="{{.DueDate}}"{{if .DueError}} aria-invalid="true" aria-describedby="due-error-{{.Item.ID}}" autofocus{{end}}>
-<input type="time" name="due_time" value="{{.DueTime}}" aria-label="Due time (optional)">
+<input type="text" name="due_time" value="{{.DueTime}}" class="due-time" placeholder="HH:MM" inputmode="numeric" maxlength="5" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" title="24-hour time, for example 14:00" aria-label="Due time (optional, 24-hour HH:MM)">
 <button type="button" class="clear-due">Clear</button>
 </div>
 {{if .Error}}<p class="hint error" id="edit-error-{{.Item.ID}}">Text cannot be empty.</p>{{else if .DueError}}<p class="hint error" id="due-error-{{.Item.ID}}">{{.DueError}}</p>{{else}}<p class="hint">Enter to save · Esc to cancel · Leave the time empty for “all day”</p>{{end}}

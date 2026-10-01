@@ -111,3 +111,14 @@ func TestEditBadDueKeepsItem(t *testing.T) {
 		t.Fatalf("item changed after bad edit: %+v", got)
 	}
 }
+
+func TestAddRejectsOutOfRangeTime(t *testing.T) {
+	svc := newService(t)
+	for _, clock := range []string{"25:00", "14:60"} {
+		_, err := svc.Add(context.Background(), 1, "a", "2026-10-03", clock)
+		var dueErr *todo.DueError
+		if !errors.As(err, &dueErr) || dueErr.Msg != "Please choose a valid date and time." {
+			t.Errorf("Add with time %q: err = %v, want the invalid date/time message", clock, err)
+		}
+	}
+}

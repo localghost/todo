@@ -66,7 +66,7 @@ The service reads two text inputs, in the server's local time zone:
 - `due_date` in the format `YYYY-MM-DD`, for example `2026-10-03`.
 - `due_time` in the format `HH:MM`, for example `14:00`. It is optional.
 
-The browser's date and time inputs send these formats.
+The browser's date input sends the date format. The time field is a 24-hour text field "HH:MM" (canvas page "12 · 24-hour time", option A), with a pattern check in the browser.
 
 | Input | Result |
 |---|---|
@@ -114,7 +114,7 @@ An item with a time is overdue when `now > due_at`. An all-day item is overdue o
 
 ### Add form
 
-The add form always shows a second line under the text field: "Due [date] [time]". Both inputs are empty by default, and both are optional. Enter in any field of the form adds the item.
+The add form always shows a second line under the text field: "Due [date] [HH:MM]". The time field is a short 24-hour text field with the hint "HH:MM". Both inputs are empty by default, and both are optional. Enter in any field of the form adds the item.
 
 After a successful add, `app.js` clears each field only if it still holds the value that was sent. This is the existing rule for the text field, extended to the two due fields.
 

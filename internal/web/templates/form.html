@@ -7,7 +7,7 @@
 <div class="due-line">
 <label for="new-due-date">Due</label>
 <input type="date" id="new-due-date" name="due_date" value="{{.DueDate}}"{{if .DueError}} aria-invalid="true" aria-describedby="add-due-error" autofocus{{end}}>
-<input type="time" name="due_time" value="{{.DueTime}}" aria-label="Due time (optional)">
+<input type="text" name="due_time" value="{{.DueTime}}" class="due-time" placeholder="HH:MM" inputmode="numeric" maxlength="5" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" title="24-hour time, for example 14:00" aria-label="Due time (optional, 24-hour HH:MM)">
 </div>
 {{if .Error}}<p id="add-error" class="error">Please type some text first.</p>{{end}}
 {{if .DueError}}<p id="add-due-error" class="error">{{.DueError}}</p>{{end}}
