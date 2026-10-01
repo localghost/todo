@@ -98,3 +98,10 @@ func TestUnknownPathIs404(t *testing.T) {
 		t.Fatalf("status = %d, want 404", rec.Code)
 	}
 }
+
+func TestStaticDirectoryListingIs404(t *testing.T) {
+	h, _ := newTestApp(t)
+	if rec := do(t, h, "GET", "/static/", nil, nil); rec.Code != http.StatusNotFound {
+		t.Fatalf("GET /static/ status = %d, want 404", rec.Code)
+	}
+}

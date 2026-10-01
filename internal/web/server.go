@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"todo/internal/todo"
 )
@@ -37,7 +38,7 @@ func New(svc *todo.Service, log *slog.Logger) (http.Handler, error) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.index)
-	mux.Handle("GET /static/", http.FileServerFS(staticFS))
+	mux.Handle("GET /static/", noDirListing(http.FileServerFS(staticFS)))
 	mux.HandleFunc("POST /items", s.addItem)
 	mux.HandleFunc("POST /items/{id}/toggle", s.toggleItem)
 	mux.HandleFunc("GET /items/{id}/edit", s.editItem)
@@ -45,6 +46,17 @@ func New(svc *todo.Service, log *slog.Logger) (http.Handler, error) {
 	mux.HandleFunc("PUT /items/{id}", s.updateItem)
 	mux.HandleFunc("DELETE /items/{id}", s.deleteItem)
 	return sameOriginOnly(mux), nil
+}
+
+// noDirListing answers 404 for folder paths, so the file server never lists files.
+func noDirListing(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // sameOriginOnly rejects changing requests that another website could send
