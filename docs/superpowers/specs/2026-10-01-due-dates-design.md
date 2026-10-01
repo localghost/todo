@@ -183,6 +183,18 @@ The server chooses the title and the due text. If the item is overdue and more t
 
 A click on the notification calls `window.focus()`, so the todo tab comes to the front.
 
+### Postpone
+
+Overdue open items show four small buttons under the grey line: "+5 min", "+10 min", "+15 min", "+30 min" (canvas page "11 · Postpone", option B, only on overdue items). Other items show none.
+
+A click sends `POST /items/{id}/postpone?minutes=10`. The new due time is the later of the current due time and now, plus the amount. For an overdue item this is now plus the amount. The item becomes a timed item (`due_all_day = 0`), and `notified_at` is reset, so it notifies again at the new time. The answer is the updated row plus the out-of-band toolbar and permission bar. After the click, focus moves to the row's checkbox, because the buttons disappear.
+
+| Case | Status |
+|---|---|
+| Amount not 5, 10, 15, or 30 | `400` |
+| Item unknown | `404` (the row is removed) |
+| Item done or without a due date | `422` (the row is shown unchanged) |
+
 ## 9. Errors and edge cases
 
 | Case | Behavior |

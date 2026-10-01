@@ -9,7 +9,15 @@ let focusAfterSwap = null;
 document.addEventListener("htmx:beforeSwap", (e) => {
   const row = e.detail.target;
   const active = document.activeElement;
-  if (!row.matches("li.item") || !active || !active.matches(".check, .delete") || !row.contains(active)) {
+  if (!row.matches("li.item") || !active || !row.contains(active)) {
+    return;
+  }
+  if (active.matches(".postpone-btn")) {
+    // The chips disappear after a postpone; keep focus in the same row.
+    focusAfterSwap = "check-" + row.id.slice("item-".length);
+    return;
+  }
+  if (!active.matches(".check, .delete")) {
     return;
   }
   const neighbor = row.nextElementSibling || row.previousElementSibling;
@@ -18,8 +26,9 @@ document.addEventListener("htmx:beforeSwap", (e) => {
 
 document.addEventListener("htmx:afterSettle", () => {
   const lost = !document.activeElement || document.activeElement === document.body;
-  if (focusAfterSwap && lost && document.body.contains(focusAfterSwap)) {
-    focusAfterSwap.focus();
+  const target = typeof focusAfterSwap === "string" ? document.getElementById(focusAfterSwap) : focusAfterSwap;
+  if (target && lost && document.body.contains(target)) {
+    target.focus();
   }
   focusAfterSwap = null;
 });

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"todo/internal/todo"
 )
@@ -215,5 +216,43 @@ func (s *server) claimNotifications(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(out); err != nil {
 		s.log.Error("write claim response", "err", err)
+	}
+}
+
+// postponeItem moves an item's due time by ?minutes= (5, 10, 15, or 30).
+func (s *server) postponeItem(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(r)
+	if !ok {
+		s.oobOnly(w, r, http.StatusNotFound)
+		return
+	}
+	minutes, err := strconv.Atoi(r.URL.Query().Get("minutes"))
+	if err != nil {
+		http.Error(w, "Unknown postpone amount.", http.StatusBadRequest)
+		return
+	}
+	item, err := s.svc.Postpone(r.Context(), defaultUserID, id, minutes)
+	switch {
+	case errors.Is(err, todo.ErrBadPostpone):
+		http.Error(w, "Unknown postpone amount.", http.StatusBadRequest)
+	case errors.Is(err, todo.ErrNotFound):
+		s.oobOnly(w, r, http.StatusNotFound)
+	case errors.Is(err, todo.ErrCannotPostpone):
+		old, getErr := s.svc.Get(r.Context(), defaultUserID, id)
+		if getErr != nil {
+			s.serverError(w, r, getErr)
+			return
+		}
+		s.render(w, r, http.StatusUnprocessableEntity, part{"item", old})
+	case err != nil:
+		s.serverError(w, r, err)
+	default:
+		lv, err := s.listView(r.Context(), hideDoneFrom(r))
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		lv.OOB = true
+		s.render(w, r, http.StatusOK, part{"item", item}, part{"oob", lv})
 	}
 }

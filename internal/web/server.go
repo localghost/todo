@@ -34,8 +34,9 @@ type server struct {
 func New(svc *todo.Service, log *slog.Logger) (http.Handler, error) {
 	s := &server{svc: svc, log: log, now: time.Now}
 	funcs := template.FuncMap{
-		"added": func(t time.Time) string { return addedLabel(t, s.now()) },
-		"due":   func(it todo.Item) dueView { return dueLabel(it, s.now()) },
+		"added":           func(t time.Time) string { return addedLabel(t, s.now()) },
+		"due":             func(it todo.Item) dueView { return dueLabel(it, s.now()) },
+		"postponeMinutes": func() []int { return todo.PostponeMinutes },
 	}
 	tmpl, err := template.New("").Funcs(funcs).ParseFS(templateFS, "templates/*.html")
 	if err != nil {
@@ -48,6 +49,7 @@ func New(svc *todo.Service, log *slog.Logger) (http.Handler, error) {
 	mux.Handle("GET /static/", noDirListing(http.FileServerFS(staticFS)))
 	mux.HandleFunc("POST /items", s.addItem)
 	mux.HandleFunc("POST /items/{id}/toggle", s.toggleItem)
+	mux.HandleFunc("POST /items/{id}/postpone", s.postponeItem)
 	mux.HandleFunc("GET /items/{id}/edit", s.editItem)
 	mux.HandleFunc("GET /items/{id}", s.showItem)
 	mux.HandleFunc("PUT /items/{id}", s.updateItem)
