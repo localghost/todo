@@ -50,3 +50,13 @@ func sameDue(a *time.Time, aAllDay bool, b *time.Time, bAllDay bool) bool {
 	}
 	return a.Equal(*b) && aAllDay == bAllDay
 }
+
+// PostponeMinutes are the amounts an item can be postponed by.
+var PostponeMinutes = []int{5, 10, 15, 30}
+
+var (
+	// ErrBadPostpone means the amount is not one of PostponeMinutes.
+	ErrBadPostpone = errors.New("todo: postpone amount not allowed")
+	// ErrCannotPostpone means the item is done or has no due date.
+	ErrCannotPostpone = errors.New("todo: item cannot be postponed")
+)

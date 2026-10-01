@@ -2,6 +2,7 @@ package todo
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"time"
 )
@@ -58,6 +59,29 @@ func (s *Service) Edit(ctx context.Context, userID, id int64, text, dueDate, due
 	}
 	return s.store.UpdateItem(ctx, userID, id,
 		Change{Text: text, DueAt: dueAt, DueAllDay: allDay, ResetNotified: !dueSame}, s.now())
+}
+
+// Postpone moves the due time by minutes, counted from the later of the
+// due time and now. The item becomes a timed item and can notify again.
+func (s *Service) Postpone(ctx context.Context, userID, id int64, minutes int) (Item, error) {
+	if !slices.Contains(PostponeMinutes, minutes) {
+		return Item{}, ErrBadPostpone
+	}
+	it, err := s.store.Get(ctx, userID, id)
+	if err != nil {
+		return Item{}, err
+	}
+	if it.Done || it.DueAt == nil {
+		return Item{}, ErrCannotPostpone
+	}
+	now := s.now()
+	base := *it.DueAt
+	if now.After(base) {
+		base = now
+	}
+	due := base.Add(time.Duration(minutes) * time.Minute)
+	return s.store.UpdateItem(ctx, userID, id,
+		Change{Text: it.Text, DueAt: &due, DueAllDay: false, ResetNotified: true}, now)
 }
 
 // ClaimDue returns the items that should notify now. Each item comes only once.
