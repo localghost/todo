@@ -55,7 +55,7 @@ func Open(path string) (*Store, error) {
 			return nil, fmt.Errorf("open database %q: folder %q does not exist", path, dir)
 		}
 	}
-	dsn :="file:" + path + "?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
+	dsn := "file:" + path + "?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open database %q: %w", path, err)

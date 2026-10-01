@@ -3,10 +3,10 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -42,22 +42,30 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	srv := &http.Server{Addr: *addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second}
+
+	// Open the port first, so a port that is in use fails before "listening" is logged.
+	ln, err := net.Listen("tcp", *addr)
+	if err != nil {
+		return err
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// After the first signal, restore default handling: a second Ctrl+C stops at once.
+	context.AfterFunc(ctx, stop)
 
+	return serve(ctx, ln, handler, logger)
+}
+
+// serve runs the HTTP server on ln until ctx is done, then shuts it down.
+func serve(ctx context.Context, ln net.Listener, h http.Handler, logger *slog.Logger) error {
+	srv := &http.Server{Handler: h, ReadHeaderTimeout: 5 * time.Second}
 	errCh := make(chan error, 1)
-	go func() {
-		logger.Info("listening", "url", "http://"+*addr)
-		errCh <- srv.ListenAndServe()
-	}()
+	go func() { errCh <- srv.Serve(ln) }()
+	logger.Info("listening", "url", "http://"+ln.Addr().String())
 
 	select {
 	case err := <-errCh:
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
 		return err
 	case <-ctx.Done():
 	}
