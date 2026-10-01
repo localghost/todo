@@ -52,6 +52,7 @@ func New(svc *todo.Service, log *slog.Logger) (http.Handler, error) {
 	mux.HandleFunc("GET /items/{id}", s.showItem)
 	mux.HandleFunc("PUT /items/{id}", s.updateItem)
 	mux.HandleFunc("DELETE /items/{id}", s.deleteItem)
+	mux.HandleFunc("POST /notifications/claim", s.claimNotifications)
 	return sameOriginOnly(mux), nil
 }
 

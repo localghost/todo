@@ -14,6 +14,7 @@ type listView struct {
 	Total    int
 	HideDone bool
 	OOB      bool // render toolbar and empty state as htmx out-of-band swaps
+	HasDue   bool // an open item has a due date
 }
 
 // formView is the data for the add form.
@@ -51,5 +52,12 @@ func (s *server) listView(ctx context.Context, hideDone bool) (listView, error) 
 	if err != nil {
 		return listView{}, err
 	}
-	return listView{Items: items, Open: open, Done: done, Total: open + done, HideDone: hideDone}, nil
+	lv := listView{Items: items, Open: open, Done: done, Total: open + done, HideDone: hideDone}
+	for _, it := range items {
+		if !it.Done && it.DueAt != nil {
+			lv.HasDue = true
+			break
+		}
+	}
+	return lv, nil
 }

@@ -1,5 +1,6 @@
 {{define "list"}}<section id="list-section">
 {{template "toolbar" .}}
+{{template "notify-bar" .}}
 {{template "empty" .}}
 <ul id="items" hx-include="#hide-done">{{range .Items}}{{template "item" .}}{{end}}</ul>
 </section>{{end}}
@@ -13,4 +14,6 @@
 
 {{define "empty"}}<div id="empty-state"{{if .OOB}} hx-swap-oob="true"{{end}}>{{if not .Items}}{{if eq .Total 0}}<p class="empty-title">No items yet</p><p class="empty-hint">Type a task above and press Enter.</p>{{else}}<p class="empty-title">All done</p><p class="empty-hint">Done items are hidden. Use “Show done” to see them.</p>{{end}}{{end}}</div>{{end}}
 
-{{define "oob"}}{{template "toolbar" .}}{{template "empty" .}}{{end}}
+{{define "notify-bar"}}<div id="notify-bar" class="notify-bar" data-has-due="{{.HasDue}}"{{if .OOB}} hx-swap-oob="true"{{end}}></div>{{end}}
+
+{{define "oob"}}{{template "toolbar" .}}{{template "notify-bar" .}}{{template "empty" .}}{{end}}

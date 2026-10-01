@@ -85,3 +85,74 @@ document.addEventListener("htmx:load", (e) => {
     input.setSelectionRange(end, end);
   }
 });
+
+// 5. Due notifications. The page asks the server which items are due; the
+// server gives each item only once, also with several tabs open.
+const canNotify = "Notification" in window;
+const NETWORK_ERROR = "Cannot reach the server. Please try again.";
+
+function renderNotifyBar() {
+  const bar = document.getElementById("notify-bar");
+  if (!bar) {
+    return;
+  }
+  bar.replaceChildren();
+  bar.classList.remove("blocked");
+  if (!canNotify) {
+    return;
+  }
+  if (Notification.permission === "denied") {
+    bar.classList.add("blocked");
+    bar.textContent = "Notifications are blocked in your browser settings.";
+  } else if (Notification.permission === "default" && bar.dataset.hasDue === "true") {
+    const text = document.createElement("span");
+    text.textContent = "Get a notification when an item is due.";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Turn on notifications";
+    button.addEventListener("click", async () => {
+      await Notification.requestPermission();
+      renderNotifyBar();
+      claimDue();
+    });
+    bar.append(text, button);
+  }
+}
+
+async function claimDue() {
+  if (!canNotify || Notification.permission !== "granted") {
+    return;
+  }
+  const errorLine = document.getElementById("error");
+  try {
+    const res = await fetch("/notifications/claim", { method: "POST", headers: { "HX-Request": "true" } });
+    if (!res.ok) {
+      return;
+    }
+    if (errorLine && errorLine.textContent === NETWORK_ERROR) {
+      errorLine.textContent = "";
+    }
+    for (const item of await res.json()) {
+      const note = new Notification("Todo: due now", { body: `${item.text} — ${item.due}`, tag: `todo-${item.id}` });
+      note.onclick = () => {
+        window.focus();
+        note.close();
+      };
+    }
+  } catch (err) {
+    if (errorLine) {
+      errorLine.textContent = NETWORK_ERROR;
+    }
+  }
+}
+
+document.addEventListener("htmx:afterSettle", renderNotifyBar);
+document.addEventListener("htmx:oobAfterSwap", renderNotifyBar);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    claimDue();
+  }
+});
+renderNotifyBar();
+claimDue();
+setInterval(claimDue, 30000);

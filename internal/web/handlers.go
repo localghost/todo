@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -180,4 +181,30 @@ func (s *server) findItem(w http.ResponseWriter, r *http.Request) (todo.Item, bo
 		return todo.Item{}, false
 	}
 	return item, true
+}
+
+// notification is one due item for the page to show as a browser notification.
+type notification struct {
+	ID   int64  `json:"id"`
+	Text string `json:"text"`
+	Due  string `json:"due"`
+}
+
+// claimNotifications returns the items that are due and not notified yet,
+// and marks them, so each item notifies only once.
+func (s *server) claimNotifications(w http.ResponseWriter, r *http.Request) {
+	now := s.now()
+	items, err := s.svc.ClaimDue(r.Context(), defaultUserID, now)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	out := make([]notification, 0, len(items))
+	for _, it := range items {
+		out = append(out, notification{ID: it.ID, Text: it.Text, Due: dueText(it, now)})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(out); err != nil {
+		s.log.Error("write claim response", "err", err)
+	}
 }
