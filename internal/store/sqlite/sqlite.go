@@ -34,7 +34,43 @@ var schema = []string{
 	`CREATE INDEX IF NOT EXISTS items_user_position ON items (user_id, position)`,
 }
 
-const itemCols = `id, user_id, text, done, position, created_at, updated_at`
+const itemCols = `id, user_id, text, done, position, created_at, updated_at, due_at, due_all_day, notified_at`
+
+// newColumns are added to items when they are missing (databases from
+// before due dates). The list only grows; never remove an entry.
+var newColumns = []struct{ name, def string }{
+	{"due_at", "TEXT"},
+	{"due_all_day", "INTEGER NOT NULL DEFAULT 0"},
+	{"notified_at", "TEXT"},
+}
+
+func migrate(db *sql.DB) error {
+	rows, err := db.Query(`SELECT name FROM pragma_table_info('items')`)
+	if err != nil {
+		return err
+	}
+	have := map[string]bool{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			rows.Close()
+			return err
+		}
+		have[name] = true
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, c := range newColumns {
+		if !have[c.name] {
+			if _, err := db.Exec(`ALTER TABLE items ADD COLUMN ` + c.name + ` ` + c.def); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
 
 // Store is a todo.Store backed by SQLite.
 type Store struct {
@@ -71,6 +107,10 @@ func Open(path string) (*Store, error) {
 			db.Close()
 			return nil, fmt.Errorf("set up schema in %q: %w", path, err)
 		}
+	}
+	if err := migrate(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate schema in %q: %w", path, err)
 	}
 	return &Store{db: db}, nil
 }
@@ -115,12 +155,12 @@ func (s *Store) Get(ctx context.Context, userID, id int64) (todo.Item, error) {
 	return it, err
 }
 
-func (s *Store) Create(ctx context.Context, userID int64, text string, now time.Time) (todo.Item, error) {
+func (s *Store) Create(ctx context.Context, userID int64, c todo.Change, now time.Time) (todo.Item, error) {
 	ts := formatTime(now)
 	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO items (user_id, text, done, position, created_at, updated_at)
-		 VALUES (?, ?, 0, (SELECT COALESCE(MAX(position), 0) + 1 FROM items WHERE user_id = ?), ?, ?)`,
-		userID, text, userID, ts, ts)
+		`INSERT INTO items (user_id, text, done, position, created_at, updated_at, due_at, due_all_day)
+		 VALUES (?, ?, 0, (SELECT COALESCE(MAX(position), 0) + 1 FROM items WHERE user_id = ?), ?, ?, ?, ?)`,
+		userID, c.Text, userID, ts, ts, formatDue(c.DueAt), c.DueAllDay)
 	if err != nil {
 		return todo.Item{}, fmt.Errorf("create item: %w", err)
 	}
@@ -131,12 +171,76 @@ func (s *Store) Create(ctx context.Context, userID int64, text string, now time.
 	return s.Get(ctx, userID, id)
 }
 
-func (s *Store) UpdateText(ctx context.Context, userID, id int64, text string, now time.Time) (todo.Item, error) {
-	if err := s.update(ctx, `UPDATE items SET text = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
-		text, formatTime(now), id, userID); err != nil {
+func (s *Store) UpdateItem(ctx context.Context, userID, id int64, c todo.Change, now time.Time) (todo.Item, error) {
+	if err := s.update(ctx,
+		`UPDATE items SET text = ?, due_at = ?, due_all_day = ?, updated_at = ?,
+		 notified_at = CASE WHEN ? THEN NULL ELSE notified_at END
+		 WHERE id = ? AND user_id = ?`,
+		c.Text, formatDue(c.DueAt), c.DueAllDay, formatTime(now), c.ResetNotified, id, userID); err != nil {
 		return todo.Item{}, err
 	}
 	return s.Get(ctx, userID, id)
+}
+
+func (s *Store) ClaimDue(ctx context.Context, userID int64, now time.Time) ([]todo.Item, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("claim due items: %w", err)
+	}
+	defer tx.Rollback()
+	rows, err := tx.QueryContext(ctx,
+		`SELECT `+itemCols+` FROM items
+		 WHERE user_id = ? AND done = 0 AND due_at IS NOT NULL AND due_at <= ? AND notified_at IS NULL
+		 ORDER BY due_at, id`, userID, formatDue(&now))
+	if err != nil {
+		return nil, fmt.Errorf("claim due items: %w", err)
+	}
+	items := []todo.Item{}
+	for rows.Next() {
+		it, err := scanItem(rows)
+		if err != nil {
+			rows.Close()
+			return nil, err
+		}
+		items = append(items, it)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("claim due items: %w", err)
+	}
+	ts := formatTime(now)
+	for i := range items {
+		if _, err := tx.ExecContext(ctx, `UPDATE items SET notified_at = ? WHERE id = ?`, ts, items[i].ID); err != nil {
+			return nil, fmt.Errorf("claim due items: %w", err)
+		}
+		n := now
+		items[i].NotifiedAt = &n
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("claim due items: %w", err)
+	}
+	return items, nil
+}
+
+// dueLayout has a fixed length, so SQLite can compare due times as text.
+const dueLayout = "2006-01-02T15:04:05Z"
+
+func formatDue(t *time.Time) any {
+	if t == nil {
+		return nil
+	}
+	return t.UTC().Format(dueLayout)
+}
+
+func parseNullTime(s sql.NullString) (*time.Time, error) {
+	if !s.Valid {
+		return nil, nil
+	}
+	t, err := time.Parse(time.RFC3339Nano, s.String)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
 }
 
 func (s *Store) SetDone(ctx context.Context, userID, id int64, done bool, now time.Time) (todo.Item, error) {
@@ -184,7 +288,9 @@ type scanner interface {
 func scanItem(r scanner) (todo.Item, error) {
 	var it todo.Item
 	var created, updated string
-	if err := r.Scan(&it.ID, &it.UserID, &it.Text, &it.Done, &it.Position, &created, &updated); err != nil {
+	var dueAt, notifiedAt sql.NullString
+	if err := r.Scan(&it.ID, &it.UserID, &it.Text, &it.Done, &it.Position, &created, &updated,
+		&dueAt, &it.DueAllDay, &notifiedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return todo.Item{}, err
 		}
@@ -196,6 +302,12 @@ func scanItem(r scanner) (todo.Item, error) {
 	}
 	if it.UpdatedAt, err = time.Parse(time.RFC3339Nano, updated); err != nil {
 		return todo.Item{}, fmt.Errorf("read item %d updated_at: %w", it.ID, err)
+	}
+	if it.DueAt, err = parseNullTime(dueAt); err != nil {
+		return todo.Item{}, fmt.Errorf("read item %d due_at: %w", it.ID, err)
+	}
+	if it.NotifiedAt, err = parseNullTime(notifiedAt); err != nil {
+		return todo.Item{}, fmt.Errorf("read item %d notified_at: %w", it.ID, err)
 	}
 	return it, nil
 }

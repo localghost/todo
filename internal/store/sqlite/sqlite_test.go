@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -26,7 +27,7 @@ func newStore(t *testing.T) *sqlite.Store {
 
 func mustCreate(t *testing.T, s *sqlite.Store, text string) todo.Item {
 	t.Helper()
-	it, err := s.Create(context.Background(), 1, text, t0)
+	it, err := s.Create(context.Background(), 1, todo.Change{Text: text}, t0)
 	if err != nil {
 		t.Fatalf("Create(%q): %v", text, err)
 	}
@@ -39,7 +40,7 @@ func TestOpenTwiceKeepsData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first Open: %v", err)
 	}
-	if _, err := s.Create(context.Background(), 1, "Buy milk", t0); err != nil {
+	if _, err := s.Create(context.Background(), 1, todo.Change{Text: "Buy milk"}, t0); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	s.Close()
@@ -149,7 +150,7 @@ func TestUpdateTextAndSetDone(t *testing.T) {
 	it := mustCreate(t, s, "a")
 	t1 := t0.Add(time.Hour)
 
-	up, err := s.UpdateText(ctx, 1, it.ID, "b", t1)
+	up, err := s.UpdateItem(ctx, 1, it.ID, todo.Change{Text: "b"}, t1)
 	if err != nil || up.Text != "b" || !up.UpdatedAt.Equal(t1) {
 		t.Fatalf("UpdateText = %+v, %v", up, err)
 	}
@@ -157,7 +158,7 @@ func TestUpdateTextAndSetDone(t *testing.T) {
 	if err != nil || !done.Done {
 		t.Fatalf("SetDone = %+v, %v", done, err)
 	}
-	if _, err := s.UpdateText(ctx, 2, it.ID, "x", t1); !errors.Is(err, todo.ErrNotFound) {
+	if _, err := s.UpdateItem(ctx, 2, it.ID, todo.Change{Text: "x"}, t1); !errors.Is(err, todo.ErrNotFound) {
 		t.Fatalf("UpdateText(other user) err = %v, want ErrNotFound", err)
 	}
 	if _, err := s.SetDone(ctx, 1, 999, true, t1); !errors.Is(err, todo.ErrNotFound) {
@@ -207,4 +208,112 @@ func texts(items []todo.Item) string {
 		out += it.Text
 	}
 	return out
+}
+
+func TestDueFieldsRoundTrip(t *testing.T) {
+	s := newStore(t)
+	due := t0.Add(2 * time.Hour)
+	it, err := s.Create(context.Background(), 1, todo.Change{Text: "a", DueAt: &due, DueAllDay: true}, t0)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if it.DueAt == nil || !it.DueAt.Equal(due) || !it.DueAllDay || it.NotifiedAt != nil {
+		t.Fatalf("item = %+v", it)
+	}
+	plain := mustCreate(t, s, "b")
+	if plain.DueAt != nil || plain.DueAllDay {
+		t.Fatalf("item without due = %+v", plain)
+	}
+}
+
+func TestClaimDue(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	past, future := t0.Add(-time.Hour), t0.Add(time.Hour)
+	due, _ := s.Create(ctx, 1, todo.Change{Text: "due", DueAt: &past}, t0)
+	done, _ := s.Create(ctx, 1, todo.Change{Text: "done", DueAt: &past}, t0)
+	if _, err := s.SetDone(ctx, 1, done.ID, true, t0); err != nil {
+		t.Fatalf("SetDone: %v", err)
+	}
+	gone, _ := s.Create(ctx, 1, todo.Change{Text: "deleted", DueAt: &past}, t0)
+	if err := s.Delete(ctx, 1, gone.ID); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	s.Create(ctx, 1, todo.Change{Text: "future", DueAt: &future}, t0)
+	s.Create(ctx, 1, todo.Change{Text: "no due"}, t0)
+
+	got, err := s.ClaimDue(ctx, 1, t0)
+	if err != nil || len(got) != 1 || got[0].ID != due.ID || got[0].NotifiedAt == nil {
+		t.Fatalf("ClaimDue = %+v, %v; want only %q, notified", got, err, "due")
+	}
+	again, err := s.ClaimDue(ctx, 1, t0)
+	if err != nil || len(again) != 0 {
+		t.Fatalf("second ClaimDue = %+v, %v; want none", again, err)
+	}
+	if other, _ := s.ClaimDue(ctx, 2, t0); len(other) != 0 {
+		t.Fatalf("ClaimDue(other user) = %+v; want none", other)
+	}
+}
+
+func TestClaimDueAtExactSecond(t *testing.T) {
+	s := newStore(t)
+	due := t0
+	s.Create(context.Background(), 1, todo.Change{Text: "a", DueAt: &due}, t0)
+	got, err := s.ClaimDue(context.Background(), 1, t0.Add(500*time.Millisecond))
+	if err != nil || len(got) != 1 {
+		t.Fatalf("ClaimDue at due time = %+v, %v; want 1 item", got, err)
+	}
+}
+
+func TestUpdateItemResetsNotified(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	past := t0.Add(-time.Hour)
+	it, _ := s.Create(ctx, 1, todo.Change{Text: "a", DueAt: &past}, t0)
+	s.ClaimDue(ctx, 1, t0)
+
+	kept, err := s.UpdateItem(ctx, 1, it.ID, todo.Change{Text: "b", DueAt: &past}, t0)
+	if err != nil || kept.NotifiedAt == nil {
+		t.Fatalf("UpdateItem without reset = %+v, %v; want NotifiedAt kept", kept, err)
+	}
+	reset, err := s.UpdateItem(ctx, 1, it.ID, todo.Change{Text: "b", DueAt: &past, ResetNotified: true}, t0)
+	if err != nil || reset.NotifiedAt != nil {
+		t.Fatalf("UpdateItem with reset = %+v, %v; want NotifiedAt nil", reset, err)
+	}
+}
+
+func TestOpenMigratesOldDatabase(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old.db")
+	db, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	for _, stmt := range []string{
+		`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)`,
+		`INSERT INTO users (id, name) VALUES (1, 'default')`,
+		`CREATE TABLE items (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id),
+			text TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0, position INTEGER NOT NULL,
+			created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+		`INSERT INTO items (user_id, text, done, position, created_at, updated_at)
+			VALUES (1, 'Old item', 0, 1, '2026-09-01T10:00:00Z', '2026-09-01T10:00:00Z')`,
+	} {
+		if _, err := db.Exec(stmt); err != nil {
+			t.Fatalf("old schema: %v", err)
+		}
+	}
+	db.Close()
+
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("Open old database: %v", err)
+	}
+	defer s.Close()
+	items, err := s.List(context.Background(), 1, false)
+	if err != nil || len(items) != 1 || items[0].Text != "Old item" || items[0].DueAt != nil {
+		t.Fatalf("List = %+v, %v; want the old item without due date", items, err)
+	}
+	due := t0
+	if _, err := s.UpdateItem(context.Background(), 1, items[0].ID, todo.Change{Text: "Old item", DueAt: &due}, t0); err != nil {
+		t.Fatalf("UpdateItem with due on migrated database: %v", err)
+	}
 }

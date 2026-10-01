@@ -30,7 +30,7 @@ func (s *Service) Add(ctx context.Context, userID int64, text string) (Item, err
 	if err != nil {
 		return Item{}, err
 	}
-	return s.store.Create(ctx, userID, text, s.now())
+	return s.store.Create(ctx, userID, Change{Text: text}, s.now())
 }
 
 func (s *Service) UpdateText(ctx context.Context, userID, id int64, text string) (Item, error) {
@@ -45,7 +45,7 @@ func (s *Service) UpdateText(ctx context.Context, userID, id int64, text string)
 	if it.Text == text {
 		return it, nil
 	}
-	return s.store.UpdateText(ctx, userID, id, text, s.now())
+	return s.store.UpdateItem(ctx, userID, id, Change{Text: text, DueAt: it.DueAt, DueAllDay: it.DueAllDay}, s.now())
 }
 
 func (s *Service) Toggle(ctx context.Context, userID, id int64) (Item, error) {
