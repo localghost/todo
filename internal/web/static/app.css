@@ -1,0 +1,124 @@
+:root {
+  --ground: #F4F3EF;
+  --card: #FFFFFF;
+  --ink: #1F1E1B;
+  --muted: #5C5A55;
+  --line: #E3E1DA;
+  --accent: #2450C7;
+  --accent-dark: #1A3C99;
+  --done: #6E6C66;
+  --error: #B3261E;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "Source Sans 3", system-ui, sans-serif;
+}
+
+main {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (max-width: 480px) {
+  main { padding: 24px 16px; }
+}
+
+h1 { margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.01em; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Add form */
+.add-row { display: flex; gap: 8px; }
+.add input {
+  flex: 1; min-width: 0;
+  font: inherit; font-size: 17px; color: var(--ink);
+  padding: 12px 14px;
+  border: 2px solid var(--line); border-radius: 8px;
+  background: var(--card);
+}
+.add input:focus { outline: none; border-color: var(--accent); }
+.add input[aria-invalid="true"] { border-color: var(--error); }
+.add button[type="submit"] {
+  font: inherit; font-size: 16px; font-weight: 600; color: #FFFFFF;
+  background: var(--accent); border: none; border-radius: 8px;
+  padding: 0 20px; min-height: 48px; cursor: pointer;
+}
+.add button[type="submit"]:hover { background: var(--accent-dark); }
+.error { margin: 6px 0 0; font-size: 14px; color: var(--error); }
+
+/* Toolbar */
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.counter { font-size: 14px; color: var(--muted); }
+.filter {
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--accent);
+  background: none; border: 1px solid var(--line); border-radius: 999px;
+  padding: 0 14px; min-height: 36px; cursor: pointer;
+}
+
+/* Empty state */
+#empty-state {
+  background: var(--card); border: 1px dashed var(--line); border-radius: 10px;
+  padding: 48px 24px; text-align: center;
+}
+#empty-state:empty { display: none; }
+.empty-title { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+.empty-hint { margin: 0; font-size: 15px; color: var(--muted); }
+
+/* List */
+#items {
+  list-style: none; margin: 0; padding: 0;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  overflow: hidden;
+}
+#items:not(:has(li)) { display: none; }
+.item { display: flex; align-items: center; gap: 4px; padding: 0 4px; }
+.item + .item { border-top: 1px solid var(--line); }
+
+.check, .delete {
+  width: 44px; height: 44px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; padding: 0; cursor: pointer;
+}
+.box {
+  width: 20px; height: 20px; border-radius: 5px;
+  border: 2px solid var(--muted); background: var(--card);
+  display: flex; align-items: center; justify-content: center;
+}
+.done .box { background: var(--accent); border-color: var(--accent); }
+
+.text {
+  flex: 1; min-width: 0; text-align: left;
+  font: inherit; font-size: 17px; line-height: 1.4; color: var(--ink);
+  padding: 11px 0; background: none; border: none; cursor: text;
+  overflow-wrap: anywhere;
+}
+.done .text { color: var(--done); text-decoration: line-through; }
+
+.delete { color: var(--muted); border-radius: 8px; }
+.delete:hover { color: var(--error); }
+.editing .check, .editing .delete { cursor: default; opacity: 0.5; }
+
+/* Edit mode */
+.edit { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 8px 0; }
+.edit input {
+  font: inherit; font-size: 17px; color: var(--ink);
+  padding: 8px 10px; border: 2px solid var(--accent); border-radius: 6px;
+  background: var(--card); outline: none;
+}
+.edit input[aria-invalid="true"] { border-color: var(--error); }
+.hint { margin: 0; font-size: 13px; color: var(--muted); }
+.hint.error { color: var(--error); }

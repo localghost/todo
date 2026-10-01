@@ -1,0 +1,24 @@
+{{define "check-icon"}}<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>{{end}}
+
+{{define "x-icon"}}<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>{{end}}
+
+{{define "item"}}<li id="item-{{.ID}}" class="item{{if .Done}} done{{end}}">
+<button class="check" type="button" aria-label="{{if .Done}}Mark not done{{else}}Mark done{{end}}: {{.Text}}"
+  hx-post="/items/{{.ID}}/toggle" hx-include="#hide-done" hx-target="closest li" hx-swap="outerHTML"><span class="box">{{if .Done}}{{template "check-icon"}}{{end}}</span></button>
+<button class="text" type="button" title="Click to edit"
+  hx-get="/items/{{.ID}}/edit" hx-target="closest li" hx-swap="outerHTML">{{.Text}}</button>
+<button class="delete" type="button" aria-label="Delete: {{.Text}}"
+  hx-delete="/items/{{.ID}}" hx-include="#hide-done" hx-target="closest li" hx-swap="outerHTML">{{template "x-icon"}}</button>
+</li>{{end}}
+
+{{define "item-edit"}}<li id="item-{{.Item.ID}}" class="item editing{{if .Item.Done}} done{{end}}"
+  hx-get="/items/{{.Item.ID}}" hx-trigger="keyup[key=='Escape']" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop">
+<button class="check" type="button" disabled aria-label="Mark done (finish editing first)"><span class="box">{{if .Item.Done}}{{template "check-icon"}}{{end}}</span></button>
+<div class="edit">
+<input name="text" value="{{.Text}}" aria-label="Edit item" autocomplete="off" autofocus{{if .Error}} aria-invalid="true" aria-describedby="edit-error-{{.Item.ID}}"{{end}}
+  hx-put="/items/{{.Item.ID}}" hx-trigger="keyup[key=='Enter'], blur" hx-include="#hide-done"
+  hx-target="closest li" hx-swap="outerHTML" hx-sync="closest li:drop">
+{{if .Error}}<p class="hint error" id="edit-error-{{.Item.ID}}">Text cannot be empty.</p>{{else}}<p class="hint">Enter to save · Esc to cancel</p>{{end}}
+</div>
+<button class="delete" type="button" disabled aria-label="Delete (finish editing first)">{{template "x-icon"}}</button>
+</li>{{end}}
