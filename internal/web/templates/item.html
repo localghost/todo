@@ -17,11 +17,16 @@
 {{define "item-edit"}}<li id="item-{{.Item.ID}}" class="item editing{{if .Item.Done}} done{{end}}"
   hx-get="/items/{{.Item.ID}}" hx-trigger="keyup[key=='Escape'], cancel-edit" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop">
 <button class="check" type="button" disabled aria-label="Mark done (finish editing first)"><span class="box">{{if .Item.Done}}{{template "check-icon"}}{{end}}</span></button>
-<div class="edit">
-<input name="text" value="{{.Text}}" aria-label="Edit item" autocomplete="off" autofocus{{if .Error}} aria-invalid="true" aria-describedby="edit-error-{{.Item.ID}}"{{end}}
-  hx-put="/items/{{.Item.ID}}" hx-trigger="keydown[key=='Enter'], blur[target.value.trim() != '']" hx-include="#hide-done"
+<div class="edit" hx-put="/items/{{.Item.ID}}" hx-trigger="keydown[key=='Enter'], save-edit" hx-include="closest li, #hide-done"
   hx-target="closest li" hx-swap="outerHTML" hx-sync="closest li:drop">
-{{if .Error}}<p class="hint error" id="edit-error-{{.Item.ID}}">Text cannot be empty.</p>{{else}}<p class="hint">Enter to save · Esc to cancel</p>{{end}}
+<input name="text" value="{{.Text}}" aria-label="Edit item" autocomplete="off" autofocus{{if .Error}} aria-invalid="true" aria-describedby="edit-error-{{.Item.ID}}"{{end}}>
+<div class="due-line">
+<label for="due-date-{{.Item.ID}}">Due</label>
+<input type="date" id="due-date-{{.Item.ID}}" name="due_date" value="{{.DueDate}}"{{if .DueError}} aria-invalid="true" aria-describedby="due-error-{{.Item.ID}}"{{end}}>
+<input type="time" name="due_time" value="{{.DueTime}}" aria-label="Due time (optional)">
+<button type="button" class="clear-due">Clear</button>
+</div>
+{{if .Error}}<p class="hint error" id="edit-error-{{.Item.ID}}">Text cannot be empty.</p>{{else if .DueError}}<p class="hint error" id="due-error-{{.Item.ID}}">{{.DueError}}</p>{{else}}<p class="hint">Enter to save · Esc to cancel · Leave the time empty for “all day”</p>{{end}}
 </div>
 <button class="delete" type="button" disabled aria-label="Delete (finish editing first)">{{template "x-icon"}}</button>
 </li>{{end}}

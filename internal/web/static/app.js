@@ -24,21 +24,39 @@ document.addEventListener("htmx:afterSettle", () => {
   focusAfterSwap = null;
 });
 
-// 2. A click outside an edit field with empty text cancels the edit.
-// (The field's own blur trigger only saves non-empty text.)
+// 2. When focus leaves an edit row, save it. Moving between the fields of
+// the row does not save. Empty text cancels the edit instead.
 document.addEventListener("focusout", (e) => {
-  const input = e.target;
-  if (input.matches(".edit input") && input.value.trim() === "") {
-    htmx.trigger(input.closest("li"), "cancel-edit");
+  const row = e.target.closest && e.target.closest("li.editing");
+  if (!row || (e.relatedTarget && row.contains(e.relatedTarget))) {
+    return;
+  }
+  const text = row.querySelector('input[name="text"]');
+  if (text.value.trim() === "") {
+    htmx.trigger(row, "cancel-edit");
+  } else {
+    htmx.trigger(row.querySelector(".edit"), "save-edit");
   }
 });
 
-// 3. After an item is added, clear the add input only if it still holds the
-// text that was sent. Text typed while the request ran stays.
+// "Clear" in an edit row empties both due fields.
+document.addEventListener("click", (e) => {
+  if (!e.target.matches(".clear-due")) {
+    return;
+  }
+  e.target.closest(".due-line").querySelectorAll("input").forEach((input) => {
+    input.value = "";
+  });
+});
+
+// 3. After an item is added, clear each add-form field only if it still
+// holds the value that was sent. Text typed while the request ran stays.
+const ADD_FIELDS = ["text", "due_date", "due_time"];
+
 document.addEventListener("htmx:beforeRequest", (e) => {
   const form = e.detail.elt;
   if (form.id === "add-form") {
-    form.dataset.sent = form.elements.text.value;
+    form._sent = Object.fromEntries(ADD_FIELDS.map((name) => [name, form.elements[name].value]));
   }
 });
 
@@ -47,13 +65,15 @@ document.addEventListener("htmx:afterRequest", (e) => {
   if (form.id !== "add-form" || !e.detail.successful) {
     return;
   }
-  const input = form.elements.text;
-  if (input.value === form.dataset.sent) {
-    input.value = "";
+  for (const name of ADD_FIELDS) {
+    const input = form.elements[name];
+    if (input.value === form._sent[name]) {
+      input.value = "";
+    }
+    input.removeAttribute("aria-invalid");
+    input.removeAttribute("aria-describedby");
   }
-  input.removeAttribute("aria-invalid");
-  input.removeAttribute("aria-describedby");
-  form.querySelector("#add-error")?.remove();
+  form.querySelectorAll(".error").forEach((p) => p.remove());
 });
 
 // 4. When an item opens for editing, put the cursor at the end of the text.

@@ -4,5 +4,11 @@
 <input id="new-item" name="text" placeholder="What needs to be done?" autocomplete="off" value="{{.Text}}"{{if .Focus}} autofocus{{end}}{{if .Error}} aria-invalid="true" aria-describedby="add-error"{{end}}>
 <button type="submit">Add</button>
 </div>
+<div class="due-line">
+<label for="new-due-date">Due</label>
+<input type="date" id="new-due-date" name="due_date" value="{{.DueDate}}"{{if .DueError}} aria-invalid="true" aria-describedby="add-due-error"{{end}}>
+<input type="time" name="due_time" value="{{.DueTime}}" aria-label="Due time (optional)">
+</div>
 {{if .Error}}<p id="add-error" class="error">Please type some text first.</p>{{end}}
+{{if .DueError}}<p id="add-due-error" class="error">{{.DueError}}</p>{{end}}
 </form>{{end}}

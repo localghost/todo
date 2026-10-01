@@ -24,13 +24,17 @@ func (s *server) index(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
-	text := r.FormValue("text")
-	item, err := s.svc.Add(r.Context(), defaultUserID, text, r.FormValue("due_date"), r.FormValue("due_time"))
-	if errors.Is(err, todo.ErrEmptyText) {
+	text, date, clock := r.FormValue("text"), r.FormValue("due_date"), r.FormValue("due_time")
+	item, err := s.svc.Add(r.Context(), defaultUserID, text, date, clock)
+	var dueErr *todo.DueError
+	if errors.Is(err, todo.ErrEmptyText) || errors.As(err, &dueErr) {
+		view := formView{Text: text, DueDate: date, DueTime: clock, Focus: true, Error: errors.Is(err, todo.ErrEmptyText)}
+		if dueErr != nil {
+			view.DueError = dueErr.Msg
+		}
 		w.Header().Set("HX-Retarget", "#add-form")
 		w.Header().Set("HX-Reswap", "outerHTML")
-		s.render(w, r, http.StatusUnprocessableEntity,
-			part{"add-form", formView{Text: text, Error: true, Focus: true}})
+		s.render(w, r, http.StatusUnprocessableEntity, part{"add-form", view})
 		return
 	}
 	if err != nil {
@@ -112,7 +116,8 @@ func (s *server) editItem(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	s.render(w, r, http.StatusOK, part{"item-edit", editView{Item: item, Text: item.Text}})
+	date, clock := dueInputs(item, s.now().Location())
+	s.render(w, r, http.StatusOK, part{"item-edit", editView{Item: item, Text: item.Text, DueDate: date, DueTime: clock}})
 }
 
 func (s *server) showItem(w http.ResponseWriter, r *http.Request) {
@@ -129,10 +134,11 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 		s.oobOnly(w, r, http.StatusNotFound)
 		return
 	}
-	text := r.FormValue("text")
-	item, err := s.svc.Edit(r.Context(), defaultUserID, id, text, r.FormValue("due_date"), r.FormValue("due_time"))
+	text, date, clock := r.FormValue("text"), r.FormValue("due_date"), r.FormValue("due_time")
+	item, err := s.svc.Edit(r.Context(), defaultUserID, id, text, date, clock)
+	var dueErr *todo.DueError
 	switch {
-	case errors.Is(err, todo.ErrEmptyText):
+	case errors.Is(err, todo.ErrEmptyText) || errors.As(err, &dueErr):
 		old, getErr := s.svc.Get(r.Context(), defaultUserID, id)
 		if errors.Is(getErr, todo.ErrNotFound) {
 			s.oobOnly(w, r, http.StatusNotFound)
@@ -142,8 +148,11 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 			s.serverError(w, r, getErr)
 			return
 		}
-		s.render(w, r, http.StatusUnprocessableEntity,
-			part{"item-edit", editView{Item: old, Text: text, Error: true}})
+		view := editView{Item: old, Text: text, DueDate: date, DueTime: clock, Error: errors.Is(err, todo.ErrEmptyText)}
+		if dueErr != nil {
+			view.DueError = dueErr.Msg
+		}
+		s.render(w, r, http.StatusUnprocessableEntity, part{"item-edit", view})
 	case errors.Is(err, todo.ErrNotFound):
 		s.oobOnly(w, r, http.StatusNotFound)
 	case err != nil:

@@ -18,16 +18,22 @@ type listView struct {
 
 // formView is the data for the add form.
 type formView struct {
-	Text  string
-	Error bool
-	Focus bool
+	Text     string
+	DueDate  string
+	DueTime  string
+	Error    bool   // empty text
+	DueError string // message for a bad due date
+	Focus    bool
 }
 
 // editView is the data for a row in edit mode.
 type editView struct {
-	Item  todo.Item
-	Text  string
-	Error bool
+	Item     todo.Item
+	Text     string
+	DueDate  string
+	DueTime  string
+	Error    bool   // empty text
+	DueError string // message for a bad due date
 }
 
 // pageView is the data for the full page.

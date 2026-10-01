@@ -16,7 +16,7 @@ func TestEditShowsInput(t *testing.T) {
 	}
 	assertContains(t, rec.Body.String(),
 		`class="item editing"`, `name="text" value="Buy milk"`, `hx-put="/items/1"`,
-		`hx-trigger="keydown[key=='Enter'], blur[target.value.trim() != '']"`, `hx-sync="closest li:drop"`,
+		`hx-trigger="keydown[key=='Enter'], save-edit"`, `hx-sync="closest li:drop"`,
 		"Enter to save · Esc to cancel")
 }
 
