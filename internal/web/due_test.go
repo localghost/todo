@@ -57,3 +57,30 @@ func TestDueInputs(t *testing.T) {
 		t.Errorf("no due = %q %q", d, c)
 	}
 }
+
+func TestNotifyText(t *testing.T) {
+	cest := time.FixedZone("CEST", 2*3600)
+	at := func(y int, m time.Month, d, h, min int) *time.Time {
+		t := time.Date(y, m, d, h, min, 0, 0, cest)
+		return &t
+	}
+	cases := []struct {
+		name        string
+		item        todo.Item
+		now         time.Time
+		title, want string
+	}{
+		{"one minute late", todo.Item{DueAt: at(2026, 10, 1, 14, 0)}, *at(2026, 10, 1, 14, 1),
+			"Todo: due now", "Due today, 14:00"},
+		{"one day late", todo.Item{DueAt: at(2026, 9, 30, 14, 0)}, *at(2026, 10, 1, 14, 40),
+			"Todo: overdue", "Overdue since yesterday, 14:00"},
+		{"all-day, claimed at 10:00 on its day", todo.Item{DueAt: at(2026, 10, 1, 9, 0), DueAllDay: true}, *at(2026, 10, 1, 10, 0),
+			"Todo: due now", "Due today"},
+	}
+	for _, c := range cases {
+		title, due := notifyText(c.item, c.now)
+		if title != c.title || due != c.want {
+			t.Errorf("%s: notifyText = %q, %q; want %q, %q", c.name, title, due, c.title, c.want)
+		}
+	}
+}

@@ -9,9 +9,10 @@ import (
 )
 
 type claimed struct {
-	ID   int64  `json:"id"`
-	Text string `json:"text"`
-	Due  string `json:"due"`
+	ID    int64  `json:"id"`
+	Title string `json:"title"`
+	Text  string `json:"text"`
+	Due   string `json:"due"`
 }
 
 func TestClaimReturnsDueItemsOnce(t *testing.T) {
@@ -25,7 +26,7 @@ func TestClaimReturnsDueItemsOnce(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("JSON: %v\n%s", err, rec.Body.String())
 	}
-	if len(got) != 1 || got[0].Text != "Call the dentist" || got[0].Due != "Due 1 Jan 2020, 08:00" {
+	if len(got) != 1 || got[0].Text != "Call the dentist" || got[0].Title != "Todo: overdue" || got[0].Due != "Overdue since 1 Jan 2020, 08:00" {
 		t.Fatalf("claimed = %+v", got)
 	}
 	if again := do(t, h, "POST", "/notifications/claim", nil, htmxHeaders).Body.String(); again != "[]\n" {
@@ -64,6 +65,6 @@ func TestAppJSPollsClaims(t *testing.T) {
 	h, _ := newTestApp(t)
 	body := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
 	assertContains(t, body, `"/notifications/claim"`, "requestPermission", "visibilitychange",
-		`"Todo: due now"`, "Get a notification when an item is due.",
+		"item.title", "Get a notification when an item is due.",
 		"Notifications are blocked in your browser settings.", "30000")
 }

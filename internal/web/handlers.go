@@ -192,9 +192,10 @@ func (s *server) findItem(w http.ResponseWriter, r *http.Request) (todo.Item, bo
 
 // notification is one due item for the page to show as a browser notification.
 type notification struct {
-	ID   int64  `json:"id"`
-	Text string `json:"text"`
-	Due  string `json:"due"`
+	ID    int64  `json:"id"`
+	Title string `json:"title"`
+	Text  string `json:"text"`
+	Due   string `json:"due"`
 }
 
 // claimNotifications returns the items that are due and not notified yet,
@@ -208,7 +209,8 @@ func (s *server) claimNotifications(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]notification, 0, len(items))
 	for _, it := range items {
-		out = append(out, notification{ID: it.ID, Text: it.Text, Due: dueText(it, now)})
+		title, due := notifyText(it, now)
+		out = append(out, notification{ID: it.ID, Title: title, Text: it.Text, Due: due})
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(out); err != nil {

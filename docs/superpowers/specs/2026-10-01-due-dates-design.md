@@ -158,7 +158,7 @@ The button calls `Notification.requestPermission()`. Browsers allow this only af
 The claim response is a JSON list:
 
 ```json
-[{"id": 3, "text": "Call the dentist", "due": "Due today, 14:00"}]
+[{"id": 3, "title": "Todo: due now", "text": "Call the dentist", "due": "Due today, 14:00"}]
 ```
 
 An empty list is `[]`. The route is a changing request, so the same-origin check applies. `app.js` sends the header `HX-Request: true`, like htmx requests.
@@ -178,6 +178,8 @@ For each returned item, it shows one notification:
 ```js
 new Notification("Todo: due now", { body: "Call the dentist — Due today, 14:00", tag: "todo-3" })
 ```
+
+The server chooses the title and the due text. If the item is overdue and more than 5 minutes have passed since its due time, the title is "Todo: overdue" and the text is the overdue label, for example "Overdue since yesterday, 14:00". Otherwise the title is "Todo: due now" and the text is the "Due …" label.
 
 A click on the notification calls `window.focus()`, so the todo tab comes to the front.
 

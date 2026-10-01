@@ -185,7 +185,7 @@ async function claimDue() {
   }
   for (const item of items) {
     try {
-      const note = new Notification("Todo: due now", { body: `${item.text} — ${item.due}`, tag: `todo-${item.id}` });
+      const note = new Notification(item.title, { body: `${item.text} — ${item.due}`, tag: `todo-${item.id}` });
       note.onclick = () => {
         window.focus();
         note.close();

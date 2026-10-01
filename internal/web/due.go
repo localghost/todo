@@ -80,3 +80,15 @@ func dueInputs(it todo.Item, loc *time.Location) (date, clock string) {
 	}
 	return d.Format("2006-01-02"), d.Format("15:04")
 }
+
+// lateAfter: a claim this long after the due time says "overdue", not "due now".
+const lateAfter = 5 * time.Minute
+
+// notifyText returns the notification title and due text for a claimed item.
+func notifyText(it todo.Item, now time.Time) (title, due string) {
+	label := dueLabel(it, now)
+	if label.Overdue && now.Sub(*it.DueAt) > lateAfter {
+		return "Todo: overdue", label.Text
+	}
+	return "Todo: due now", dueText(it, now)
+}
