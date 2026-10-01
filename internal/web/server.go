@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"todo/internal/todo"
 )
@@ -26,15 +27,20 @@ type server struct {
 	svc  *todo.Service
 	tmpl *template.Template
 	log  *slog.Logger
+	now  func() time.Time
 }
 
 // New returns the HTTP handler for the app.
 func New(svc *todo.Service, log *slog.Logger) (http.Handler, error) {
-	tmpl, err := template.ParseFS(templateFS, "templates/*.html")
+	s := &server{svc: svc, log: log, now: time.Now}
+	funcs := template.FuncMap{
+		"added": func(t time.Time) string { return addedLabel(t, s.now()) },
+	}
+	tmpl, err := template.New("").Funcs(funcs).ParseFS(templateFS, "templates/*.html")
 	if err != nil {
 		return nil, err
 	}
-	s := &server{svc: svc, tmpl: tmpl, log: log}
+	s.tmpl = tmpl
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.index)

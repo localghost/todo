@@ -113,3 +113,18 @@ func TestContentColumnWidth(t *testing.T) {
 	assertContains(t, body, "max-width: 784px;")
 	assertNotContains(t, body, "max-width: 560px;")
 }
+
+// Each item shows when it was added, also when done; edit mode hides it.
+func TestItemShowsAddedDate(t *testing.T) {
+	h, svc := newTestApp(t)
+	mustAdd(t, svc, "Buy milk")
+	b := mustAdd(t, svc, "Call the dentist")
+	svc.Toggle(context.Background(), 1, b.ID)
+
+	body := do(t, h, "GET", "/", nil, nil).Body.String()
+	if n := strings.Count(body, `<span class="added">Added today, `); n != 2 {
+		t.Fatalf("found %d added-date labels, want 2 (open and done item)\nbody:\n%s", n, body)
+	}
+	edit := do(t, h, "GET", "/items/1/edit", nil, htmxHeaders).Body.String()
+	assertNotContains(t, edit, `class="added"`)
+}

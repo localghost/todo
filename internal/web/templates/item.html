@@ -5,8 +5,11 @@
 {{define "item"}}<li id="item-{{.ID}}" class="item{{if .Done}} done{{end}}">
 <button id="check-{{.ID}}" class="check" type="button" aria-label="{{if .Done}}Mark not done{{else}}Mark done{{end}}: {{.Text}}"
   hx-post="/items/{{.ID}}/toggle" hx-include="#hide-done" hx-target="closest li" hx-swap="outerHTML"><span class="box">{{if .Done}}{{template "check-icon"}}{{end}}</span></button>
+<div class="text-col">
 <button class="text" type="button" title="Click to edit"
   hx-get="/items/{{.ID}}/edit" hx-target="closest li" hx-swap="outerHTML">{{.Text}}</button>
+<span class="added">{{added .CreatedAt}}</span>
+</div>
 <button class="delete" type="button" aria-label="Delete: {{.Text}}"
   hx-delete="/items/{{.ID}}" hx-include="#hide-done" hx-target="closest li" hx-swap="outerHTML">{{template "x-icon"}}</button>
 </li>{{end}}
