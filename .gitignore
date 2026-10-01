@@ -1,0 +1,5 @@
+/todo
+*.db
+*.db-wal
+*.db-shm
+.superpowers/
