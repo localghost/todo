@@ -25,7 +25,7 @@ func (s *server) index(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 	text := r.FormValue("text")
-	item, err := s.svc.Add(r.Context(), defaultUserID, text)
+	item, err := s.svc.Add(r.Context(), defaultUserID, text, r.FormValue("due_date"), r.FormValue("due_time"))
 	if errors.Is(err, todo.ErrEmptyText) {
 		w.Header().Set("HX-Retarget", "#add-form")
 		w.Header().Set("HX-Reswap", "outerHTML")
@@ -130,7 +130,7 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	text := r.FormValue("text")
-	item, err := s.svc.UpdateText(r.Context(), defaultUserID, id, text)
+	item, err := s.svc.Edit(r.Context(), defaultUserID, id, text, r.FormValue("due_date"), r.FormValue("due_time"))
 	switch {
 	case errors.Is(err, todo.ErrEmptyText):
 		old, getErr := s.svc.Get(r.Context(), defaultUserID, id)

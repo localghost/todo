@@ -51,7 +51,7 @@ func do(t *testing.T, h http.Handler, method, target string, form url.Values, he
 
 func mustAdd(t *testing.T, svc *todo.Service, text string) todo.Item {
 	t.Helper()
-	it, err := svc.Add(context.Background(), 1, text)
+	it, err := svc.Add(context.Background(), 1, text, "", "")
 	if err != nil {
 		t.Fatalf("Add(%q): %v", text, err)
 	}
