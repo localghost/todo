@@ -16,15 +16,16 @@ func TestAddReturnsRowAndOOB(t *testing.T) {
 	body := rec.Body.String()
 	assertContains(t, body,
 		`<li id="item-1" class="item">`, ">Buy milk</button>",
-		`id="add-form"`, `id="toolbar" class="toolbar" hx-swap-oob="true"`,
-		`id="empty-state" hx-swap-oob="true"`, "1 open · 0 done", "autofocus")
+		`id="toolbar" class="toolbar" hx-swap-oob="true"`,
+		`id="empty-state" hx-swap-oob="true"`, "1 open · 0 done")
 	assertNotContains(t, body, "Please type some text first.", "No items yet")
 }
 
-func TestAddFormIsOOBAndCleared(t *testing.T) {
+// The success answer must not replace the add form: text typed meanwhile stays.
+func TestAddKeepsFormInPage(t *testing.T) {
 	h, _ := newTestApp(t)
 	body := do(t, h, "POST", "/items", url.Values{"text": {"Buy milk"}}, htmxHeaders).Body.String()
-	assertContains(t, body, `id="add-form" class="add" hx-post="/items"`, `hx-swap-oob="true">`, `value=""`)
+	assertNotContains(t, body, `id="add-form"`)
 }
 
 func TestAddEmptyText(t *testing.T) {

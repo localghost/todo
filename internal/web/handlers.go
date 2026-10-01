@@ -43,10 +43,9 @@ func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	lv.OOB = true
-	s.render(w, r, http.StatusOK,
-		part{"item", item},
-		part{"add-form", formView{Focus: true, OOB: true}},
-		part{"oob", lv})
+	// The add form is not part of the answer: app.js clears the input, so
+	// text typed while this request ran is not lost.
+	s.render(w, r, http.StatusOK, part{"item", item}, part{"oob", lv})
 }
 
 func (s *server) toggleItem(w http.ResponseWriter, r *http.Request) {

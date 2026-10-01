@@ -21,7 +21,6 @@ type formView struct {
 	Text  string
 	Error bool
 	Focus bool
-	OOB   bool
 }
 
 // editView is the data for a row in edit mode.
