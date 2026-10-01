@@ -194,6 +194,11 @@ async function claimDue() {
       // For example Android Chrome, which allows notifications only from a service worker.
       console.warn("Cannot show a notification", err);
     }
+    // Reload the row, so its label shows the new state (for example red "Overdue").
+    const row = document.getElementById(`item-${item.id}`);
+    if (row && !row.classList.contains("editing")) {
+      htmx.ajax("GET", "/items/" + item.id, { target: row, swap: "outerHTML" });
+    }
   }
 }
 
