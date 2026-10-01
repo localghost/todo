@@ -38,6 +38,13 @@ func (s *Service) UpdateText(ctx context.Context, userID, id int64, text string)
 	if err != nil {
 		return Item{}, err
 	}
+	it, err := s.store.Get(ctx, userID, id)
+	if err != nil {
+		return Item{}, err
+	}
+	if it.Text == text {
+		return it, nil
+	}
 	return s.store.UpdateText(ctx, userID, id, text, s.now())
 }
 

@@ -112,3 +112,16 @@ func TestDeleteRemovesItem(t *testing.T) {
 		t.Fatalf("Get after Delete err = %v, want ErrNotFound", err)
 	}
 }
+
+func TestUpdateTextUnchangedKeepsUpdatedAt(t *testing.T) {
+	svc := newService(t)
+	ctx := context.Background()
+	it, _ := svc.Add(ctx, 1, "Buy milk")
+	got, err := svc.UpdateText(ctx, 1, it.ID, "  Buy   milk ")
+	if err != nil {
+		t.Fatalf("UpdateText: %v", err)
+	}
+	if !got.UpdatedAt.Equal(it.UpdatedAt) {
+		t.Fatalf("UpdatedAt changed from %v to %v for unchanged text", it.UpdatedAt, got.UpdatedAt)
+	}
+}
