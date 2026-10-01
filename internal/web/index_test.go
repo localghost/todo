@@ -105,3 +105,11 @@ func TestStaticDirectoryListingIs404(t *testing.T) {
 		t.Fatalf("GET /static/ status = %d, want 404", rec.Code)
 	}
 }
+
+// The content column is 40% wider than the first design (560 px → 784 px).
+func TestContentColumnWidth(t *testing.T) {
+	h, _ := newTestApp(t)
+	body := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
+	assertContains(t, body, "max-width: 784px;")
+	assertNotContains(t, body, "max-width: 560px;")
+}

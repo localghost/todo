@@ -149,7 +149,7 @@ The page layout, from top to bottom:
 3. The toolbar: the counter "N open · M done" on the left, and the button "Hide done (M)" or "Show done (M)" on the right.
 4. The list. Each row has a checkbox, the text, and a delete button `×`.
 
-The look: one light theme, one blue accent (`#2450C7`), and the font Source Sans 3. The content column is at most 560 px wide. All click targets are at least 44 px. The page works at phone width (390 px).
+The look: one light theme, one blue accent (`#2450C7`), and the font Source Sans 3. The content column is at most 784 px wide. All click targets are at least 44 px. The page works at phone width (390 px).
 
 Approved UI decisions:
 
