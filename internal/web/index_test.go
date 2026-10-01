@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestIndexEmpty(t *testing.T) {
@@ -127,4 +128,21 @@ func TestItemShowsAddedDate(t *testing.T) {
 	}
 	edit := do(t, h, "GET", "/items/1/edit", nil, htmxHeaders).Body.String()
 	assertNotContains(t, edit, `class="added"`)
+}
+
+// The due label follows the added date; overdue open items are marked.
+func TestItemShowsDueLabel(t *testing.T) {
+	h, svc := newTestApp(t)
+	ctx := context.Background()
+	tomorrow := time.Now().AddDate(0, 0, 1).Format("2006-01-02")
+	svc.Add(ctx, 1, "Water the plants", tomorrow, "14:00")
+	svc.Add(ctx, 1, "Call the dentist", "2020-01-01", "08:00")
+	done, _ := svc.Add(ctx, 1, "Buy milk", "2020-01-01", "")
+	svc.Toggle(ctx, 1, done.ID)
+
+	body := do(t, h, "GET", "/", nil, nil).Body.String()
+	assertContains(t, body,
+		` · <span class="due">Due tomorrow, 14:00</span>`,
+		` · <span class="due overdue">Overdue since 1 Jan 2020, 08:00</span>`,
+		` · <span class="due">Due 1 Jan 2020</span>`)
 }

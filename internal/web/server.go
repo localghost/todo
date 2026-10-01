@@ -35,6 +35,7 @@ func New(svc *todo.Service, log *slog.Logger) (http.Handler, error) {
 	s := &server{svc: svc, log: log, now: time.Now}
 	funcs := template.FuncMap{
 		"added": func(t time.Time) string { return addedLabel(t, s.now()) },
+		"due":   func(it todo.Item) dueView { return dueLabel(it, s.now()) },
 	}
 	tmpl, err := template.New("").Funcs(funcs).ParseFS(templateFS, "templates/*.html")
 	if err != nil {
