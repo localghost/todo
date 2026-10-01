@@ -29,9 +29,9 @@ These items are not part of the first version:
 
 | Topic | Decision | Reason |
 |---|---|---|
-| Language | Go 1.22 (installed: 1.22.2) | User choice. Go 1.22 `http.ServeMux` supports method and `{id}` patterns, so no router library is necessary. |
+| Language | Go 1.27.1 (set in `go.mod`; the installed Go downloads this toolchain automatically) | User choice. Go's `http.ServeMux` supports method and `{id}` patterns, so no router library is necessary. Upgraded from Go 1.22 on 2026-10-01, before users and login, because an internet-facing app needs a Go version that still gets security fixes. |
 | Storage | SQLite, one file on disk | Data stays after a restart. Easy to add users later. |
-| SQLite driver | Pure-Go driver (`modernc.org/sqlite`) | No C compiler is necessary. During implementation, pin a driver version that still supports Go 1.22. |
+| SQLite driver | Pure-Go driver (`modernc.org/sqlite`) | No C compiler is necessary. Kept at a current version (v1.60.1 since the Go upgrade). |
 | Frontend | htmx, with HTML made on the server by Go `html/template` | Mostly Go code and very little JavaScript. No build step. |
 | JSON API | Not now. Add later on the same service. | YAGNI. A clean service layer makes the API a small change later. |
 
@@ -44,7 +44,7 @@ Both paths work only if all business rules stay in `todo.Service`. Section 4 mak
 
 ## 3. Run
 
-The app is one binary. Build it with `go build ./cmd/todo`.
+The app is one binary. Build it with `go build ./cmd/todo`. Do not set `GOTOOLCHAIN=local`: the Go command must be allowed to download the toolchain that `go.mod` asks for.
 
 | Flag | Default | Meaning |
 |---|---|---|
