@@ -45,6 +45,6 @@ func TestAppJSPutsCursorAtEndOfEditField(t *testing.T) {
 func TestAppJSTypeToAdd(t *testing.T) {
 	h, _ := newTestApp(t)
 	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
-	assertContains(t, js, "document.activeElement === document.body", "e.key.length === 1",
+	assertContains(t, js, "document.activeElement === document.body", "e.key.length !== 1",
 		`e.key === " "`, `document.getElementById("new-item")`)
 }
