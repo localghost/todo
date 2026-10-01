@@ -163,6 +163,7 @@ Approved UI decisions:
 | Cancel edit | Esc. The old text comes back. |
 | Order of done items | They keep their place in the list. |
 | Empty list, no items at all | Show "No items yet" and "Type a task above and press Enter." |
+| Typing while nothing has focus | The character goes into the add field, which gets focus. Not for Space, not with Ctrl/Alt/Cmd, and not when a button or field has focus. |
 | Added date | Small grey line under the text: "Added today, 14:32", "Added yesterday, 09:10", "Added 28 Sep", or "Added 3 Dec 2025" (year only if not this year). Server local time. Also on done items (not crossed out). Hidden in edit mode. |
 | Empty list, all items done and hidden | Show "All done" and "Done items are hidden. Use "Show done" to see them." |
 

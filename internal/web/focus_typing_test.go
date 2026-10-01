@@ -40,3 +40,11 @@ func TestAppJSPutsCursorAtEndOfEditField(t *testing.T) {
 	body := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
 	assertContains(t, body, `"htmx:load"`, `.edit input`, "setSelectionRange(end, end)")
 }
+
+// Typing while nothing has focus starts a new item in the add field.
+func TestAppJSTypeToAdd(t *testing.T) {
+	h, _ := newTestApp(t)
+	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
+	assertContains(t, js, "document.activeElement === document.body", "e.key.length === 1",
+		`e.key === " "`, `document.getElementById("new-item")`)
+}

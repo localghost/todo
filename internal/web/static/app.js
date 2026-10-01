@@ -230,3 +230,24 @@ if (canNotify && navigator.permissions) {
 renderNotifyBar();
 claimDue();
 setInterval(claimDue, 30000);
+
+// 6. Start typing anywhere to add an item: if nothing has focus, a printable
+// key goes into the add field.
+document.addEventListener("keydown", (e) => {
+  const pageHasFocus = !document.activeElement || document.activeElement === document.body;
+  if (!pageHasFocus || e.defaultPrevented || e.isComposing || e.ctrlKey || e.altKey || e.metaKey) {
+    return;
+  }
+  if (e.key.length !== 1 || e.key === " ") {
+    return;
+  }
+  const input = document.getElementById("new-item");
+  if (!input) {
+    return;
+  }
+  e.preventDefault();
+  input.focus();
+  input.value += e.key;
+  const end = input.value.length;
+  input.setSelectionRange(end, end);
+});
