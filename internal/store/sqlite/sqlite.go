@@ -6,6 +6,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
@@ -42,7 +45,17 @@ var _ todo.Store = (*Store)(nil)
 
 // Open opens (or creates) the database file at path and sets up the schema.
 func Open(path string) (*Store, error) {
-	dsn := "file:" + path + "?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
+	// The DSN below uses "?" and "#" as separators.
+	if strings.ContainsAny(path, "?#") {
+		return nil, fmt.Errorf("open database %q: path must not contain '?' or '#'", path)
+	}
+	// Without this check, SQLite reports a missing folder as "out of memory".
+	if dir := filepath.Dir(path); dir != "" {
+		if _, err := os.Stat(dir); err != nil {
+			return nil, fmt.Errorf("open database %q: folder %q does not exist", path, dir)
+		}
+	}
+	dsn :="file:" + path + "?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open database %q: %w", path, err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -61,6 +62,18 @@ func TestOpenMissingDir(t *testing.T) {
 	_, err := sqlite.Open(filepath.Join(t.TempDir(), "no-such-dir", "test.db"))
 	if err == nil {
 		t.Fatal("Open in a missing folder: got nil error, want error")
+	}
+	if msg := err.Error(); !strings.Contains(msg, "does not exist") || strings.Contains(msg, "out of memory") {
+		t.Fatalf("error = %q, want a clear 'does not exist' message", msg)
+	}
+}
+
+func TestOpenRejectsDSNCharacters(t *testing.T) {
+	for _, name := range []string{"a?b.db", "a#b.db"} {
+		_, err := sqlite.Open(filepath.Join(t.TempDir(), name))
+		if err == nil || !strings.Contains(err.Error(), "must not contain") {
+			t.Errorf("Open(%q) err = %v, want a 'must not contain' error", name, err)
+		}
 	}
 }
 
