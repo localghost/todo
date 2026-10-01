@@ -146,3 +146,11 @@ func TestItemShowsDueLabel(t *testing.T) {
 		` · <span class="due overdue">Overdue since 1 Jan 2020, 08:00</span>`,
 		` · <span class="due">Due 1 Jan 2020</span>`)
 }
+
+// Only the text field of the add form stretches; the due fields keep their natural width.
+func TestAddFormOnlyTextFieldStretches(t *testing.T) {
+	h, _ := newTestApp(t)
+	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
+	assertContains(t, css, ".add-row input {")
+	assertNotContains(t, css, ".add input {")
+}
