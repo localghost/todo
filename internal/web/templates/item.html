@@ -19,10 +19,10 @@
 <button class="check" type="button" disabled aria-label="Mark done (finish editing first)"><span class="box">{{if .Item.Done}}{{template "check-icon"}}{{end}}</span></button>
 <div class="edit" hx-put="/items/{{.Item.ID}}" hx-trigger="keydown[key=='Enter'], save-edit" hx-include="closest li, #hide-done" hx-validate="true"
   hx-target="closest li" hx-swap="outerHTML" hx-sync="closest li:drop">
-<input name="text" value="{{.Text}}" aria-label="Edit item" autocomplete="off" autofocus{{if .Error}} aria-invalid="true" aria-describedby="edit-error-{{.Item.ID}}"{{end}}>
+<input name="text" value="{{.Text}}" aria-label="Edit item" autocomplete="off"{{if not .DueError}} autofocus{{end}}{{if .Error}} aria-invalid="true" aria-describedby="edit-error-{{.Item.ID}}"{{end}}>
 <div class="due-line">
 <label for="due-date-{{.Item.ID}}">Due</label>
-<input type="date" id="due-date-{{.Item.ID}}" name="due_date" value="{{.DueDate}}"{{if .DueError}} aria-invalid="true" aria-describedby="due-error-{{.Item.ID}}"{{end}}>
+<input type="date" id="due-date-{{.Item.ID}}" name="due_date" value="{{.DueDate}}"{{if .DueError}} aria-invalid="true" aria-describedby="due-error-{{.Item.ID}}" autofocus{{end}}>
 <input type="time" name="due_time" value="{{.DueTime}}" aria-label="Due time (optional)">
 <button type="button" class="clear-due">Clear</button>
 </div>

@@ -90,3 +90,18 @@ func TestAppJSHandlesDueFields(t *testing.T) {
 	body := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
 	assertContains(t, body, `"save-edit"`, `.clear-due`, `"due_date"`, `"due_time"`)
 }
+
+// After a due-date error the cursor goes to the date field, not the text field.
+func TestDueErrorFocusesDateField(t *testing.T) {
+	h, svc := newTestApp(t)
+	add := do(t, h, "POST", "/items",
+		url.Values{"text": {"Call the dentist"}, "due_date": {""}, "due_time": {"14:00"}}, htmxHeaders).Body.String()
+	assertContains(t, add, `aria-describedby="add-due-error" autofocus>`)
+	assertNotContains(t, add, `value="Call the dentist" autofocus`)
+
+	mustAdd(t, svc, "Call the dentist")
+	edit := do(t, h, "PUT", "/items/1",
+		url.Values{"text": {"Call the dentist"}, "due_date": {""}, "due_time": {"14:00"}}, htmxHeaders).Body.String()
+	assertContains(t, edit, `aria-describedby="due-error-1" autofocus>`)
+	assertNotContains(t, edit, `autocomplete="off" autofocus`)
+}

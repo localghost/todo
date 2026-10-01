@@ -118,7 +118,7 @@ The add form always shows a second line under the text field: "Due [date] [time]
 
 After a successful add, `app.js` clears each field only if it still holds the value that was sent. This is the existing rule for the text field, extended to the two due fields.
 
-If the due input is wrong, the server answers `422`. The error message shows under the due line, and the form keeps all the values.
+If the due input is wrong, the server answers `422`. The error message shows under the due line, the form keeps all the values, and the cursor goes to the date field.
 
 ### Edit row
 
@@ -130,7 +130,7 @@ The edit row shows the text field and, under it, the line "Due [date] [time] Cle
 | Focus leaves the row (a click or Tab outside it) | Save. This replaces the old blur trigger of the text field, because moving between the fields of the row must not save. |
 | Esc | Cancel |
 | Focus leaves the row with empty text | Cancel (existing rule) |
-| Wrong due input | `422`. The row stays open with the message under the due line. |
+| Wrong due input | `422`. The row stays open with the message under the due line, and the cursor goes to the date field. |
 
 ### Permission bar
 
