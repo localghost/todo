@@ -51,3 +51,10 @@ func TestAppJSRefreshesNotifiedRows(t *testing.T) {
 	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
 	assertContains(t, js, `htmx.ajax("GET", "/items/" + item.id`, `!row.classList.contains("editing")`)
 }
+
+// A permission change in the browser settings updates the bar at once.
+func TestAppJSWatchesPermission(t *testing.T) {
+	h, _ := newTestApp(t)
+	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
+	assertContains(t, js, `navigator.permissions.query({ name: "notifications" })`, "status.onchange")
+}

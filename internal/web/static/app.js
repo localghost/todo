@@ -209,6 +209,15 @@ document.addEventListener("visibilitychange", () => {
     claimDue();
   }
 });
+// A permission change in the browser settings updates the bar at once.
+if (canNotify && navigator.permissions) {
+  navigator.permissions.query({ name: "notifications" }).then((status) => {
+    status.onchange = () => {
+      renderNotifyBar();
+      claimDue();
+    };
+  }).catch(() => {});
+}
 renderNotifyBar();
 claimDue();
 setInterval(claimDue, 30000);

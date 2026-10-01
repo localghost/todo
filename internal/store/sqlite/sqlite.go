@@ -209,13 +209,23 @@ func (s *Store) ClaimDue(ctx context.Context, userID int64, now time.Time) ([]to
 		return nil, fmt.Errorf("claim due items: %w", err)
 	}
 	ts := formatTime(now)
-	for i := range items {
-		if _, err := tx.ExecContext(ctx, `UPDATE items SET notified_at = ? WHERE id = ?`, ts, items[i].ID); err != nil {
+	claimed := items[:0]
+	for _, it := range items {
+		// The guard keeps an item from being claimed twice, also if the
+		// store ever uses more than one connection.
+		res, err := tx.ExecContext(ctx,
+			`UPDATE items SET notified_at = ? WHERE id = ? AND notified_at IS NULL`, ts, it.ID)
+		if err != nil {
 			return nil, fmt.Errorf("claim due items: %w", err)
 		}
+		if n, err := res.RowsAffected(); err != nil || n != 1 {
+			continue
+		}
 		n := now
-		items[i].NotifiedAt = &n
+		it.NotifiedAt = &n
+		claimed = append(claimed, it)
 	}
+	items = claimed
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("claim due items: %w", err)
 	}
