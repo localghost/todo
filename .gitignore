@@ -1,4 +1,5 @@
 /todo
+/tmp/
 *.db
 *.db-wal
 *.db-shm
