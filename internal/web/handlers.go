@@ -108,6 +108,68 @@ func (s *server) oobOnly(w http.ResponseWriter, r *http.Request, status int) {
 	lv.OOB = true
 	s.render(w, r, status, part{"oob", lv})
 }
-func (s *server) editItem(w http.ResponseWriter, r *http.Request)   { http.NotFound(w, r) }
-func (s *server) showItem(w http.ResponseWriter, r *http.Request)   { http.NotFound(w, r) }
-func (s *server) updateItem(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }
+func (s *server) editItem(w http.ResponseWriter, r *http.Request) {
+	item, ok := s.findItem(w, r)
+	if !ok {
+		return
+	}
+	s.render(w, r, http.StatusOK, part{"item-edit", editView{Item: item, Text: item.Text}})
+}
+
+func (s *server) showItem(w http.ResponseWriter, r *http.Request) {
+	item, ok := s.findItem(w, r)
+	if !ok {
+		return
+	}
+	s.render(w, r, http.StatusOK, part{"item", item})
+}
+
+func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(r)
+	if !ok {
+		s.oobOnly(w, r, http.StatusNotFound)
+		return
+	}
+	text := r.FormValue("text")
+	item, err := s.svc.UpdateText(r.Context(), defaultUserID, id, text)
+	switch {
+	case errors.Is(err, todo.ErrEmptyText):
+		old, getErr := s.svc.Get(r.Context(), defaultUserID, id)
+		if errors.Is(getErr, todo.ErrNotFound) {
+			s.oobOnly(w, r, http.StatusNotFound)
+			return
+		}
+		if getErr != nil {
+			s.serverError(w, r, getErr)
+			return
+		}
+		s.render(w, r, http.StatusUnprocessableEntity,
+			part{"item-edit", editView{Item: old, Text: text, Error: true}})
+	case errors.Is(err, todo.ErrNotFound):
+		s.oobOnly(w, r, http.StatusNotFound)
+	case err != nil:
+		s.serverError(w, r, err)
+	default:
+		s.render(w, r, http.StatusOK, part{"item", item})
+	}
+}
+
+// findItem loads the item named by {id}. If it is missing, findItem writes
+// the 404 response and returns false.
+func (s *server) findItem(w http.ResponseWriter, r *http.Request) (todo.Item, bool) {
+	id, ok := parseID(r)
+	if !ok {
+		s.oobOnly(w, r, http.StatusNotFound)
+		return todo.Item{}, false
+	}
+	item, err := s.svc.Get(r.Context(), defaultUserID, id)
+	if errors.Is(err, todo.ErrNotFound) {
+		s.oobOnly(w, r, http.StatusNotFound)
+		return todo.Item{}, false
+	}
+	if err != nil {
+		s.serverError(w, r, err)
+		return todo.Item{}, false
+	}
+	return item, true
+}
