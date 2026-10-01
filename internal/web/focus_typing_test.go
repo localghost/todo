@@ -33,3 +33,10 @@ func TestPageLoadsAppJS(t *testing.T) {
 	}
 	assertContains(t, rec.Body.String(), "cancel-edit", "htmx:beforeSwap", "add-form")
 }
+
+// When an item opens for editing, the cursor goes to the end of the text.
+func TestAppJSPutsCursorAtEndOfEditField(t *testing.T) {
+	h, _ := newTestApp(t)
+	body := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
+	assertContains(t, body, `"htmx:load"`, `.edit input`, "setSelectionRange(end, end)")
+}

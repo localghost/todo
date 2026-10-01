@@ -55,3 +55,13 @@ document.addEventListener("htmx:afterRequest", (e) => {
   input.removeAttribute("aria-describedby");
   form.querySelector("#add-error")?.remove();
 });
+
+// 4. When an item opens for editing, put the cursor at the end of the text.
+// htmx has already focused the field (autofocus) when it fires htmx:load.
+document.addEventListener("htmx:load", (e) => {
+  const input = e.detail.elt.querySelector(".edit input");
+  if (input) {
+    const end = input.value.length;
+    input.setSelectionRange(end, end);
+  }
+});
