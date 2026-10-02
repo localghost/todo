@@ -216,7 +216,11 @@ func TestLoginWithInvalidOldCookie(t *testing.T) {
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/" {
 		t.Fatalf("login: %d %q, want 303 /", rec.Code, rec.Header().Get("Location"))
 	}
-	if c := sessionFrom(t, rec); c.Value == "" || c.Value == "garbage" {
+	c := sessionFrom(t, rec)
+	if c.Value == "" || c.Value == "garbage" {
 		t.Fatalf("no new session cookie: %+v", c)
+	}
+	if rec := do(t, env.H, "GET", "/", nil, cookie(c.Value)); rec.Code != http.StatusOK {
+		t.Fatalf("new session cookie does not open the list: %d", rec.Code)
 	}
 }
