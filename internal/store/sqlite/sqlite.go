@@ -179,7 +179,10 @@ func OpenWith(path string, opts Options) (*Store, error) {
 		var version int
 		err = ro.QueryRow(`PRAGMA user_version`).Scan(&version)
 		ro.Close()
-		if err != nil || version != 2 {
+		if err != nil {
+			return nil, fmt.Errorf("open database %q: %w", path, err)
+		}
+		if version != 2 {
 			return nil, fmt.Errorf("database %q is not at the current schema version; start the server once to upgrade it", path)
 		}
 	}

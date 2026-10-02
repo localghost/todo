@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -255,5 +256,16 @@ func TestRequireCurrentLeavesNoWALFiles(t *testing.T) {
 		if _, err := os.Stat(old + suffix); err == nil {
 			t.Errorf("the version check left %s; a server running as another user cannot open the database", old+suffix)
 		}
+	}
+}
+
+func TestRequireCurrentShowsRealError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "not.db")
+	if err := os.WriteFile(path, []byte("hello, not a database, but long enough to look like a file header"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := sqlite.OpenWith(path, sqlite.Options{RequireCurrent: true})
+	if err == nil || strings.Contains(err.Error(), "start the server once") || !strings.Contains(err.Error(), "not a database") {
+		t.Fatalf("err = %v, want the real error (not a database)", err)
 	}
 }

@@ -62,8 +62,9 @@ func CheckPassword(encoded, password string) bool {
 	if _, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &memory, &time, &threads); err != nil {
 		return false
 	}
-	// Bounds stop a broken or hostile stored hash from using huge memory or time.
-	if memory < 8*1024 || memory > 1024*1024 || time == 0 || time > 10 || threads == 0 || threads > 16 {
+	// Bounds stop a broken or hostile stored hash from using huge memory or time:
+	// at most 4× the app's own memory and 2× its time.
+	if memory < 8*1024 || memory > 4*argonMemory || time == 0 || time > 2*argonTime || threads == 0 || threads > 16 {
 		return false
 	}
 	salt, err := b64.DecodeString(parts[4])

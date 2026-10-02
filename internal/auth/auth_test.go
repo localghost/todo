@@ -255,7 +255,7 @@ func TestResetPassword(t *testing.T) {
 func TestCheckPasswordRejectsExtremeParameters(t *testing.T) {
 	salt := "AAAAAAAAAAAAAAAAAAAAAA"                     // 16 bytes
 	key := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" // 32 bytes
-	for _, params := range []string{"m=4194304,t=3,p=4", "m=65536,t=11,p=4", "m=65536,t=3,p=17", "m=65536,t=3,p=0", "m=7,t=3,p=4"} {
+	for _, params := range []string{"m=4194304,t=3,p=4", "m=65536,t=11,p=4", "m=65536,t=3,p=17", "m=65536,t=3,p=0", "m=7,t=3,p=4", "m=524288,t=3,p=4", "m=65536,t=7,p=4"} {
 		h := "$argon2id$v=19$" + params + "$" + salt + "$" + key
 		start := time.Now()
 		if auth.CheckPassword(h, pw) {
@@ -305,5 +305,16 @@ func TestMinPasswordCharsOption(t *testing.T) {
 	token, _, _ := strict.LogIn(ctx, "erin", "123456789012", false)
 	if err := strict.ChangePassword(ctx, u.ID, token, "123456789012", "12345678901"); ruleMsg(t, err) != "Use at least 12 characters." {
 		t.Fatalf("change to 11 characters: %v", err)
+	}
+}
+
+// The bounds must still accept every hash the app makes itself.
+func TestCheckPasswordAcceptsOwnHashes(t *testing.T) {
+	h, err := auth.HashPassword(pw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !auth.CheckPassword(h, pw) {
+		t.Fatalf("own hash %s rejected", h)
 	}
 }
