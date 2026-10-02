@@ -28,11 +28,16 @@ func (s *Service) Get(ctx context.Context, userID, id int64) (Item, error) {
 }
 
 func (s *Service) Add(ctx context.Context, userID int64, text, dueDate, dueTime string) (Item, error) {
+	return s.AddIn(ctx, userID, text, dueDate, dueTime, nil)
+}
+
+// AddIn is Add with the due date and time read in loc (nil: the service's zone).
+func (s *Service) AddIn(ctx context.Context, userID int64, text, dueDate, dueTime string, loc *time.Location) (Item, error) {
 	text, err := cleanText(text)
 	if err != nil {
 		return Item{}, err
 	}
-	dueAt, allDay, err := parseDue(dueDate, dueTime, s.loc)
+	dueAt, allDay, err := parseDue(dueDate, dueTime, s.zone(loc))
 	if err != nil {
 		return Item{}, err
 	}
@@ -41,11 +46,16 @@ func (s *Service) Add(ctx context.Context, userID int64, text, dueDate, dueTime 
 
 // Edit changes the text and the due date. A changed due date can notify again.
 func (s *Service) Edit(ctx context.Context, userID, id int64, text, dueDate, dueTime string) (Item, error) {
+	return s.EditIn(ctx, userID, id, text, dueDate, dueTime, nil)
+}
+
+// EditIn is Edit with the due date and time read in loc (nil: the service's zone).
+func (s *Service) EditIn(ctx context.Context, userID, id int64, text, dueDate, dueTime string, loc *time.Location) (Item, error) {
 	text, err := cleanText(text)
 	if err != nil {
 		return Item{}, err
 	}
-	dueAt, allDay, err := parseDue(dueDate, dueTime, s.loc)
+	dueAt, allDay, err := parseDue(dueDate, dueTime, s.zone(loc))
 	if err != nil {
 		return Item{}, err
 	}
@@ -112,4 +122,12 @@ func cleanText(text string) (string, error) {
 		return "", ErrEmptyText
 	}
 	return text, nil
+}
+
+// zone returns loc, or the service's zone if loc is nil.
+func (s *Service) zone(loc *time.Location) *time.Location {
+	if loc == nil {
+		return s.loc
+	}
+	return loc
 }

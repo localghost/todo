@@ -122,3 +122,27 @@ func TestAddRejectsOutOfRangeTime(t *testing.T) {
 		}
 	}
 }
+
+func TestAddInAndEditInReadTheGivenZone(t *testing.T) {
+	tokyo, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := newService(t)
+	ctx := context.Background()
+	it, err := svc.AddIn(ctx, 1, "a", "2026-10-03", "14:00", tokyo)
+	want := time.Date(2026, 10, 3, 5, 0, 0, 0, time.UTC)
+	if err != nil || it.DueAt == nil || !it.DueAt.Equal(want) {
+		t.Fatalf("AddIn = %+v, %v; want due %v", it, err, want)
+	}
+	it, err = svc.EditIn(ctx, 1, it.ID, "a", "2026-10-03", "", tokyo) // all-day: 09:00 Tokyo
+	want = time.Date(2026, 10, 3, 0, 0, 0, 0, time.UTC)
+	if err != nil || it.DueAt == nil || !it.DueAt.Equal(want) || !it.DueAllDay {
+		t.Fatalf("EditIn = %+v, %v; want all-day due %v", it, err, want)
+	}
+	it, err = svc.AddIn(ctx, 1, "b", "2026-10-03", "14:00", nil) // nil: the service default
+	want = time.Date(2026, 10, 3, 14, 0, 0, 0, time.Local)
+	if err != nil || it.DueAt == nil || !it.DueAt.Equal(want) {
+		t.Fatalf("AddIn(nil) = %+v, %v; want due %v", it, err, want)
+	}
+}
