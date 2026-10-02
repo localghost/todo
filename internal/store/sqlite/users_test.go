@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -146,5 +147,50 @@ func TestDeleteUserRemovesSessionRows(t *testing.T) {
 	var n int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM sessions`).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("session rows after DeleteUser = %d, %v; want 0", n, err)
+	}
+}
+
+func TestListUsersAndDeleteSessions(t *testing.T) {
+	s := newStore(t) // alice
+	ctx := context.Background()
+	bob, _ := s.CreateUser(ctx, "Bob", "x", t0)
+	s.Create(ctx, 1, todo.Change{Text: "a"}, t0)
+	s.Create(ctx, 1, todo.Change{Text: "b"}, t0)
+	s.CreateSession(ctx, auth.Session{TokenHash: "live", UserID: 1, CreatedAt: t0, ExpiresAt: t0.Add(time.Hour)})
+	s.CreateSession(ctx, auth.Session{TokenHash: "old", UserID: 1, CreatedAt: t0, ExpiresAt: t0.Add(-time.Hour)})
+	s.CreateSession(ctx, auth.Session{TokenHash: "bob", UserID: bob.ID, CreatedAt: t0, ExpiresAt: t0.Add(time.Hour)})
+
+	list, err := s.ListUsers(ctx, t0)
+	if err != nil || len(list) != 2 {
+		t.Fatalf("ListUsers = %+v, %v", list, err)
+	}
+	if list[0].Username != "alice" || list[0].Items != 2 || list[0].Sessions != 1 || list[1].Username != "Bob" || list[1].Sessions != 1 {
+		t.Fatalf("ListUsers = %+v (want alice 2 items 1 session, then Bob)", list)
+	}
+	if err := s.DeleteSessions(ctx, 1); err != nil {
+		t.Fatalf("DeleteSessions: %v", err)
+	}
+	if _, _, err := s.SessionUser(ctx, "live", t0); !errors.Is(err, auth.ErrNoSession) {
+		t.Fatalf("alice's session still valid: %v", err)
+	}
+	if _, _, err := s.SessionUser(ctx, "bob", t0); err != nil {
+		t.Fatalf("bob's session ended: %v", err)
+	}
+}
+
+func TestRequireCurrent(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing.db")
+	if _, err := sqlite.OpenWith(missing, sqlite.Options{RequireCurrent: true}); err == nil {
+		t.Fatal("RequireCurrent on a missing file: err = nil")
+	}
+	if _, err := os.Stat(missing); err == nil {
+		t.Fatal("RequireCurrent created the missing file")
+	}
+	old := oldDatabase(t, 1)
+	if _, err := sqlite.OpenWith(old, sqlite.Options{RequireCurrent: true}); err == nil {
+		t.Fatal("RequireCurrent on an old file: err = nil")
+	}
+	if v := userVersion(t, old); v != 0 {
+		t.Fatalf("RequireCurrent changed the old file to version %d", v)
 	}
 }

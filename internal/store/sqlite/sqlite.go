@@ -58,6 +58,9 @@ type Options struct {
 	// DeleteOldItems allows the step to schema version 2 to delete items
 	// from before user accounts.
 	DeleteOldItems bool
+	// RequireCurrent opens only an existing database at the current schema
+	// version and never migrates (for the admin commands).
+	RequireCurrent bool
 }
 
 // OldItemsError means the database still has items from before user accounts.
@@ -163,6 +166,11 @@ func OpenWith(path string, opts Options) (*Store, error) {
 	if strings.ContainsAny(path, "?#") {
 		return nil, fmt.Errorf("open database %q: path must not contain '?' or '#'", path)
 	}
+	if opts.RequireCurrent {
+		if _, err := os.Stat(path); err != nil {
+			return nil, fmt.Errorf("database %q does not exist", path)
+		}
+	}
 	// Without this check, SQLite reports a missing folder as "out of memory".
 	if dir := filepath.Dir(path); dir != "" {
 		if _, err := os.Stat(dir); err != nil {
@@ -179,6 +187,14 @@ func OpenWith(path string, opts Options) (*Store, error) {
 	if err := db.Ping(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("open database %q: %w", path, err)
+	}
+	if opts.RequireCurrent {
+		var version int
+		if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil || version != 2 {
+			db.Close()
+			return nil, fmt.Errorf("database %q is not at the current schema version; start the server once to upgrade it", path)
+		}
+		return &Store{db: db}, nil
 	}
 	if err := migrate(db, opts); err != nil {
 		db.Close()

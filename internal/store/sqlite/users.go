@@ -147,3 +147,44 @@ func (s *Store) DeleteExpiredSessions(ctx context.Context, now time.Time) (int64
 	}
 	return res.RowsAffected()
 }
+
+func (s *Store) DeleteSessions(ctx context.Context, userID int64) error {
+	if _, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID); err != nil {
+		return fmt.Errorf("delete sessions: %w", err)
+	}
+	return nil
+}
+
+// UserSummary is one line of the admin user list.
+type UserSummary struct {
+	Username  string
+	CreatedAt time.Time
+	Items     int
+	Sessions  int // not expired at now
+}
+
+// ListUsers returns all users sorted by username (case does not matter).
+func (s *Store) ListUsers(ctx context.Context, now time.Time) ([]UserSummary, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT u.username, u.created_at,
+		        (SELECT COUNT(*) FROM items i WHERE i.user_id = u.id),
+		        (SELECT COUNT(*) FROM sessions se WHERE se.user_id = u.id AND se.expires_at > ?)
+		 FROM users u ORDER BY u.username COLLATE NOCASE`, fixedTime(now))
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	defer rows.Close()
+	var list []UserSummary
+	for rows.Next() {
+		var u UserSummary
+		var created string
+		if err := rows.Scan(&u.Username, &created, &u.Items, &u.Sessions); err != nil {
+			return nil, fmt.Errorf("list users: %w", err)
+		}
+		if u.CreatedAt, err = time.Parse(time.RFC3339Nano, created); err != nil {
+			return nil, fmt.Errorf("list users: %w", err)
+		}
+		list = append(list, u)
+	}
+	return list, rows.Err()
+}

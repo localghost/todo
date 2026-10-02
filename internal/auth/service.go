@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 )
@@ -159,4 +160,33 @@ func (s *Service) DeleteAccount(ctx context.Context, userID int64, confirm strin
 // CleanUp deletes expired sessions.
 func (s *Service) CleanUp(ctx context.Context) (int64, error) {
 	return s.store.DeleteExpiredSessions(ctx, s.now())
+}
+
+const resetAlphabet = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+// ResetPassword sets a random 16-character password and ends all sessions of the user.
+func (s *Service) ResetPassword(ctx context.Context, username string) (string, error) {
+	u, err := s.store.UserByName(ctx, username)
+	if err != nil {
+		return "", err
+	}
+	pw := make([]byte, 16)
+	for i := range pw {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(resetAlphabet))))
+		if err != nil {
+			return "", fmt.Errorf("reset password: %w", err)
+		}
+		pw[i] = resetAlphabet[n.Int64()]
+	}
+	hash, err := HashPassword(string(pw))
+	if err != nil {
+		return "", err
+	}
+	if err := s.store.SetPasswordHash(ctx, u.ID, hash); err != nil {
+		return "", err
+	}
+	if err := s.store.DeleteSessions(ctx, u.ID); err != nil {
+		return "", err
+	}
+	return string(pw), nil
 }

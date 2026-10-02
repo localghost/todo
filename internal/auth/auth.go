@@ -59,4 +59,5 @@ type Store interface {
 	DeleteSession(ctx context.Context, tokenHash string) error
 	DeleteOtherSessions(ctx context.Context, userID int64, keepTokenHash string) error
 	DeleteExpiredSessions(ctx context.Context, now time.Time) (int64, error)
+	DeleteSessions(ctx context.Context, userID int64) error
 }

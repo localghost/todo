@@ -20,7 +20,13 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
+	var err error
+	if len(os.Args) > 1 && os.Args[1] == "users" {
+		err = runUsers(os.Args[2:], os.Stdin, os.Stdout)
+	} else {
+		err = run()
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "todo:", err)
 		os.Exit(1)
 	}

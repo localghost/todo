@@ -228,3 +228,23 @@ func TestDeleteAccount(t *testing.T) {
 		t.Fatalf("deleted user can log in: %v", err)
 	}
 }
+
+func TestResetPassword(t *testing.T) {
+	a, _ := newAuth(t)
+	ctx := context.Background()
+	a.SignUp(ctx, "alice", pw)
+	token, _, _ := a.LogIn(ctx, "alice", pw, true)
+	newPw, err := a.ResetPassword(ctx, "ALICE")
+	if err != nil || len([]rune(newPw)) != 16 {
+		t.Fatalf("ResetPassword = %q, %v; want 16 characters", newPw, err)
+	}
+	if _, _, err := a.Authenticate(ctx, token); !errors.Is(err, auth.ErrNoSession) {
+		t.Fatalf("old session still valid: %v", err)
+	}
+	if _, _, err := a.LogIn(ctx, "alice", newPw, false); err != nil {
+		t.Fatalf("login with the new password: %v", err)
+	}
+	if _, err := a.ResetPassword(ctx, "nobody"); !errors.Is(err, auth.ErrNoUser) {
+		t.Fatalf("unknown user: err = %v, want ErrNoUser", err)
+	}
+}
