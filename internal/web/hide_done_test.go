@@ -3,6 +3,7 @@ package web_test
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 )
@@ -31,7 +32,12 @@ func TestHideDoneIsSavedPerUser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertNotContains(t, do(t, env.H, "GET", "/", nil, cookie(other)).Body.String(), "Call the dentist")
+	rec = do(t, env.H, "GET", "/", nil, cookie(other))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("second session: %d, want 200", rec.Code)
+	}
+	assertContains(t, rec.Body.String(), "Buy milk", "Show done (1)")
+	assertNotContains(t, rec.Body.String(), "Call the dentist")
 
 	bob, _ := env.Auth.SignUp(ctx, "bob", pw)
 	bobToken, _, _ := env.Auth.LogIn(ctx, "bob", pw, false)
@@ -56,13 +62,17 @@ func TestNoHideStateInPages(t *testing.T) {
 	env := newTestEnv(t)
 	mustAdd(t, env.Svc, "Buy milk")
 	env.Auth.SetHideDone(context.Background(), env.User.ID, true)
-	bodies := map[string]string{
-		"page":     do(t, env.H, "GET", "/", nil, nil).Body.String(),
-		"fragment": do(t, env.H, "GET", "/", nil, htmxHeaders).Body.String(),
-		"add":      do(t, env.H, "POST", "/items", url.Values{"text": {"Tea"}}, htmxHeaders).Body.String(),
-		"edit":     do(t, env.H, "GET", "/items/1/edit", nil, htmxHeaders).Body.String(),
+	recs := map[string]*httptest.ResponseRecorder{
+		"page":     do(t, env.H, "GET", "/", nil, nil),
+		"fragment": do(t, env.H, "GET", "/", nil, htmxHeaders),
+		"add":      do(t, env.H, "POST", "/items", url.Values{"text": {"Tea"}}, htmxHeaders),
+		"edit":     do(t, env.H, "GET", "/items/1/edit", nil, htmxHeaders),
 	}
-	for name, body := range bodies {
+	for name, rec := range recs {
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s: status %d, want 200", name, rec.Code)
+		}
+		body := rec.Body.String()
 		assertNotContains(t, body, `id="hide-done"`, "#hide-done", "?hide_done", `name="hide_done"`)
 		if t.Failed() {
 			t.Fatalf("%s still carries the hide state", name)

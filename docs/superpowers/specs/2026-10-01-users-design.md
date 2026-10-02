@@ -56,7 +56,7 @@ Version 2 has these tables:
 
 | Table | Columns |
 |---|---|
-| `users` | `id INTEGER PRIMARY KEY`, `username TEXT NOT NULL UNIQUE COLLATE NOCASE`, `password_hash TEXT NOT NULL`, `created_at TEXT NOT NULL` |
+| `users` | `id INTEGER PRIMARY KEY`, `username TEXT NOT NULL UNIQUE COLLATE NOCASE`, `password_hash TEXT NOT NULL`, `created_at TEXT NOT NULL`; since version 3 also `hide_done INTEGER NOT NULL DEFAULT 0` |
 | `sessions` | `token_hash TEXT PRIMARY KEY`, `user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE`, `created_at TEXT NOT NULL`, `expires_at TEXT NOT NULL`, `persistent INTEGER NOT NULL` |
 | `settings` | `key TEXT PRIMARY KEY`, `value TEXT NOT NULL` (holds the signing key, section 6) |
 | `items` | As today, but `user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE` |
@@ -72,7 +72,7 @@ todo: this database has 12 items from before user accounts.
 Start again with -delete-old-items to delete them and continue.
 ```
 
-With the flag, or with no old items, the step runs. The flag has no effect on a database that is already at version 2.
+With the flag, or with no old items, the step runs. The flag has no effect on a database that is already at version 2 or later.
 
 ## 4. Accounts
 
@@ -205,7 +205,7 @@ The binary gets subcommands. Without a subcommand, it starts the server as befor
 | `todo users reset-password -db todo.db <name>` | `New password for <name>: <16 random characters>`. All sessions of the user are deleted. |
 | `todo users delete -db todo.db <name> [-yes]` | Without `-yes`: "Type the username to delete <name> and all items:" and reads one line. On a match: `Deleted <name>.` |
 
-An unknown username prints `todo: no user "<name>"` and exits with code 1. The commands work while the server runs: SQLite with WAL mode and `busy_timeout` allows this. The commands do not run the start rule for old data. They work only on a database at version 2, and otherwise print a message and exit with code 1.
+An unknown username prints `todo: no user "<name>"` and exits with code 1. The commands work while the server runs: SQLite with WAL mode and `busy_timeout` allows this. The commands do not run the start rule for old data. They work only on a database at the current version (3), and otherwise print a message and exit with code 1.
 
 ## 9. Errors and edge cases
 
