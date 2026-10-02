@@ -106,3 +106,16 @@ func TestNextOverdue(t *testing.T) {
 		t.Fatal("NextOverdue without due items must be false")
 	}
 }
+
+// Where local midnight does not exist (a DST jump at 00:00), an all-day item
+// still becomes overdue only when its day has ended.
+func TestOverdueAllDayWithoutMidnight(t *testing.T) {
+	santiago := zone(t, "America/Santiago")
+	it := due(time.Date(2026, 9, 5, 9, 0, 0, 0, santiago), true)
+	if it.Overdue(time.Date(2026, 9, 5, 23, 30, 0, 0, santiago)) {
+		t.Fatal("all-day item overdue at 23:30 on its own day")
+	}
+	if !it.Overdue(time.Date(2026, 9, 6, 1, 30, 0, 0, santiago)) {
+		t.Fatal("all-day item not overdue on the next day")
+	}
+}

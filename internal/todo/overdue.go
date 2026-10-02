@@ -14,7 +14,13 @@ func (it Item) overdueFrom(now time.Time) (time.Time, bool) {
 	d := it.DueAt.In(now.Location())
 	if it.DueAllDay {
 		y, m, day := d.Date()
-		return time.Date(y, m, day+1, 0, 0, 0, 0, d.Location()), true
+		next := time.Date(y, m, day+1, 0, 0, 0, 0, d.Location())
+		// Where midnight does not exist (a DST jump at 00:00), time.Date can
+		// give 23:00 on the due day; step on until the next day starts.
+		for next.Day() == day {
+			next = next.Add(time.Hour)
+		}
+		return next, true
 	}
 	return d, true
 }
