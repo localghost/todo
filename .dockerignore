@@ -1,0 +1,11 @@
+.git
+.superpowers
+.air.toml
+docs
+tmp
+/todo
+*.db
+*.db-wal
+*.db-shm
+fly.toml
+mise.toml

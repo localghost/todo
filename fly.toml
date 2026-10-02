@@ -1,0 +1,32 @@
+# Fly.io configuration. Common commands are mise tasks (mise.toml); see docs/deploy.md.
+app = "mytodo"
+primary_region = "waw"
+kill_signal = "SIGTERM"
+kill_timeout = "10s"
+swap_size_mb = 256
+
+# The database lives on this volume. Fly takes a snapshot every day and keeps 5.
+[mounts]
+  source = "todo_data"
+  destination = "/data"
+  snapshot_retention = 5
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/login"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+
+# Two parallel password checks (64 MiB each) fit in 256 MB.
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

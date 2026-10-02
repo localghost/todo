@@ -1,0 +1,55 @@
+# Common Fly.io operations. Run `mise install` once, then `mise run <task>`.
+# See docs/deploy.md.
+[tools]
+flyctl = "latest"
+jq = "latest"
+
+[env]
+FLY_APP = "mytodo"          # flyctl reads FLY_APP; fly.toml names the same app
+TODO_DB = "/data/todo.db"   # database path on the server (see Dockerfile)
+
+[tasks."fly:setup"]
+description = "Create the Fly app and its 1 GB volume (run once)"
+run = [
+  "fly apps create $FLY_APP",
+  "fly volumes create todo_data --size 1 --region waw --yes",
+]
+
+[tasks."fly:build"]
+description = "Build the image on Fly without deploying it"
+run = "fly deploy --build-only"
+
+[tasks."fly:deploy"]
+description = "Deploy the current code to the one machine"
+run = "fly deploy --ha=false"
+
+[tasks."fly:status"]
+description = "Show the app and machine state"
+run = "fly status"
+
+[tasks."fly:logs"]
+description = "Show the app logs"
+run = "fly logs"
+
+[tasks."fly:open"]
+description = "Open the app in the browser"
+run = "fly apps open"
+
+[tasks."fly:users"]
+description = "List the users"
+run = 'fly ssh console -C "/todo users list -db $TODO_DB"'
+
+[tasks."fly:reset-password"]
+description = "Set a new random password for a user and print it"
+usage = 'arg "<name>" help="Username"'
+run = 'fly ssh console -C "/todo users reset-password -db $TODO_DB -- ${usage_name}"'
+
+[tasks."fly:delete-user"]
+description = "Delete a user and all their items (asks first)"
+usage = 'arg "<name>" help="Username"'
+confirm = "Delete this user and all their items?"
+run = 'fly ssh console -C "/todo users delete -yes -db $TODO_DB -- ${usage_name}"'
+
+[tasks."fly:snapshots"]
+description = "List the daily snapshots of the data volume"
+run = 'fly volumes snapshots list "$(fly volumes list --json | jq -r ".[0].id")"'

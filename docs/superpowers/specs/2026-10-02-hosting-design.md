@@ -84,10 +84,11 @@ snapshot and attach it to the machine. `docs/deploy.md` describes the steps.
 | `fly:reset-password <name>` | Sets a new random password and prints it. |
 | `fly:delete-user <name>` | Asks for confirmation, then deletes the user and their items. |
 | `fly:snapshots` | Lists the volume snapshots. |
-| `fly:stop` / `fly:start` | Scales to 0 or 1 machines. |
 
 The user commands run the app binary through `fly ssh console -C`, with `-db /data/todo.db`
 and `--` before the username.
+
+Auto-stop makes an idle machine cost nothing except the volume, so there are no stop or start tasks.
 
 ## 9. Documentation
 
