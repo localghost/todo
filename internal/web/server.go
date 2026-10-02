@@ -315,7 +315,6 @@ func (s *server) parseZone(name string) (*time.Location, bool) {
 // zoneFuncs returns the template functions that show times in loc.
 func (s *server) zoneFuncs(loc *time.Location) template.FuncMap {
 	return template.FuncMap{
-		"added":           func(t time.Time) string { return addedLabel(t, s.now().In(loc)) },
 		"due":             func(it todo.Item) dueView { return dueLabel(it, s.now().In(loc)) },
 		"zone":            func() string { return loc.String() },
 		"postponeMinutes": func() []int { return todo.PostponeMinutes },

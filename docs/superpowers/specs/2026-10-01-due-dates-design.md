@@ -33,7 +33,7 @@ These items are not part of this feature:
 | Who decides what to notify | The server (approach A). The page asks every 30 seconds. The server returns due items and marks them as notified in the same step. |
 | Due date | A day, plus an optional time. Without a time: due at 09:00 local time ("all-day"). |
 | Set the date in an existing item | In edit mode, a "Due" line under the text field (canvas page 10, part 1, option A) |
-| Show the date | In the grey line under the text, after the added date (part 2, option A) |
+| Show the date | In the grey line under the text (part 2, option A); since 2026-10-03 the line has no added date (canvas page 15) |
 | Permission | A bar under the toolbar, only when useful (part 3) |
 | Set the date when adding | The add form always shows a "Due" line under the text field (part 5, option A) |
 
@@ -96,7 +96,7 @@ func (s *Service) ClaimDue(ctx context.Context, userID int64, now time.Time) ([]
 
 ## 5. Labels
 
-The due label goes after the added date in the grey line, for example "Added 28 Sep · Due 3 Oct".
+The due label is the grey line under the text, for example "Due 3 Oct" (before 2026-10-03 it followed the added date: "Added 28 Sep · Due 3 Oct").
 
 | Case | Label |
 |---|---|
@@ -217,7 +217,7 @@ A click sends `POST /items/{id}/postpone?minutes=10`. The new due time is the la
 |---|---|
 | Service | Date and time parsing, the 09:00 rule, removing a due date, `notified_at` reset on change, no write when nothing changed, `ErrBadDue` messages |
 | Store | Migration of a database file from before this feature (old columns only, existing items keep their data). `ClaimDue` skips done items, future items, and notified items. A second claim returns nothing. |
-| Labels | A table test, like the one for `addedLabel`: today, tomorrow, later, other year, all-day, overdue, done |
+| Labels | A table test: today, tomorrow, later, other year, all-day, overdue, done |
 | Handlers | Add and edit with a due date, `422` for bad input, the claim JSON, the same-origin check on claim, `data-has-due` on the bar |
 | Browser (user) | The pop-up, the permission bar, saving when focus leaves the edit row, the add form |
 

@@ -8,7 +8,7 @@
 <div class="text-col">
 <button class="text" type="button" title="Click to edit"
   hx-get="/items/{{.ID}}/edit" hx-target="closest li" hx-swap="outerHTML">{{.Text}}</button>
-{{$d := due .}}<span class="added">{{added .CreatedAt}}{{if $d.Text}} · <span class="due{{if $d.Overdue}} overdue{{end}}">{{$d.Text}}</span>{{end}}</span>
+{{$d := due .}}{{if $d.Text}}<span class="meta"><span class="due{{if $d.Overdue}} overdue{{end}}">{{$d.Text}}</span></span>{{end}}
 {{if $d.Overdue}}<span class="postpone" role="group" aria-label="Postpone">{{range postponeMinutes}}<button type="button" class="postpone-btn" aria-label="Postpone {{$.Text}} by {{.}} minutes" hx-post="/items/{{$.ID}}/postpone?minutes={{.}}" hx-target="closest li" hx-swap="outerHTML">+{{.}} min</button>{{end}}</span>{{end}}
 </div>
 <button class="delete" type="button" aria-label="Delete: {{.Text}}"

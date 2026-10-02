@@ -165,7 +165,7 @@ Approved UI decisions:
 | Order of done items | They keep their place in the list. |
 | Empty list, no items at all | Show "No items yet" and "Type a task above and press Enter." |
 | Typing while nothing has focus | The character goes into the add field, which gets focus. Not for Space, not with Ctrl/Alt/Cmd, and not when a button or field has focus. |
-| Added date | Small grey line under the text: "Added today, 14:32", "Added yesterday, 09:10", "Added 28 Sep", or "Added 3 Dec 2025" (year only if not this year). Server local time. Also on done items (not crossed out). Hidden in edit mode. |
+| Added date | Not shown (since 2026-10-03, canvas page "15 · Added date and checkbox", option A). The grey line under the text shows only the due date, if there is one. The checkbox is level with the first line of text. |
 | Empty list, all items done and hidden | Show "All done" and "Done items are hidden. Use "Show done" to see them." |
 
 Rule for this project: each new UI/UX decision is first proposed in Claude Design and approved by the user.

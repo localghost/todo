@@ -87,7 +87,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   overflow: hidden;
 }
 #items:not(:has(li)) { display: none; }
-.item { display: flex; align-items: center; gap: 4px; padding: 0 4px; }
+.item { display: flex; align-items: flex-start; gap: 4px; padding: 0 4px; }
+/* The 44 px box centre meets the centre of the first text line (canvas page 15). */
+.item .check { margin-top: -2px; }
 .item + .item { border-top: 1px solid var(--line); }
 
 .check, .delete {
@@ -112,7 +114,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   padding: 0; background: none; border: none; cursor: text;
   overflow-wrap: anywhere;
 }
-.added { font-size: 13px; line-height: 1.3; color: var(--muted); }
+.meta { font-size: 13px; line-height: 1.3; color: var(--muted); }
 .due.overdue { color: var(--error); font-weight: 600; }
 .postpone { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 .postpone-btn {

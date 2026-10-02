@@ -117,22 +117,21 @@ func TestContentColumnWidth(t *testing.T) {
 	assertContains(t, body, "main {\n  max-width: 784px;")
 }
 
-// Each item shows when it was added, also when done; edit mode hides it.
-func TestItemShowsAddedDate(t *testing.T) {
+// The rows do not show when an item was added (canvas page 15, option A); a
+// row without a due date has no grey line at all.
+func TestItemHidesAddedDate(t *testing.T) {
 	h, svc := newTestApp(t)
 	mustAdd(t, svc, "Buy milk")
 	b := mustAdd(t, svc, "Call the dentist")
 	svc.Toggle(context.Background(), 1, b.ID)
 
 	body := do(t, h, "GET", "/", nil, nil).Body.String()
-	if n := strings.Count(body, `<span class="added">Added today, `); n != 2 {
-		t.Fatalf("found %d added-date labels, want 2 (open and done item)\nbody:\n%s", n, body)
-	}
+	assertNotContains(t, body, "Added ", `class="added"`, `class="meta"`)
 	edit := do(t, h, "GET", "/items/1/edit", nil, htmxHeaders).Body.String()
-	assertNotContains(t, edit, `class="added"`)
+	assertNotContains(t, edit, "Added ", `class="added"`)
 }
 
-// The due label follows the added date; overdue open items are marked.
+// The grey line shows only the due label; overdue open items are marked.
 func TestItemShowsDueLabel(t *testing.T) {
 	h, svc := newTestApp(t)
 	ctx := context.Background()
@@ -144,9 +143,10 @@ func TestItemShowsDueLabel(t *testing.T) {
 
 	body := do(t, h, "GET", "/", nil, nil).Body.String()
 	assertContains(t, body,
-		` · <span class="due">Due tomorrow, 14:00</span>`,
-		` · <span class="due overdue">Overdue since 1 Jan 2020, 08:00</span>`,
-		` · <span class="due">Due 1 Jan 2020</span>`)
+		`<span class="meta"><span class="due">Due tomorrow, 14:00</span></span>`,
+		`<span class="meta"><span class="due overdue">Overdue since 1 Jan 2020, 08:00</span></span>`,
+		`<span class="meta"><span class="due">Due 1 Jan 2020</span></span>`)
+	assertNotContains(t, body, `· <span class="due`)
 }
 
 // Only the text field of the add form stretches; the due fields keep their natural width.
@@ -155,4 +155,13 @@ func TestAddFormOnlyTextFieldStretches(t *testing.T) {
 	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
 	assertContains(t, css, ".add-row input {")
 	assertNotContains(t, css, ".add input {")
+}
+
+// The checkbox is level with the first line of text (canvas page 15), not in
+// the middle of the row.
+func TestCheckboxAlignsWithFirstLine(t *testing.T) {
+	h, _ := newTestApp(t)
+	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
+	assertContains(t, css, ".item { display: flex; align-items: flex-start;", ".item .check { margin-top: -2px; }", ".meta {")
+	assertNotContains(t, css, ".added {")
 }
