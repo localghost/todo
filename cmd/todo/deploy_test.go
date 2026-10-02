@@ -66,6 +66,20 @@ func TestDeployConfigMatches(t *testing.T) {
 	if !strings.Contains(mise, `select(.name == \"todo_data\" and .attached_machine_id != null)`) {
 		t.Error("fly:snapshots does not select the attached todo_data volume")
 	}
+	// The region must exist (EU regions from https://docs.fly.io/reference/regions),
+	// and mise.toml and the guide must use the same one.
+	region := find(fly, `(?m)^primary_region = "([^"]+)"`, "fly.toml primary_region")
+	if !strings.Contains(" ams arn cdg fra lhr ", " "+region+" ") {
+		t.Errorf("fly.toml primary_region = %s, not a European Fly region", region)
+	}
+	guide := read("docs/deploy.md")
+	for name, text := range map[string]string{"mise.toml": mise, "docs/deploy.md": guide} {
+		for _, m := range regexp.MustCompile(`--region (\w+)`).FindAllStringSubmatch(text, -1) {
+			if m[1] != region {
+				t.Errorf("%s uses --region %s, fly.toml uses %s", name, m[1], region)
+			}
+		}
+	}
 	// The image contains config.yaml at the path that -config names.
 	copied := find(docker, `(?m)^COPY config\.yaml (\S+)$`, "Dockerfile COPY config.yaml")
 	if p := find(docker, `"-config", "([^"]+)"`, "Dockerfile -config path"); p != copied {

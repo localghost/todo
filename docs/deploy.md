@@ -6,7 +6,7 @@ mise also installs flyctl. So run other fly commands as `mise exec -- fly …`.
 
 ## 1. What runs where
 
-- The app runs on one Fly machine named `todoit` in Warsaw (`waw`).
+- The app runs on one Fly machine named `todoit` in Frankfurt (`fra`), the closest Fly region to Poland.
 - The machine has 256 MB of memory. It stops when nobody uses it and starts on the next request.
 - The volume `todo_data` (1 GB) holds the database `/data/todo.db`.
 - Fly takes a snapshot of the volume every day and keeps it for 5 days.
@@ -67,7 +67,7 @@ To restore the database from a snapshot:
 
 1. Find the snapshot ID with `mise run fly:snapshots`.
 2. Create a new volume from it:
-   `mise exec -- fly volumes create todo_data --snapshot-id <snapshot id> --region waw --size 1 --yes`.
+   `mise exec -- fly volumes create todo_data --snapshot-id <snapshot id> --region fra --size 1 --yes`.
 3. Find the machine ID with `mise exec -- fly machine list` and the new volume ID with `mise exec -- fly volumes list`.
 4. Start a copy of the machine with the new volume:
    `mise exec -- fly machine clone <machine id> --attach-volume <new volume id>:/data`.

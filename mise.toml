@@ -17,7 +17,7 @@ run = "fly auth login"
 description = "Create the Fly app and its 1 GB volume (run once)"
 run = [
   "fly apps create $FLY_APP",
-  "fly volumes create todo_data --size 1 --region waw --yes",
+  "fly volumes create todo_data --size 1 --region fra --yes",
 ]
 
 [tasks."fly:build"]

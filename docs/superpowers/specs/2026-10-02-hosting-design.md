@@ -12,7 +12,7 @@ version. The SQLite file survives restarts and new versions. The admin commands
 
 | Topic | Decision |
 |-------|----------|
-| Platform | Fly.io, one machine in region `waw` (Warsaw) |
+| Platform | Fly.io, one machine in region `fra` (Frankfurt). `waw` (Warsaw) no longer exists; `fra` is the closest region to Poland (https://docs.fly.io/reference/regions). |
 | App name | `todoit` (must be free on Fly; change in `fly.toml` and `mise.toml` if taken) |
 | Address | `todoit.fly.dev`, HTTPS from Fly. Own domain later is possible. |
 | Image build | Small `Dockerfile`, built by Fly's remote builder. No local Docker. |
@@ -36,7 +36,7 @@ version. The SQLite file survives restarts and new versions. The admin commands
 
 ## 4. Fly configuration (`fly.toml`)
 
-- `app = "todoit"`, `primary_region = "waw"`, `kill_signal = "SIGTERM"`, `kill_timeout = "10s"`,
+- `app = "todoit"`, `primary_region = "fra"`, `kill_signal = "SIGTERM"`, `kill_timeout = "10s"`,
   `swap_size_mb = 256`.
 - `[mounts]`: `source = "todo_data"`, `destination = "/data"`, `snapshot_retention = 5`.
 - `[http_service]`: `internal_port = 8080`, `force_https = true`, `auto_stop_machines = "stop"`,
