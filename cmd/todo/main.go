@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"todo/internal/auth"
 	"todo/internal/store/sqlite"
 	"todo/internal/todo"
 	"todo/internal/web"
@@ -39,7 +40,8 @@ func run() error {
 	}
 	defer store.Close()
 
-	handler, err := web.New(todo.NewService(store), logger)
+	accounts := auth.NewService(store)
+	handler, err := web.New(todo.NewService(store), accounts, logger)
 	if err != nil {
 		return err
 	}
@@ -54,6 +56,8 @@ func run() error {
 	defer stop()
 	// After the first signal, restore default handling: a second Ctrl+C stops at once.
 	context.AfterFunc(ctx, stop)
+
+	go cleanSessions(ctx, accounts, logger)
 
 	return serve(ctx, ln, handler, logger)
 }
@@ -75,4 +79,20 @@ func serve(ctx context.Context, ln net.Listener, h http.Handler, logger *slog.Lo
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	return srv.Shutdown(shutdownCtx)
+}
+
+// cleanSessions deletes expired sessions now and then every hour.
+func cleanSessions(ctx context.Context, accounts *auth.Service, logger *slog.Logger) {
+	tick := time.NewTicker(time.Hour)
+	defer tick.Stop()
+	for {
+		if _, err := accounts.CleanUp(ctx); err != nil && ctx.Err() == nil {
+			logger.Error("clean up sessions", "err", err)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+		}
+	}
 }

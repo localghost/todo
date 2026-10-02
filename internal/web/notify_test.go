@@ -43,7 +43,7 @@ func TestClaimEmptyIsArray(t *testing.T) {
 
 func TestClaimRejectsCrossSite(t *testing.T) {
 	h, _ := newTestApp(t)
-	if rec := do(t, h, "POST", "/notifications/claim", nil, nil); rec.Code != http.StatusForbidden {
+	if rec := do(t, h, "POST", "/notifications/claim", nil, map[string]string{"Sec-Fetch-Site": "cross-site"}); rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403", rec.Code)
 	}
 }

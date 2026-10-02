@@ -1,0 +1,60 @@
+{{define "auth-head"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.}} – Todo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/auth.js" defer></script>
+</head>
+<body>{{end}}
+
+{{define "login"}}{{template "auth-head" "Log in"}}
+<main class="auth-wrap">
+<p class="auth-brand">Todo</p>
+<div class="auth-card">
+<h1>Log in</h1>
+{{if .Notice}}<div class="alert ok" role="status">{{.Notice}}</div>{{end}}
+{{if .Error}}<div class="alert" role="alert">{{.Error}}</div>{{end}}
+<form method="post" action="/login" class="auth-form">
+<div class="field"><label for="login-username">Username</label>
+<input id="login-username" name="username" value="{{.Username}}" autocomplete="username" required autofocus></div>
+<div class="field"><label for="login-password">Password</label>
+<input id="login-password" name="password" type="password" autocomplete="current-password" required></div>
+<label class="check-line"><input type="checkbox" name="keep" value="1"> Keep me logged in</label>
+<button type="submit" class="btn-primary">Log in</button>
+</form>
+</div>
+<p class="auth-foot">No account yet? <a href="/signup">Sign up</a></p>
+</main>
+</body>
+</html>
+{{end}}
+
+{{define "signup"}}{{template "auth-head" "Sign up"}}
+<main class="auth-wrap">
+<p class="auth-brand">Todo</p>
+<div class="auth-card">
+<h1>Create an account</h1>
+{{if .Error}}<div class="alert" role="alert">{{.Error}}</div>{{end}}
+<form method="post" action="/signup" class="auth-form">
+<div class="field"><label for="signup-username">Username</label>
+<input id="signup-username" name="username" value="{{.Username}}" autocomplete="username" required autofocus{{if .UsernameError}} aria-invalid="true" aria-describedby="signup-username-error"{{end}}>
+{{if .UsernameError}}<span class="field-error" id="signup-username-error">{{.UsernameError}}</span>{{end}}
+<span class="hint">3–32 letters, digits, - or _</span></div>
+<div class="field"><label for="signup-password">Password</label>
+<div class="password-wrap"><input id="signup-password" name="password" type="password" autocomplete="new-password" required{{if .PasswordError}} aria-invalid="true" aria-describedby="signup-password-error"{{end}}>
+<button type="button" class="show-password" data-target="signup-password" aria-pressed="false">Show</button></div>
+{{if .PasswordError}}<span class="field-error" id="signup-password-error">{{.PasswordError}}</span>{{end}}
+<span class="hint">At least 10 characters</span></div>
+<p class="note">There is no email. If you forget your password, ask the admin.</p>
+<button type="submit" class="btn-primary">Create account</button>
+</form>
+</div>
+<p class="auth-foot">Already have an account? <a href="/login">Log in</a></p>
+</main>
+</body>
+</html>
+{{end}}

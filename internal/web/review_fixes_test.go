@@ -48,7 +48,6 @@ func TestMutationsRejectCrossSiteRequests(t *testing.T) {
 		name    string
 		headers map[string]string
 	}{
-		{"plain form post", nil},
 		{"cross-site htmx", map[string]string{"HX-Request": "true", "Sec-Fetch-Site": "cross-site"}},
 		{"same-site htmx", map[string]string{"HX-Request": "true", "Sec-Fetch-Site": "same-site"}},
 	}

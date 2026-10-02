@@ -10,7 +10,7 @@ import (
 )
 
 func (s *server) index(w http.ResponseWriter, r *http.Request) {
-	lv, err := s.listView(r.Context(), hideDoneFrom(r))
+	lv, err := s.listView(r.Context(), userID(r), hideDoneFrom(r))
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -22,12 +22,12 @@ func (s *server) index(w http.ResponseWriter, r *http.Request) {
 		s.render(w, r, http.StatusOK, part{"list", lv})
 		return
 	}
-	s.render(w, r, http.StatusOK, part{"page", pageView{Form: formView{Focus: true}, List: lv}})
+	s.render(w, r, http.StatusOK, part{"page", pageView{Form: formView{Focus: true}, List: lv, Username: currentUser(r).Username}})
 }
 
 func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 	text, date, clock := r.FormValue("text"), r.FormValue("due_date"), r.FormValue("due_time")
-	item, err := s.svc.Add(r.Context(), defaultUserID, text, date, clock)
+	item, err := s.svc.Add(r.Context(), userID(r), text, date, clock)
 	var dueErr *todo.DueError
 	if errors.Is(err, todo.ErrEmptyText) || errors.As(err, &dueErr) {
 		view := formView{Text: text, DueDate: date, DueTime: clock, Focus: true, Error: errors.Is(err, todo.ErrEmptyText)}
@@ -43,7 +43,7 @@ func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	lv, err := s.listView(r.Context(), hideDoneFrom(r))
+	lv, err := s.listView(r.Context(), userID(r), hideDoneFrom(r))
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -61,7 +61,7 @@ func (s *server) toggleItem(w http.ResponseWriter, r *http.Request) {
 		s.oobOnly(w, r, http.StatusNotFound)
 		return
 	}
-	item, err := s.svc.Toggle(r.Context(), defaultUserID, id)
+	item, err := s.svc.Toggle(r.Context(), userID(r), id)
 	if errors.Is(err, todo.ErrNotFound) {
 		s.oobOnly(w, r, http.StatusNotFound)
 		return
@@ -70,7 +70,7 @@ func (s *server) toggleItem(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	lv, err := s.listView(r.Context(), hideDone)
+	lv, err := s.listView(r.Context(), userID(r), hideDone)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -90,7 +90,7 @@ func (s *server) deleteItem(w http.ResponseWriter, r *http.Request) {
 		s.oobOnly(w, r, http.StatusNotFound)
 		return
 	}
-	err := s.svc.Delete(r.Context(), defaultUserID, id)
+	err := s.svc.Delete(r.Context(), userID(r), id)
 	if errors.Is(err, todo.ErrNotFound) {
 		s.oobOnly(w, r, http.StatusNotFound)
 		return
@@ -105,7 +105,7 @@ func (s *server) deleteItem(w http.ResponseWriter, r *http.Request) {
 // oobOnly answers with an empty main body (htmx removes the target row)
 // plus the out-of-band toolbar and empty state.
 func (s *server) oobOnly(w http.ResponseWriter, r *http.Request, status int) {
-	lv, err := s.listView(r.Context(), hideDoneFrom(r))
+	lv, err := s.listView(r.Context(), userID(r), hideDoneFrom(r))
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -137,11 +137,11 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	text, date, clock := r.FormValue("text"), r.FormValue("due_date"), r.FormValue("due_time")
-	item, err := s.svc.Edit(r.Context(), defaultUserID, id, text, date, clock)
+	item, err := s.svc.Edit(r.Context(), userID(r), id, text, date, clock)
 	var dueErr *todo.DueError
 	switch {
 	case errors.Is(err, todo.ErrEmptyText) || errors.As(err, &dueErr):
-		old, getErr := s.svc.Get(r.Context(), defaultUserID, id)
+		old, getErr := s.svc.Get(r.Context(), userID(r), id)
 		if errors.Is(getErr, todo.ErrNotFound) {
 			s.oobOnly(w, r, http.StatusNotFound)
 			return
@@ -161,7 +161,7 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 	default:
 		// The due date may have changed, so the permission bar comes along.
-		lv, err := s.listView(r.Context(), hideDoneFrom(r))
+		lv, err := s.listView(r.Context(), userID(r), hideDoneFrom(r))
 		if err != nil {
 			s.serverError(w, r, err)
 			return
@@ -179,7 +179,7 @@ func (s *server) findItem(w http.ResponseWriter, r *http.Request) (todo.Item, bo
 		s.oobOnly(w, r, http.StatusNotFound)
 		return todo.Item{}, false
 	}
-	item, err := s.svc.Get(r.Context(), defaultUserID, id)
+	item, err := s.svc.Get(r.Context(), userID(r), id)
 	if errors.Is(err, todo.ErrNotFound) {
 		s.oobOnly(w, r, http.StatusNotFound)
 		return todo.Item{}, false
@@ -203,7 +203,7 @@ type notification struct {
 // and marks them, so each item notifies only once.
 func (s *server) claimNotifications(w http.ResponseWriter, r *http.Request) {
 	now := s.now()
-	items, err := s.svc.ClaimDue(r.Context(), defaultUserID, now)
+	items, err := s.svc.ClaimDue(r.Context(), userID(r), now)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -231,14 +231,14 @@ func (s *server) postponeItem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unknown postpone amount.", http.StatusBadRequest)
 		return
 	}
-	item, err := s.svc.Postpone(r.Context(), defaultUserID, id, minutes)
+	item, err := s.svc.Postpone(r.Context(), userID(r), id, minutes)
 	switch {
 	case errors.Is(err, todo.ErrBadPostpone):
 		http.Error(w, "Unknown postpone amount.", http.StatusBadRequest)
 	case errors.Is(err, todo.ErrNotFound):
 		s.oobOnly(w, r, http.StatusNotFound)
 	case errors.Is(err, todo.ErrCannotPostpone):
-		old, getErr := s.svc.Get(r.Context(), defaultUserID, id)
+		old, getErr := s.svc.Get(r.Context(), userID(r), id)
 		if getErr != nil {
 			s.serverError(w, r, getErr)
 			return
@@ -247,7 +247,7 @@ func (s *server) postponeItem(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.serverError(w, r, err)
 	default:
-		lv, err := s.listView(r.Context(), hideDoneFrom(r))
+		lv, err := s.listView(r.Context(), userID(r), hideDoneFrom(r))
 		if err != nil {
 			s.serverError(w, r, err)
 			return

@@ -12,27 +12,87 @@ import (
 	"testing"
 	"time"
 
+	"todo/internal/auth"
 	"todo/internal/store/sqlite"
 	"todo/internal/todo"
 	"todo/internal/web"
 )
 
-func newTestApp(t *testing.T) (http.Handler, *todo.Service) {
+// testEnv is an app with one logged-in user "tester" (ID 1).
+type testEnv struct {
+	H     http.Handler // adds the tester's session cookie unless the request has one or is anonymous
+	Raw   http.Handler
+	Svc   *todo.Service
+	Auth  *auth.Service
+	Store *sqlite.Store
+	User  auth.User
+	Token string
+}
+
+func newTestEnv(t *testing.T) *testEnv {
 	t.Helper()
 	store, err := sqlite.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { store.Close() })
-	if _, err := store.CreateUser(context.Background(), "tester", "x", time.Now()); err != nil {
+	user, err := store.CreateUser(context.Background(), "tester", "x", time.Now())
+	if err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}
+	accounts := auth.NewService(store)
+	token, _, err := accounts.StartSession(context.Background(), user.ID, false)
+	if err != nil {
+		t.Fatalf("StartSession: %v", err)
+	}
 	svc := todo.NewService(store)
-	h, err := web.New(svc, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	raw, err := web.New(svc, accounts, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatalf("web.New: %v", err)
 	}
-	return h, svc
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get(anonHeader) == "" {
+			if _, err := r.Cookie("todo_session"); err != nil {
+				r.AddCookie(&http.Cookie{Name: "todo_session", Value: token})
+			}
+		}
+		r.Header.Del(anonHeader)
+		raw.ServeHTTP(w, r)
+	})
+	return &testEnv{H: h, Raw: raw, Svc: svc, Auth: accounts, Store: store, User: user, Token: token}
+}
+
+func newTestApp(t *testing.T) (http.Handler, *todo.Service) {
+	env := newTestEnv(t)
+	return env.H, env.Svc
+}
+
+// anonHeader makes a test request without the tester's cookie.
+const anonHeader = "X-Test-Anonymous"
+
+var anon = map[string]string{anonHeader: "1"}
+
+// cookie returns headers that send the session cookie of token.
+func cookie(token string, extra ...map[string]string) map[string]string {
+	h := map[string]string{"Cookie": "todo_session=" + token}
+	for _, e := range extra {
+		for k, v := range e {
+			h[k] = v
+		}
+	}
+	return h
+}
+
+// sessionFrom returns the todo_session cookie set by a response.
+func sessionFrom(t *testing.T, rec *httptest.ResponseRecorder) *http.Cookie {
+	t.Helper()
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == "todo_session" {
+			return c
+		}
+	}
+	t.Fatalf("no todo_session cookie in response; headers: %v", rec.Header())
+	return nil
 }
 
 func do(t *testing.T, h http.Handler, method, target string, form url.Values, headers map[string]string) *httptest.ResponseRecorder {

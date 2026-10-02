@@ -39,16 +39,17 @@ type editView struct {
 
 // pageView is the data for the full page.
 type pageView struct {
-	Form formView
-	List listView
+	Form     formView
+	List     listView
+	Username string
 }
 
-func (s *server) listView(ctx context.Context, hideDone bool) (listView, error) {
-	items, err := s.svc.List(ctx, defaultUserID, hideDone)
+func (s *server) listView(ctx context.Context, userID int64, hideDone bool) (listView, error) {
+	items, err := s.svc.List(ctx, userID, hideDone)
 	if err != nil {
 		return listView{}, err
 	}
-	open, done, err := s.svc.Counts(ctx, defaultUserID)
+	open, done, err := s.svc.Counts(ctx, userID)
 	if err != nil {
 		return listView{}, err
 	}

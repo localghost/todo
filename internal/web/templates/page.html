@@ -14,7 +14,10 @@
 <body hx-on::send-error="document.getElementById('error').textContent = 'Cannot reach the server. Please try again.'"
   hx-on::after-request="if (event.detail.successful) document.getElementById('error').textContent = ''">
 <main>
+<header class="top">
 <h1>Todo</h1>
+<nav class="user-nav" aria-label="Account">Signed in as <strong>{{.Username}}</strong> · <a href="/account">Account</a> · <form method="post" action="/logout" class="inline-form"><button type="submit" class="link-button">Log out</button></form></nav>
+</header>
 <p id="error" class="error" role="alert"></p>
 {{template "add-form" .Form}}
 {{template "list" .List}}

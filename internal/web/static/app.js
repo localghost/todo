@@ -136,6 +136,7 @@ document.addEventListener("htmx:load", (e) => {
 // server gives each item only once, also with several tabs open.
 const canNotify = "Notification" in window;
 const NETWORK_ERROR = "Cannot reach the server. Please try again.";
+let claimStopped = false;
 
 function renderNotifyBar() {
   const bar = document.getElementById("notify-bar");
@@ -166,7 +167,7 @@ function renderNotifyBar() {
 }
 
 async function claimDue() {
-  if (!canNotify || Notification.permission !== "granted") {
+  if (claimStopped || !canNotify || Notification.permission !== "granted") {
     return;
   }
   const errorLine = document.getElementById("error");
@@ -181,6 +182,11 @@ async function claimDue() {
   }
   if (errorLine && errorLine.textContent === NETWORK_ERROR) {
     errorLine.textContent = "";
+  }
+  if (res.status === 401) {
+    // Not logged in any more: stop asking until the page reloads.
+    claimStopped = true;
+    return;
   }
   if (!res.ok) {
     return;

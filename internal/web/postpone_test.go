@@ -52,7 +52,7 @@ func TestPostponeRouteErrors(t *testing.T) {
 		{"/items/1/postpone?minutes=abc", htmxHeaders, http.StatusBadRequest},
 		{"/items/99/postpone?minutes=5", htmxHeaders, http.StatusNotFound},
 		{"/items/2/postpone?minutes=5", htmxHeaders, http.StatusUnprocessableEntity},
-		{"/items/1/postpone?minutes=5", nil, http.StatusForbidden},
+		{"/items/1/postpone?minutes=5", map[string]string{"Sec-Fetch-Site": "cross-site"}, http.StatusForbidden},
 	}
 	for _, c := range cases {
 		if rec := do(t, h, "POST", c.path, nil, c.headers); rec.Code != c.status {
