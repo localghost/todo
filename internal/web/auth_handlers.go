@@ -18,6 +18,8 @@ type signupView struct {
 	Error         string
 	UsernameError string
 	PasswordError string
+	FormToken     string
+	PowBits       int
 }
 
 // alreadyLoggedIn sends a logged-in browser from the log-in and sign-up pages to the list.
@@ -55,23 +57,58 @@ func (s *server) login(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+const signupFailed = "Sign-up failed. Please wait a moment and try again."
+
+// newSignupView returns a sign-up view with a fresh form token.
+func (s *server) newSignupView(username string) signupView {
+	return signupView{Username: username, FormToken: s.tokens.New(), PowBits: s.powBits}
+}
+
 func (s *server) signupPage(w http.ResponseWriter, r *http.Request) {
 	if s.alreadyLoggedIn(w, r) {
 		return
 	}
-	s.render(w, r, http.StatusOK, part{"signup", signupView{}})
+	s.render(w, r, http.StatusOK, part{"signup", s.newSignupView("")})
 }
 
 func (s *server) signup(w http.ResponseWriter, r *http.Request) {
 	username := r.PostFormValue("username")
+	ip := s.clientIP(r)
+	failed := func() {
+		view := s.newSignupView(username)
+		view.Error = signupFailed
+		s.render(w, r, http.StatusUnprocessableEntity, part{"signup", view})
+	}
+	if !s.signupTry.Reserve(ip) { // every attempt counts; never released
+		failed()
+		return
+	}
+	if r.PostFormValue("website") != "" {
+		failed()
+		return
+	}
+	if err := s.tokens.Check(r.PostFormValue("form_token"), r.PostFormValue("pow_nonce"), s.powBits); err != nil {
+		s.log.Info("sign-up rejected", "ip", ip, "reason", err)
+		failed()
+		return
+	}
+	if !s.signupNew.Reserve(ip) {
+		failed()
+		return
+	}
 	u, err := s.accounts.SignUp(r.Context(), username, r.PostFormValue("password"))
+	if err != nil {
+		s.signupNew.Release(ip) // no account was created
+	}
 	var rule *auth.RuleError
 	switch {
 	case errors.Is(err, auth.ErrUsernameTaken):
-		s.render(w, r, http.StatusUnprocessableEntity, part{"signup", signupView{Username: username, UsernameError: "This username is taken."}})
+		view := s.newSignupView(username)
+		view.UsernameError = "This username is taken."
+		s.render(w, r, http.StatusUnprocessableEntity, part{"signup", view})
 		return
 	case errors.As(err, &rule):
-		view := signupView{Username: username}
+		view := s.newSignupView(username)
 		if rule.Field == "username" {
 			view.UsernameError = rule.Msg
 		} else {

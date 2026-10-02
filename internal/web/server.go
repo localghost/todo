@@ -3,16 +3,19 @@ package web
 
 import (
 	"bytes"
+	"crypto/rand"
 	"embed"
 	"errors"
 	"html/template"
 	"log/slog"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"todo/internal/auth"
+	"todo/internal/guard"
 	"todo/internal/todo"
 )
 
@@ -23,16 +26,52 @@ var templateFS embed.FS
 var staticFS embed.FS
 
 type server struct {
-	svc      *todo.Service
-	accounts *auth.Service
-	tmpl     *template.Template
-	log      *slog.Logger
-	now      func() time.Time
+	svc        *todo.Service
+	accounts   *auth.Service
+	tmpl       *template.Template
+	log        *slog.Logger
+	now        func() time.Time
+	powBits    int
+	trustProxy bool
+	signingKey []byte
+	tokens     *guard.Tokens
+	signupTry  *guard.Limiter // sign-up attempts per IP
+	signupNew  *guard.Limiter // new accounts per IP
+	loginUser  *guard.Limiter // wrong passwords per lowercase username
+	loginIP    *guard.Limiter // failed logins per IP
 }
 
+// Option changes how the app is set up.
+type Option func(*server)
+
+// WithClock replaces the clock used for labels and the guards (for tests).
+func WithClock(now func() time.Time) Option { return func(s *server) { s.now = now } }
+
+// WithPowBits sets the sign-up proof-of-work difficulty.
+func WithPowBits(bits int) Option { return func(s *server) { s.powBits = bits } }
+
+// WithSigningKey sets the key for sign-up form tokens. Without it, a random
+// key is used, and open sign-up forms stop working after a restart.
+func WithSigningKey(key []byte) Option { return func(s *server) { s.signingKey = key } }
+
+// WithTrustProxy makes the app take the client IP from X-Forwarded-For.
+func WithTrustProxy(trust bool) Option { return func(s *server) { s.trustProxy = trust } }
+
 // New returns the HTTP handler for the app.
-func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger) (http.Handler, error) {
-	s := &server{svc: svc, accounts: accounts, log: log, now: time.Now}
+func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Option) (http.Handler, error) {
+	s := &server{svc: svc, accounts: accounts, log: log, now: time.Now, powBits: guard.DefaultPowBits}
+	for _, o := range opts {
+		o(s)
+	}
+	if s.signingKey == nil {
+		s.signingKey = make([]byte, 32)
+		rand.Read(s.signingKey)
+	}
+	s.tokens = guard.NewTokens(s.signingKey, s.now)
+	s.signupTry = guard.NewLimiter(30, time.Hour, s.now)
+	s.signupNew = guard.NewLimiter(5, time.Hour, s.now)
+	s.loginUser = guard.NewLimiter(5, 15*time.Minute, s.now)
+	s.loginIP = guard.NewLimiter(20, 15*time.Minute, s.now)
 	funcs := template.FuncMap{
 		"added":           func(t time.Time) string { return addedLabel(t, s.now()) },
 		"due":             func(it todo.Item) dueView { return dueLabel(it, s.now()) },
@@ -159,4 +198,22 @@ func limitBody(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// clientIP is the address used for the limits. With -trust-proxy it is the
+// last address in X-Forwarded-For, which the proxy adds.
+func (s *server) clientIP(r *http.Request) string {
+	if s.trustProxy {
+		if vals := r.Header.Values("X-Forwarded-For"); len(vals) > 0 {
+			parts := strings.Split(vals[len(vals)-1], ",")
+			if ip := strings.TrimSpace(parts[len(parts)-1]); net.ParseIP(ip) != nil {
+				return ip
+			}
+		}
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }

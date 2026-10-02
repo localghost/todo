@@ -78,11 +78,13 @@ func TestLogin(t *testing.T) {
 func TestSignup(t *testing.T) {
 	env := newTestEnv(t)
 	body := do(t, env.H, "GET", "/signup", nil, anon).Body.String()
-	assertContains(t, body, `<form method="post" action="/signup"`, "Create an account", "3–32 letters, digits, - or _",
-		"At least 10 characters", `class="show-password"`, "There is no email. If you forget your password, ask the admin.",
-		"Create account", `href="/login"`, `<script src="/static/auth.js" defer></script>`)
+	assertContains(t, body, `<form method="post" action="/signup" class="auth-form" id="signup-form" data-pow-bits="4">`,
+		"Create an account", "3–32 letters, digits, - or _", "At least 10 characters", `class="show-password"`,
+		"There is no email. If you forget your password, ask the admin.", "Create account", `href="/login"`,
+		`<script src="/static/auth.js" defer></script>`, `name="form_token"`, `name="pow_nonce"`,
+		`<div class="hp" aria-hidden="true">`, `name="website" tabindex="-1" autocomplete="off"`)
 
-	rec := do(t, env.H, "POST", "/signup", url.Values{"username": {"bob"}, "password": {pw}}, anon)
+	rec := do(t, env.H, "POST", "/signup", signupForm(t, env, "bob", pw), anon)
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/" {
 		t.Fatalf("sign-up: %d %q, want 303 /", rec.Code, rec.Header().Get("Location"))
 	}
@@ -91,19 +93,18 @@ func TestSignup(t *testing.T) {
 	}
 
 	cases := []struct {
-		form url.Values
-		msg  string
+		user, pass, msg string
 	}{
-		{url.Values{"username": {"BOB"}, "password": {pw}}, "This username is taken."},
-		{url.Values{"username": {"b"}, "password": {pw}}, "Use 3–32 letters, digits, - or _."},
-		{url.Values{"username": {"carol"}, "password": {"short"}}, "Use at least 10 characters."},
+		{"BOB", pw, "This username is taken."},
+		{"b", pw, "Use 3–32 letters, digits, - or _."},
+		{"carol", "short", "Use at least 10 characters."},
 	}
 	for _, c := range cases {
-		rec := do(t, env.H, "POST", "/signup", c.form, anon)
+		rec := do(t, env.H, "POST", "/signup", signupForm(t, env, c.user, c.pass), anon)
 		if rec.Code != http.StatusUnprocessableEntity {
-			t.Errorf("%v: status %d, want 422", c.form, rec.Code)
+			t.Errorf("%s: status %d, want 422", c.user, rec.Code)
 		}
-		assertContains(t, rec.Body.String(), c.msg, `value="`+c.form.Get("username")+`"`)
+		assertContains(t, rec.Body.String(), c.msg, `value="`+c.user+`"`)
 		assertNotContains(t, rec.Body.String(), `value="`+pw+`"`)
 	}
 }

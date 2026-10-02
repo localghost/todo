@@ -41,7 +41,11 @@ func run() error {
 	defer store.Close()
 
 	accounts := auth.NewService(store)
-	handler, err := web.New(todo.NewService(store), accounts, logger)
+	key, err := store.SigningKey(context.Background())
+	if err != nil {
+		return err
+	}
+	handler, err := web.New(todo.NewService(store), accounts, logger, web.WithSigningKey(key))
 	if err != nil {
 		return err
 	}

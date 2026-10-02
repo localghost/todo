@@ -39,7 +39,10 @@
 <div class="auth-card">
 <h1>Create an account</h1>
 {{if .Error}}<div class="alert" role="alert">{{.Error}}</div>{{end}}
-<form method="post" action="/signup" class="auth-form">
+<form method="post" action="/signup" class="auth-form" id="signup-form" data-pow-bits="{{.PowBits}}">
+<input type="hidden" name="form_token" value="{{.FormToken}}">
+<input type="hidden" name="pow_nonce" value="">
+<div class="hp" aria-hidden="true"><label for="website">Website</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
 <div class="field"><label for="signup-username">Username</label>
 <input id="signup-username" name="username" value="{{.Username}}" autocomplete="username" required autofocus{{if .UsernameError}} aria-invalid="true" aria-describedby="signup-username-error"{{end}}>
 {{if .UsernameError}}<span class="field-error" id="signup-username-error">{{.UsernameError}}</span>{{end}}

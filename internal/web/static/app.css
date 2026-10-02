@@ -224,3 +224,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   font: inherit; font-size: 15px; font-weight: 600; color: #FFFFFF; background: var(--error);
   border: none; border-radius: 8px; min-height: 44px; padding: 0 16px; cursor: pointer;
 }
+
+/* Honeypot: hidden from people, visible to simple bots. */
+.hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+.btn-primary:disabled { opacity: 0.75; cursor: progress; }

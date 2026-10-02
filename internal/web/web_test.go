@@ -8,11 +8,14 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"todo/internal/auth"
+	"todo/internal/guard"
 	"todo/internal/store/sqlite"
 	"todo/internal/todo"
 	"todo/internal/web"
@@ -27,9 +30,10 @@ type testEnv struct {
 	Store *sqlite.Store
 	User  auth.User
 	Token string
+	Clock *testClock
 }
 
-func newTestEnv(t *testing.T) *testEnv {
+func newTestEnv(t *testing.T, opts ...web.Option) *testEnv {
 	t.Helper()
 	store, err := sqlite.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -46,7 +50,9 @@ func newTestEnv(t *testing.T) *testEnv {
 		t.Fatalf("StartSession: %v", err)
 	}
 	svc := todo.NewService(store)
-	raw, err := web.New(svc, accounts, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	clock := &testClock{t: time.Now()}
+	opts = append([]web.Option{web.WithClock(clock.Now), web.WithPowBits(4)}, opts...)
+	raw, err := web.New(svc, accounts, slog.New(slog.NewTextHandler(io.Discard, nil)), opts...)
 	if err != nil {
 		t.Fatalf("web.New: %v", err)
 	}
@@ -57,9 +63,13 @@ func newTestEnv(t *testing.T) *testEnv {
 			}
 		}
 		r.Header.Del(anonHeader)
+		if ip := r.Header.Get(fromIPHeader); ip != "" {
+			r.RemoteAddr = ip + ":40000"
+			r.Header.Del(fromIPHeader)
+		}
 		raw.ServeHTTP(w, r)
 	})
-	return &testEnv{H: h, Raw: raw, Svc: svc, Auth: accounts, Store: store, User: user, Token: token}
+	return &testEnv{H: h, Raw: raw, Svc: svc, Auth: accounts, Store: store, User: user, Token: token, Clock: clock}
 }
 
 func newTestApp(t *testing.T) (http.Handler, *todo.Service) {
@@ -140,4 +150,44 @@ func assertNotContains(t *testing.T, body string, nots ...string) {
 			t.Errorf("body contains %q but should not\nbody:\n%s", n, body)
 		}
 	}
+}
+
+type testClock struct{ t time.Time }
+
+func (c *testClock) Now() time.Time { return c.t }
+
+// fromIPHeader makes a test request come from another client address.
+const fromIPHeader = "X-Test-Remote-IP"
+
+func fromIP(ip string) map[string]string { return map[string]string{fromIPHeader: ip, anonHeader: "1"} }
+
+var formTokenRe = regexp.MustCompile(`name="form_token" value="([^"]+)"`)
+
+// signupForm loads the sign-up page (as headers h, default anon), waits past
+// the minimum fill time, solves the puzzle, and returns a valid form.
+func signupForm(t *testing.T, env *testEnv, username, password string, h ...map[string]string) url.Values {
+	t.Helper()
+	headers := anon
+	if len(h) > 0 {
+		headers = h[0]
+	}
+	page := do(t, env.H, "GET", "/signup", nil, headers).Body.String()
+	m := formTokenRe.FindStringSubmatch(page)
+	if m == nil {
+		t.Fatalf("no form_token in sign-up page:\n%s", page)
+	}
+	env.Clock.t = env.Clock.t.Add(guard.MinFillTime + time.Second)
+	return url.Values{"username": {username}, "password": {password}, "form_token": {m[1]},
+		"pow_nonce": {nonceFor(t, m[1], 4)}, "website": {""}}
+}
+
+func nonceFor(t *testing.T, token string, bits int) string {
+	t.Helper()
+	for i := 0; i < 1<<20; i++ {
+		if n := strconv.Itoa(i); guard.ProofOK(token, n, bits) {
+			return n
+		}
+	}
+	t.Fatal("no nonce")
+	return ""
 }
