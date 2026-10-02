@@ -3,6 +3,7 @@ package web
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"todo/internal/auth"
 )
@@ -42,13 +43,32 @@ func (s *server) loginPage(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, http.StatusOK, part{"login", view})
 }
 
+const loginLocked = "Too many attempts. Please try again in 15 minutes."
+
 func (s *server) login(w http.ResponseWriter, r *http.Request) {
 	username := r.PostFormValue("username")
+	ip := s.clientIP(r)
+	userKey := strings.ToLower(strings.TrimSpace(username))
+	locked := func() {
+		s.render(w, r, http.StatusTooManyRequests, part{"login", loginView{Username: username, Error: loginLocked}})
+	}
+	// Reserve both slots before the slow password hash; a wrong password keeps them.
+	if !s.loginIP.Reserve(ip) {
+		locked()
+		return
+	}
+	if !s.loginUser.Reserve(userKey) {
+		s.loginIP.Release(ip)
+		locked()
+		return
+	}
 	token, sess, err := s.accounts.LogIn(r.Context(), username, r.PostFormValue("password"), r.PostFormValue("keep") == "1")
 	if errors.Is(err, auth.ErrBadLogin) {
 		s.render(w, r, http.StatusUnprocessableEntity, part{"login", loginView{Username: username, Error: "Wrong username or password."}})
 		return
 	}
+	s.loginIP.Release(ip)
+	s.loginUser.Release(userKey)
 	if err != nil {
 		s.serverError(w, r, err)
 		return

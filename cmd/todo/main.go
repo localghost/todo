@@ -29,6 +29,7 @@ func main() {
 func run() error {
 	addr := flag.String("addr", "127.0.0.1:8811", "address to listen on")
 	dbPath := flag.String("db", "todo.db", "path to the SQLite database file")
+	trustProxy := flag.Bool("trust-proxy", false, "take the client IP from X-Forwarded-For (only behind an HTTPS proxy that sets it)")
 	deleteOldItems := flag.Bool("delete-old-items", false, "allow deleting items from before user accounts when the database is upgraded")
 	flag.Parse()
 
@@ -45,7 +46,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	handler, err := web.New(todo.NewService(store), accounts, logger, web.WithSigningKey(key))
+	handler, err := web.New(todo.NewService(store), accounts, logger, web.WithSigningKey(key), web.WithTrustProxy(*trustProxy))
 	if err != nil {
 		return err
 	}

@@ -147,6 +147,8 @@ A known trade-off: someone can block a username for 15 minutes by typing wrong p
 
 The flag `-trust-proxy` makes the app take the client IP from the last address in `X-Forwarded-For`, which the proxy adds. Without the flag, the app uses the address of the direct connection. Behind Caddy or nginx the flag must be set. Otherwise all users share one address in the limits.
 
+The proxy must also pass the original `Host` header (Caddy and nginx `proxy_set_header Host $host` do this). `http.CrossOriginProtection` compares `Origin` with `Host` when a browser sends no `Sec-Fetch-Site`, so a changed `Host` would reject correct form posts.
+
 ### Security headers
 
 Every response gets these headers:
