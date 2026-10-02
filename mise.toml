@@ -8,6 +8,10 @@ jq = "latest"
 FLY_APP = "todoit"          # flyctl reads FLY_APP; fly.toml names the same app
 TODO_DB = "/data/todo.db"   # database path on the server (see Dockerfile)
 
+[tasks."fly:login"]
+description = "Log in to Fly.io (opens the browser)"
+run = "fly auth login"
+
 [tasks."fly:setup"]
 description = "Create the Fly app and its 1 GB volume (run once)"
 run = [

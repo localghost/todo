@@ -79,3 +79,23 @@ func TestDeployConfigMatches(t *testing.T) {
 		t.Errorf("config.yaml min_length = %d, want 8", cfg.Password.MinLength)
 	}
 }
+
+// fly comes from mise, so the guide must not tell the user to run plain fly.
+func TestDeployGuideUsesMise(t *testing.T) {
+	guide, err := os.ReadFile("../../docs/deploy.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, line := range strings.Split(string(guide), "\n") {
+		if strings.Contains(line, "`fly ") {
+			t.Errorf("docs/deploy.md:%d runs plain fly; use `mise exec -- fly …` or a task: %s", i+1, line)
+		}
+	}
+	mise, err := os.ReadFile("../../mise.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(mise), `[tasks."fly:login"]`) {
+		t.Error(`mise.toml has no fly:login task`)
+	}
+}
