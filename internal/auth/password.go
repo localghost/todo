@@ -22,8 +22,8 @@ const (
 var b64 = base64.RawStdEncoding
 
 // hashSlotCount limits parallel argon2 hashes: each needs 64 MiB, so many
-// parallel logins could otherwise use all memory.
-const hashSlotCount = 4
+// parallel logins could otherwise use all memory. Two fit in a 256 MB machine.
+const hashSlotCount = 2
 
 var hashSlots = make(chan struct{}, hashSlotCount)
 

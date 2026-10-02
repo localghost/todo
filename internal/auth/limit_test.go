@@ -34,3 +34,11 @@ func TestHashSlotsLimitParallelHashes(t *testing.T) {
 		t.Fatalf("peak parallel hashes = %d, want 1..%d", p, hashSlotCount)
 	}
 }
+
+// The parallel password checks must fit in a 256 MB Fly machine together with
+// the app and the VM's Linux (docs/superpowers/specs/2026-10-02-hosting-design.md).
+func TestParallelHashesFitSmallMachine(t *testing.T) {
+	if mib := hashSlotCount * argonMemory / 1024; mib > 128 {
+		t.Fatalf("parallel password checks can use %d MiB, want at most 128", mib)
+	}
+}
