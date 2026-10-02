@@ -336,3 +336,16 @@ func TestResetPasswordFollowsMinimum(t *testing.T) {
 		t.Fatalf("reset with minimum 20 = %q, %v; want 20 characters", p, err)
 	}
 }
+
+func TestServiceSetHideDone(t *testing.T) {
+	a, _ := newAuth(t)
+	ctx := context.Background()
+	u, _ := a.SignUp(ctx, "alice", pw)
+	token, _, _ := a.LogIn(ctx, "alice", pw, false)
+	if err := a.SetHideDone(ctx, u.ID, true); err != nil {
+		t.Fatalf("SetHideDone: %v", err)
+	}
+	if got, _, err := a.Authenticate(ctx, token); err != nil || !got.HideDone {
+		t.Fatalf("Authenticate = %+v, %v; want HideDone", got, err)
+	}
+}

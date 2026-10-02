@@ -354,8 +354,8 @@ func TestOpenWithDeleteOldItems(t *testing.T) {
 		t.Fatalf("OpenWith: %v", err)
 	}
 	defer s.Close()
-	if v := userVersion(t, path); v != 2 {
-		t.Fatalf("user_version = %d, want 2", v)
+	if v := userVersion(t, path); v != 3 {
+		t.Fatalf("user_version = %d, want 3", v)
 	}
 	if _, err := s.UserByName(context.Background(), "default"); !errors.Is(err, auth.ErrNoUser) {
 		t.Fatalf("old user still there: err = %v", err)
@@ -369,8 +369,8 @@ func TestOpenOldDatabaseWithoutItemsNeedsNoFlag(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	s.Close()
-	if v := userVersion(t, path); v != 2 {
-		t.Fatalf("user_version = %d, want 2", v)
+	if v := userVersion(t, path); v != 3 {
+		t.Fatalf("user_version = %d, want 3", v)
 	}
 }
 
@@ -393,8 +393,8 @@ func TestNewDatabaseIsVersion2AndReopens(t *testing.T) {
 	if _, err := s.UserByID(context.Background(), u.ID); err != nil {
 		t.Fatalf("user lost on reopen: %v", err)
 	}
-	if v := userVersion(t, path); v != 2 {
-		t.Fatalf("user_version = %d, want 2", v)
+	if v := userVersion(t, path); v != 3 {
+		t.Fatalf("user_version = %d, want 3", v)
 	}
 }
 

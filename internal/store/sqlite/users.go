@@ -79,6 +79,11 @@ func (s *Store) changeUser(ctx context.Context, q string, args ...any) error {
 	return nil
 }
 
+// SetHideDone saves whether the user's list hides done items.
+func (s *Store) SetHideDone(ctx context.Context, id int64, hide bool) error {
+	return s.changeUser(ctx, `UPDATE users SET hide_done = ? WHERE id = ?`, hide, id)
+}
+
 func (s *Store) DeleteUser(ctx context.Context, id int64) error {
 	return s.changeUser(ctx, `DELETE FROM users WHERE id = ?`, id)
 }
@@ -96,14 +101,14 @@ func (s *Store) CreateSession(ctx context.Context, sess auth.Session) error {
 func (s *Store) SessionUser(ctx context.Context, tokenHash string, now time.Time) (auth.Session, auth.User, error) {
 	row := s.db.QueryRowContext(ctx,
 		`SELECT s.token_hash, s.user_id, s.created_at, s.expires_at, s.persistent,
-		        u.id, u.username, u.password_hash, u.created_at
+		        u.id, u.username, u.password_hash, u.created_at, u.hide_done
 		 FROM sessions s JOIN users u ON u.id = s.user_id
 		 WHERE s.token_hash = ? AND s.expires_at > ?`, tokenHash, fixedTime(now))
 	var sess auth.Session
 	var u auth.User
 	var sCreated, sExpires, uCreated string
 	err := row.Scan(&sess.TokenHash, &sess.UserID, &sCreated, &sExpires, &sess.Persistent,
-		&u.ID, &u.Username, &u.PasswordHash, &uCreated)
+		&u.ID, &u.Username, &u.PasswordHash, &uCreated, &u.HideDone)
 	if errors.Is(err, sql.ErrNoRows) {
 		return auth.Session{}, auth.User{}, auth.ErrNoSession
 	}

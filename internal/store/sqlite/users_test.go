@@ -239,3 +239,24 @@ func TestRequireCurrentShowsRealError(t *testing.T) {
 		t.Fatalf("err = %v, want the real error (not a database)", err)
 	}
 }
+
+func TestSetHideDone(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	s.CreateSession(ctx, auth.Session{TokenHash: "h", UserID: 1, CreatedAt: t0, ExpiresAt: t0.Add(time.Hour)})
+	if err := s.SetHideDone(ctx, 1, true); err != nil {
+		t.Fatalf("SetHideDone: %v", err)
+	}
+	if _, u, err := s.SessionUser(ctx, "h", t0); err != nil || !u.HideDone {
+		t.Fatalf("SessionUser = %+v, %v; want HideDone", u, err)
+	}
+	if err := s.SetHideDone(ctx, 1, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, u, _ := s.SessionUser(ctx, "h", t0); u.HideDone {
+		t.Fatal("HideDone still true after SetHideDone(false)")
+	}
+	if err := s.SetHideDone(ctx, 999, true); !errors.Is(err, auth.ErrNoUser) {
+		t.Fatalf("unknown user: %v, want ErrNoUser", err)
+	}
+}

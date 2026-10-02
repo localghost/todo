@@ -36,6 +36,7 @@ type User struct {
 	Username     string
 	PasswordHash string
 	CreatedAt    time.Time
+	HideDone     bool // the list hides done items
 }
 
 // Session is one login. Only the hash of the token is stored.
@@ -53,6 +54,7 @@ type Store interface {
 	UserByName(ctx context.Context, username string) (User, error)                                         // ErrNoUser; case does not matter
 	UserByID(ctx context.Context, id int64) (User, error)                                                  // ErrNoUser
 	SetPasswordAndEndSessions(ctx context.Context, userID int64, passwordHash, keepTokenHash string) error // ErrNoUser; keep "" ends all
+	SetHideDone(ctx context.Context, userID int64, hide bool) error                                        // ErrNoUser
 	DeleteUser(ctx context.Context, id int64) error                                                        // ErrNoUser; deletes items and sessions too
 	CreateSession(ctx context.Context, s Session) error
 	SessionUser(ctx context.Context, tokenHash string, now time.Time) (Session, User, error) // ErrNoSession if unknown or expired

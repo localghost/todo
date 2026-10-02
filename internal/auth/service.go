@@ -194,3 +194,8 @@ func (s *Service) ResetPassword(ctx context.Context, username string) (string, e
 	}
 	return string(pw), nil
 }
+
+// SetHideDone saves whether the user's list hides done items.
+func (s *Service) SetHideDone(ctx context.Context, userID int64, hide bool) error {
+	return s.store.SetHideDone(ctx, userID, hide)
+}

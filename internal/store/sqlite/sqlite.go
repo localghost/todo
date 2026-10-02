@@ -18,6 +18,9 @@ import (
 
 const itemCols = `id, user_id, text, done, position, created_at, updated_at, due_at, due_all_day, notified_at`
 
+// currentVersion is the schema version this code writes (PRAGMA user_version).
+const currentVersion = 3
+
 // schemaV2 is the schema since user accounts (PRAGMA user_version = 2).
 var schemaV2 = []string{
 	`CREATE TABLE users (
@@ -89,14 +92,14 @@ func userTables(db *sql.DB) ([]string, error) {
 	return names, rows.Err()
 }
 
-// migrate brings the database to schema version 2.
+// migrate brings the database to schema version currentVersion.
 func migrate(db *sql.DB, opts Options) error {
 	var version int
 	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
 		return err
 	}
 	if version >= 2 {
-		return nil
+		return migrateToV3(db, version)
 	}
 	tables, err := userTables(db)
 	if err != nil {
@@ -144,6 +147,30 @@ func migrate(db *sql.DB, opts Options) error {
 			return err
 		}
 	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return migrateToV3(db, 2)
+}
+
+// migrateToV3 adds the per-user setting hide_done (schema version 3).
+func migrateToV3(db *sql.DB, version int) error {
+	if version >= 3 {
+		return nil
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, stmt := range []string{
+		`ALTER TABLE users ADD COLUMN hide_done INTEGER NOT NULL DEFAULT 0`,
+		`PRAGMA user_version = 3`,
+	} {
+		if _, err := tx.Exec(stmt); err != nil {
+			return err
+		}
+	}
 	return tx.Commit()
 }
 
@@ -182,7 +209,7 @@ func OpenWith(path string, opts Options) (*Store, error) {
 		if err != nil {
 			return nil, fmt.Errorf("open database %q: %w", path, err)
 		}
-		if version != 2 {
+		if version != currentVersion {
 			return nil, fmt.Errorf("database %q is not at the current schema version; start the server once to upgrade it", path)
 		}
 	}
