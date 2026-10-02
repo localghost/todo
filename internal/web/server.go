@@ -13,6 +13,7 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"todo/internal/auth"
@@ -34,6 +35,7 @@ type server struct {
 	now        func() time.Time
 	powBits    int
 	trustProxy bool
+	xffWarn    sync.Once
 	signingKey []byte
 	tokens     *guard.Tokens
 	signupTry  *guard.Limiter // sign-up attempts per IP
@@ -205,12 +207,22 @@ func limitBody(next http.Handler) http.Handler {
 // address in X-Forwarded-For, which the proxy adds. An IPv6 address counts
 // as its /64 network, because one client usually controls a whole /64.
 func (s *server) clientIP(r *http.Request) string {
-	if s.trustProxy {
-		if vals := r.Header.Values("X-Forwarded-For"); len(vals) > 0 {
+	if vals := r.Header.Values("X-Forwarded-For"); len(vals) > 0 {
+		if !s.trustProxy {
+			s.xffWarn.Do(func() {
+				s.log.Warn("requests have X-Forwarded-For but -trust-proxy is off; all clients behind the proxy share one limit")
+			})
+		} else {
 			parts := strings.Split(vals[len(vals)-1], ",")
-			if key, ok := ipKey(strings.TrimSpace(parts[len(parts)-1])); ok {
+			last := strings.TrimSpace(parts[len(parts)-1])
+			if ap, err := netip.ParseAddrPort(last); err == nil {
+				last = ap.Addr().String()
+			}
+			last = strings.TrimSuffix(strings.TrimPrefix(last, "["), "]")
+			if key, ok := ipKey(last); ok {
 				return key
 			}
+			s.log.Warn("cannot read the client address from X-Forwarded-For", "value", last)
 		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)

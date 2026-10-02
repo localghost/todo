@@ -149,3 +149,23 @@ func TestInvalidUsernamesAreNotCounted(t *testing.T) {
 		}
 	}
 }
+
+func TestForwardedForWithPort(t *testing.T) {
+	env := newTestEnv(t, web.WithTrustProxy(true))
+	env.Auth.SignUp(context.Background(), "alice", pw)
+	for i := 0; i < 20; i++ {
+		h := fromIP("10.0.0.1")
+		h["X-Forwarded-For"] = "198.51.100.7:" + strconv.Itoa(40000+i)
+		login(t, env, "nobody"+strconv.Itoa(i), "wrong password", h)
+	}
+	h := fromIP("10.0.0.1")
+	h["X-Forwarded-For"] = "198.51.100.7:5"
+	if code := login(t, env, "alice", pw, h); code != http.StatusTooManyRequests {
+		t.Fatalf("same client with ports: %d, want 429", code)
+	}
+	h = fromIP("10.0.0.1")
+	h["X-Forwarded-For"] = "[2001:db8::5]:443"
+	if code := login(t, env, "alice", pw, h); code != http.StatusSeeOther {
+		t.Fatalf("other client: %d, want 303", code)
+	}
+}

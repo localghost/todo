@@ -37,8 +37,9 @@ type Tokens struct {
 	key []byte
 	now func() time.Time
 
-	mu   sync.Mutex
-	used map[string]time.Time
+	mu        sync.Mutex
+	used      map[string]time.Time
+	lastSweep time.Time
 }
 
 // NewTokens signs tokens with key.
@@ -93,7 +94,8 @@ func (t *Tokens) Check(token, nonce string, bits int) error {
 	if _, seen := t.used[p]; seen {
 		return ErrUsedToken
 	}
-	if len(t.used) > 1000 {
+	if len(t.used) > 1000 && t.now().Sub(t.lastSweep) > time.Minute {
+		t.lastSweep = t.now()
 		for k, at := range t.used {
 			if t.now().Sub(at) > MaxTokenAge {
 				delete(t.used, k)

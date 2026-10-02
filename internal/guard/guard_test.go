@@ -17,26 +17,47 @@ func (c *clock) now() time.Time { return c.t }
 func TestLimiterReserveAndRelease(t *testing.T) {
 	c := &clock{t: time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC)}
 	l := guard.NewLimiter(3, 15*time.Minute, c.now)
+	var first guard.Ticket
 	for i := 0; i < 3; i++ {
-		if !l.Reserve("a") {
+		tk, ok := l.Reserve("a")
+		if !ok {
 			t.Fatalf("reserve %d refused", i+1)
 		}
+		if i == 0 {
+			first = tk
+		}
 	}
-	if l.Reserve("a") {
+	if _, ok := l.Reserve("a"); ok {
 		t.Fatal("4th reserve allowed, want refused")
 	}
-	if !l.Reserve("b") {
+	if _, ok := l.Reserve("b"); !ok {
 		t.Fatal("other key refused")
 	}
-	l.Release("a")
-	if !l.Reserve("a") {
+	l.Release(first)
+	if _, ok := l.Reserve("a"); !ok {
 		t.Fatal("reserve after release refused")
 	}
 	c.t = c.t.Add(15*time.Minute + time.Second)
-	if !l.Reserve("a") {
+	if _, ok := l.Reserve("a"); !ok {
 		t.Fatal("reserve after the window refused")
 	}
-	l.Release("never-used") // must not panic
+	l.Release(guard.Ticket{}) // must not panic
+}
+
+func TestReleaseFreesOwnHit(t *testing.T) {
+	c := &clock{t: time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC)}
+	l := guard.NewLimiter(2, 15*time.Minute, c.now)
+	a1, _ := l.Reserve("k") // at 12:00
+	c.t = c.t.Add(10 * time.Minute)
+	l.Reserve("k")                             // at 12:10, kept
+	l.Release(a1)                              // frees the 12:00 hit, not the 12:10 one
+	c.t = c.t.Add(5*time.Minute + time.Second) // 12:15:01
+	if _, ok := l.Reserve("k"); !ok {
+		t.Fatal("first reserve refused")
+	}
+	if _, ok := l.Reserve("k"); ok {
+		t.Fatal("second reserve allowed: Release removed the wrong hit")
+	}
 }
 
 func solve(t *testing.T, token string, bits int) string {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"todo/internal/auth"
+	"todo/internal/guard"
 )
 
 type loginView struct {
@@ -53,26 +54,32 @@ func (s *server) login(w http.ResponseWriter, r *http.Request) {
 		s.render(w, r, http.StatusTooManyRequests, part{"login", loginView{Username: username, Error: loginLocked}})
 	}
 	// Reserve both slots before the slow password hash; a wrong password keeps them.
-	if !s.loginIP.Reserve(ip) {
+	ipTicket, ok := s.loginIP.Reserve(ip)
+	if !ok {
+		s.log.Info("login blocked", "ip", ip, "reason", "ip limit")
 		locked()
 		return
 	}
 	// A name that breaks the rules cannot exist: it gets no counter, so junk
 	// names cannot fill the limiter's memory.
 	countUser := auth.ValidateUsername(userKey) == nil
-	if countUser && !s.loginUser.Reserve(userKey) {
-		s.loginIP.Release(ip)
-		locked()
-		return
+	var userTicket guard.Ticket
+	if countUser {
+		if userTicket, ok = s.loginUser.Reserve(userKey); !ok {
+			s.loginIP.Release(ipTicket)
+			s.log.Info("login blocked", "ip", ip, "reason", "username limit")
+			locked()
+			return
+		}
 	}
 	token, sess, err := s.accounts.LogIn(r.Context(), username, r.PostFormValue("password"), r.PostFormValue("keep") == "1")
 	if errors.Is(err, auth.ErrBadLogin) {
 		s.render(w, r, http.StatusUnprocessableEntity, part{"login", loginView{Username: username, Error: "Wrong username or password."}})
 		return
 	}
-	s.loginIP.Release(ip)
+	s.loginIP.Release(ipTicket)
 	if countUser {
-		s.loginUser.Release(userKey)
+		s.loginUser.Release(userTicket)
 	}
 	if err != nil {
 		s.serverError(w, r, err)
@@ -107,11 +114,13 @@ func (s *server) signup(w http.ResponseWriter, r *http.Request) {
 		view.Error = signupFailed
 		s.render(w, r, http.StatusUnprocessableEntity, part{"signup", view})
 	}
-	if !s.signupTry.Reserve(ip) { // every attempt counts; never released
+	if _, ok := s.signupTry.Reserve(ip); !ok { // every attempt counts; never released
+		s.log.Info("sign-up rejected", "ip", ip, "reason", "attempt limit")
 		failed()
 		return
 	}
 	if r.PostFormValue("website") != "" {
+		s.log.Info("sign-up rejected", "ip", ip, "reason", "honeypot")
 		failed()
 		return
 	}
@@ -120,13 +129,15 @@ func (s *server) signup(w http.ResponseWriter, r *http.Request) {
 		failed()
 		return
 	}
-	if !s.signupNew.Reserve(ip) {
+	newTicket, ok := s.signupNew.Reserve(ip)
+	if !ok {
+		s.log.Info("sign-up rejected", "ip", ip, "reason", "account limit")
 		failed()
 		return
 	}
 	u, err := s.accounts.SignUp(r.Context(), username, r.PostFormValue("password"))
 	if err != nil {
-		s.signupNew.Release(ip) // no account was created
+		s.signupNew.Release(newTicket) // no account was created
 	}
 	var rule *auth.RuleError
 	switch {
