@@ -137,7 +137,13 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	text, date, clock := r.FormValue("text"), r.FormValue("due_date"), r.FormValue("due_time")
-	item, err := s.svc.EditIn(r.Context(), userID(r), id, text, date, clock, s.zoneFor(r))
+	// Read the time in the zone the edit row was shown in, so an unchanged
+	// time stays the same moment even if the browser's zone changed since.
+	loc, ok := s.parseZone(r.FormValue("due_tz"))
+	if !ok {
+		loc = s.zoneFor(r)
+	}
+	item, err := s.svc.EditIn(r.Context(), userID(r), id, text, date, clock, loc)
 	var dueErr *todo.DueError
 	switch {
 	case errors.Is(err, todo.ErrEmptyText) || errors.As(err, &dueErr):

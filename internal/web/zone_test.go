@@ -132,3 +132,37 @@ func TestNotificationTextUsesBrowserZone(t *testing.T) {
 		t.Fatalf("due text = %q, want Due today, 20:59 (Tokyo)", got[0].Due)
 	}
 }
+
+// The edit row reads its unchanged time in the zone it was shown in, even if
+// the browser's zone changed in the meantime.
+func TestEditKeepsTheZoneItWasShownIn(t *testing.T) {
+	env := newTestEnv(t)
+	warsaw := mustZone(t, "Europe/Warsaw")
+	env.Clock.t = time.Date(2026, 10, 1, 12, 0, 0, 0, warsaw)
+	it, err := env.Svc.AddIn(context.Background(), env.User.ID, "Call", "2026-10-03", "14:00", warsaw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := strconv.FormatInt(it.ID, 10)
+	edit := do(t, env.H, "GET", "/items/"+id+"/edit", nil, tz("Europe/Warsaw")).Body.String()
+	assertContains(t, edit, `<input type="hidden" name="due_tz" value="Europe/Warsaw">`)
+
+	form := url.Values{"text": {"Call mum"}, "due_date": {"2026-10-03"}, "due_time": {"14:00"}, "due_tz": {"Europe/Warsaw"}}
+	if rec := do(t, env.H, "PUT", "/items/"+id, form, tz("Europe/London")); rec.Code != http.StatusOK {
+		t.Fatalf("update: %d", rec.Code)
+	}
+	got, _ := env.Svc.Get(context.Background(), env.User.ID, it.ID)
+	if got.DueAt == nil || !got.DueAt.Equal(*it.DueAt) {
+		t.Fatalf("due moved from %v to %v after a zone change", it.DueAt, got.DueAt)
+	}
+	// A bad due_tz falls back to the cookie zone.
+	form.Set("due_tz", "../../etc/passwd")
+	form.Set("text", "Call mum again")
+	if rec := do(t, env.H, "PUT", "/items/"+id, form, tz("Europe/London")); rec.Code != http.StatusOK {
+		t.Fatalf("update with bad due_tz: %d", rec.Code)
+	}
+	got, _ = env.Svc.Get(context.Background(), env.User.ID, it.ID)
+	if want := time.Date(2026, 10, 3, 13, 0, 0, 0, time.UTC); got.DueAt == nil || !got.DueAt.Equal(want) {
+		t.Fatalf("bad due_tz: due %v, want %v (London)", got.DueAt, want)
+	}
+}

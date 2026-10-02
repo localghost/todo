@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"todo/internal/auth"
@@ -34,6 +35,7 @@ type server struct {
 	base           *template.Template // parsed once, never executed; cloned per zone
 	views          sync.Map           // zone name → *template.Template bound to that zone
 	zones          sync.Map           // todo_tz cookie value → *time.Location
+	viewCount      atomic.Int32       // entries in views, at most maxZoneSets
 	log            *slog.Logger
 	now            func() time.Time
 	powBits        int
@@ -282,19 +284,28 @@ var zoneName = regexp.MustCompile(`^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$`)
 // zoneFor returns the browser's time zone from the todo_tz cookie, or the
 // server's zone if the cookie is missing or names no known zone.
 func (s *server) zoneFor(r *http.Request) *time.Location {
-	c, err := r.Cookie(zoneCookie)
-	if err != nil || len(c.Value) > 64 || c.Value == "Local" || !zoneName.MatchString(c.Value) {
-		return s.now().Location()
+	if c, err := r.Cookie(zoneCookie); err == nil {
+		if loc, ok := s.parseZone(c.Value); ok {
+			return loc
+		}
 	}
-	if loc, ok := s.zones.Load(c.Value); ok {
-		return loc.(*time.Location)
+	return s.now().Location()
+}
+
+// parseZone returns the zone named name, if it is a valid IANA name.
+func (s *server) parseZone(name string) (*time.Location, bool) {
+	if len(name) > 64 || name == "Local" || !zoneName.MatchString(name) {
+		return nil, false
 	}
-	loc, err := time.LoadLocation(c.Value)
+	if loc, ok := s.zones.Load(name); ok {
+		return loc.(*time.Location), true
+	}
+	loc, err := time.LoadLocation(name)
 	if err != nil {
-		return s.now().Location()
+		return nil, false
 	}
-	s.zones.Store(c.Value, loc)
-	return loc
+	s.zones.Store(name, loc)
+	return loc, true
 }
 
 // zoneFuncs returns the template functions that show times in loc.
@@ -307,8 +318,9 @@ func (s *server) zoneFuncs(loc *time.Location) template.FuncMap {
 	}
 }
 
-// templatesFor returns the templates bound to loc. There is one set per zone,
-// made on first use from the never-executed base set.
+// templatesFor returns the templates bound to loc, cloned from the
+// never-executed base set. The first maxZoneSets zones stay cached; any other
+// zone gets a fresh set per request, so one client cannot fill the memory.
 func (s *server) templatesFor(loc *time.Location) (*template.Template, error) {
 	if t, ok := s.views.Load(loc.String()); ok {
 		return t.(*template.Template), nil
@@ -318,6 +330,21 @@ func (s *server) templatesFor(loc *time.Location) (*template.Template, error) {
 		return nil, err
 	}
 	t.Funcs(s.zoneFuncs(loc))
-	actual, _ := s.views.LoadOrStore(loc.String(), t)
+	for {
+		n := s.viewCount.Load()
+		if n >= maxZoneSets {
+			return t, nil
+		}
+		if s.viewCount.CompareAndSwap(n, n+1) {
+			break
+		}
+	}
+	actual, loaded := s.views.LoadOrStore(loc.String(), t)
+	if loaded {
+		s.viewCount.Add(-1)
+	}
 	return actual.(*template.Template), nil
 }
+
+// maxZoneSets limits the cached template sets (one per zone, about 74 KiB each).
+const maxZoneSets = 16
