@@ -5,7 +5,7 @@ flyctl = "latest"
 jq = "latest"
 
 [env]
-FLY_APP = "todoit"          # flyctl reads FLY_APP; fly.toml names the same app
+FLY_APP = "toodoo"          # flyctl reads FLY_APP; fly.toml names the same app
 TODO_DB = "/data/todo.db"   # database path on the server (see Dockerfile)
 TODO_CONFIG = "/etc/todo/config.yaml"   # settings file in the image (see Dockerfile)
 
