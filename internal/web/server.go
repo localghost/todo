@@ -134,13 +134,13 @@ type part struct {
 // render executes all parts into one buffer, then writes status and body.
 // If a template fails, the client gets a 500 and no half-written HTML.
 func (s *server) render(w http.ResponseWriter, r *http.Request, status int, parts ...part) {
+	tmpl, err := s.templatesFor(s.zoneFor(r))
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
 	var buf bytes.Buffer
 	for _, p := range parts {
-		tmpl, err := s.templatesFor(s.zoneFor(r))
-		if err != nil {
-			s.serverError(w, r, err)
-			return
-		}
 		if err := tmpl.ExecuteTemplate(&buf, p.name, p.data); err != nil {
 			s.serverError(w, r, err)
 			return
