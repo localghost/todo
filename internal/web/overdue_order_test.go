@@ -231,3 +231,21 @@ func TestAppJSKeepsFocusAndEditRow(t *testing.T) {
 	assertContains(t, js, `e.detail.elt`, `.closest("li.item")`, `check ? check.id : "new-item"`,
 		"keptEdit", "fresh.replaceWith(keptEdit)", `getElementById("toolbar")`)
 }
+
+// The overdue order uses the browser's zone, not the server's: at 2 Oct 22:30
+// UTC it is already 3 Oct in Warsaw, so the all-day item of 2 Oct is overdue there.
+func TestOverdueOrderUsesBrowserZone(t *testing.T) {
+	env := newTestEnv(t)
+	warsaw := mustZone(t, "Europe/Warsaw")
+	env.Clock.t = time.Date(2026, 10, 2, 22, 30, 0, 0, time.UTC) // server zone: UTC
+	env.Svc.AddIn(context.Background(), env.User.ID, "Buy milk", "", "", warsaw)
+	env.Svc.AddIn(context.Background(), env.User.ID, "Pay the rent", "2026-10-02", "", warsaw)
+
+	body := do(t, env.H, "GET", "/", nil, tz("Europe/Warsaw")).Body.String()
+	assertOrder(t, body, "Pay the rent", "Buy milk")
+	assertContains(t, body, `class="due overdue"`)
+
+	body = do(t, env.H, "GET", "/", nil, nil).Body.String() // no cookie: UTC, still 2 Oct
+	assertOrder(t, body, "Buy milk", "Pay the rent")
+	assertNotContains(t, body, `class="due overdue"`)
+}
