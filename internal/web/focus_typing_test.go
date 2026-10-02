@@ -19,7 +19,7 @@ func TestEditRowCancelsOnEmptyBlur(t *testing.T) {
 	h, s := newTestApp(t)
 	mustAdd(t, s, "Buy milk")
 	body := do(t, h, "GET", "/items/1/edit", nil, htmxHeaders).Body.String()
-	assertContains(t, body, `hx-trigger="keyup[key=='Escape'], cancel-edit"`)
+	assertContains(t, body, `hx-trigger="cancel-edit"`)
 }
 
 // Focus moves and the add-form behavior live in app.js.

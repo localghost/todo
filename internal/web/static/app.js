@@ -257,3 +257,35 @@ document.addEventListener("keydown", (e) => {
   const end = input.value.length;
   input.setSelectionRange(end, end);
 });
+
+// 7. Enter saves and Escape cancels an edit row. (These were htmx trigger
+// filters, which need eval; the CSP does not allow eval.)
+document.addEventListener("keydown", (e) => {
+  const row = e.target.closest && e.target.closest("li.editing");
+  if (!row) {
+    return;
+  }
+  if (e.key === "Enter") {
+    e.preventDefault();
+    htmx.trigger(row.querySelector(".edit"), "save-edit");
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    htmx.trigger(row, "cancel-edit");
+  }
+});
+
+// 8. The error line under the title: show network errors, clear it after a
+// successful request. (These were hx-on attributes.)
+document.addEventListener("htmx:sendError", () => {
+  const line = document.getElementById("error");
+  if (line) {
+    line.textContent = NETWORK_ERROR;
+  }
+});
+
+document.addEventListener("htmx:afterRequest", (e) => {
+  const line = document.getElementById("error");
+  if (line && e.detail.successful) {
+    line.textContent = "";
+  }
+});

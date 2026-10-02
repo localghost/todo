@@ -63,7 +63,7 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger) (http.Hand
 	mux.Handle("DELETE /items/{id}", s.protect(s.deleteItem))
 	mux.Handle("POST /notifications/claim", s.protect(s.claimNotifications))
 	// Rejects changing requests that a browser marks as coming from another site.
-	return http.NewCrossOriginProtection().Handler(mux), nil
+	return securityHeaders(http.NewCrossOriginProtection().Handler(mux)), nil
 }
 
 // noDirListing answers 404 for folder paths, so the file server never lists files.
@@ -116,4 +116,18 @@ func parseID(r *http.Request) (int64, bool) {
 
 func isHTMX(r *http.Request) bool {
 	return r.Header.Get("HX-Request") == "true"
+}
+
+const contentSecurityPolicy = "default-src 'self'; style-src 'self' https://fonts.googleapis.com; " +
+	"font-src https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+
+// securityHeaders adds the CSP and other protective headers to every response.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("Content-Security-Policy", contentSecurityPolicy)
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Referrer-Policy", "same-origin")
+		next.ServeHTTP(w, r)
+	})
 }

@@ -13,31 +13,11 @@ func TestListIncludesHideStateForAllRowRequests(t *testing.T) {
 	assertContains(t, body, `<ul id="items" hx-include="#hide-done">`)
 }
 
-// Enter that opens edit mode must not also save it: save on keydown.
-func TestEditSavesOnKeydownEnter(t *testing.T) {
-	h, s := newTestApp(t)
-	mustAdd(t, s, "Buy milk")
-	body := do(t, h, "GET", "/items/1/edit", nil, htmxHeaders).Body.String()
-	assertContains(t, body, `hx-trigger="keydown[key=='Enter'], save-edit"`)
-	assertNotContains(t, body, `keyup[key=='Enter']`)
-}
-
 // "Back" must load fresh data from the server, not an old local copy.
 func TestPageDisablesHistoryCache(t *testing.T) {
 	h, _ := newTestApp(t)
 	body := do(t, h, "GET", "/", nil, nil).Body.String()
 	assertContains(t, body, `"historyCacheSize":0`)
-}
-
-// Server and network errors show a short message to the user.
-func TestPageShowsErrors(t *testing.T) {
-	h, _ := newTestApp(t)
-	body := do(t, h, "GET", "/", nil, nil).Body.String()
-	assertContains(t, body,
-		`<p id="error" class="error" role="alert"></p>`,
-		`{"code":"5..","swap":true,"error":true,"target":"#error","swapOverride":"innerHTML"}`,
-		`hx-on::send-error=`, "Cannot reach the server.",
-		`hx-on::after-request=`)
 }
 
 // Another website must not be able to change items (CSRF).
@@ -63,4 +43,22 @@ func TestMutationsRejectCrossSiteRequests(t *testing.T) {
 	if rec := do(t, h, "GET", "/", nil, nil); rec.Code != http.StatusOK {
 		t.Errorf("plain GET: status = %d, want 200", rec.Code)
 	}
+}
+
+// Enter that opens edit mode must not also save it: app.js saves on keydown.
+func TestEditSavesOnKeydownEnter(t *testing.T) {
+	h, _ := newTestApp(t)
+	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
+	assertContains(t, js, `e.key === "Enter"`, `"save-edit"`, `e.key === "Escape"`, `"cancel-edit"`)
+}
+
+// Server and network errors show a short message to the user.
+func TestPageShowsErrors(t *testing.T) {
+	h, _ := newTestApp(t)
+	body := do(t, h, "GET", "/", nil, nil).Body.String()
+	assertContains(t, body,
+		`<p id="error" class="error" role="alert"></p>`,
+		`{"code":"5..","swap":true,"error":true,"target":"#error","swapOverride":"innerHTML"}`)
+	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
+	assertContains(t, js, `"htmx:sendError"`, "Cannot reach the server.", `"htmx:afterRequest"`)
 }
