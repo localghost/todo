@@ -66,7 +66,7 @@ func (s *Service) SignUp(ctx context.Context, username, password string) (User, 
 
 // LogIn checks username and password and starts a new session.
 func (s *Service) LogIn(ctx context.Context, username, password string, persistent bool) (string, Session, error) {
-	if len(password) > 4*maxPasswordChars {
+	if len(password) > 4*MaxPasswordChars {
 		return "", Session{}, ErrBadLogin // never hash huge input
 	}
 	u, err := s.store.UserByName(ctx, username)
@@ -121,7 +121,7 @@ func (s *Service) LogOut(ctx context.Context, token string) error {
 
 // ChangePassword sets a new password and ends all other sessions of the user.
 func (s *Service) ChangePassword(ctx context.Context, userID int64, token, current, next string) error {
-	if len(current) > 4*maxPasswordChars {
+	if len(current) > 4*MaxPasswordChars {
 		return ErrWrongPassword
 	}
 	u, err := s.store.UserByID(ctx, userID)

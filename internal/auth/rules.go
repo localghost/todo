@@ -9,7 +9,10 @@ var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9_-]{3,32}$`)
 
 const (
 	minPasswordChars = 10
-	maxPasswordChars = 200
+	// MaxPasswordChars is the longest allowed password, in characters.
+	MaxPasswordChars = 200
+	// DefaultMinPasswordChars is the shortest allowed password when config.yaml sets none.
+	DefaultMinPasswordChars = 8
 )
 
 // ValidateUsername checks the characters and the length of a username.
@@ -26,7 +29,7 @@ func ValidatePassword(password string) error {
 	if n < minPasswordChars {
 		return &RuleError{Field: "password", Msg: "Use at least 10 characters."}
 	}
-	if n > maxPasswordChars {
+	if n > MaxPasswordChars {
 		return &RuleError{Field: "password", Msg: "Use at most 200 characters."}
 	}
 	return nil
