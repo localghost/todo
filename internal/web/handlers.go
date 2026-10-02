@@ -10,7 +10,7 @@ import (
 )
 
 func (s *server) index(w http.ResponseWriter, r *http.Request) {
-	lv, err := s.listView(r.Context(), userID(r), currentUser(r).HideDone)
+	lv, err := s.listView(r, currentUser(r).HideDone)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -43,7 +43,11 @@ func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	lv, err := s.listView(r.Context(), userID(r), currentUser(r).HideDone)
+	if item.Overdue(s.nowFor(r)) {
+		s.renderList(w, r, currentUser(r).HideDone) // it belongs at the top, not at the end
+		return
+	}
+	lv, err := s.listView(r, currentUser(r).HideDone)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -70,7 +74,13 @@ func (s *server) toggleItem(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	lv, err := s.listView(r.Context(), userID(r), hideDone)
+	before := item
+	before.Done = !item.Done
+	if now := s.nowFor(r); before.Overdue(now) != item.Overdue(now) {
+		s.renderList(w, r, hideDone) // the item enters or leaves the overdue group
+		return
+	}
+	lv, err := s.listView(r, hideDone)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -105,7 +115,7 @@ func (s *server) deleteItem(w http.ResponseWriter, r *http.Request) {
 // oobOnly answers with an empty main body (htmx removes the target row)
 // plus the out-of-band toolbar and empty state.
 func (s *server) oobOnly(w http.ResponseWriter, r *http.Request, status int) {
-	lv, err := s.listView(r.Context(), userID(r), currentUser(r).HideDone)
+	lv, err := s.listView(r, currentUser(r).HideDone)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -143,6 +153,7 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		loc = s.zoneFor(r)
 	}
+	wasOverdue := s.wasOverdue(r, id)
 	item, err := s.svc.EditIn(r.Context(), userID(r), id, text, date, clock, loc)
 	var dueErr *todo.DueError
 	switch {
@@ -166,8 +177,12 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.serverError(w, r, err)
 	default:
+		if item.Overdue(s.nowFor(r)) != wasOverdue {
+			s.renderList(w, r, currentUser(r).HideDone)
+			return
+		}
 		// The due date may have changed, so the permission bar comes along.
-		lv, err := s.listView(r.Context(), userID(r), currentUser(r).HideDone)
+		lv, err := s.listView(r, currentUser(r).HideDone)
 		if err != nil {
 			s.serverError(w, r, err)
 			return
@@ -237,6 +252,7 @@ func (s *server) postponeItem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unknown postpone amount.", http.StatusBadRequest)
 		return
 	}
+	wasOverdue := s.wasOverdue(r, id)
 	item, err := s.svc.Postpone(r.Context(), userID(r), id, minutes)
 	switch {
 	case errors.Is(err, todo.ErrBadPostpone):
@@ -253,7 +269,11 @@ func (s *server) postponeItem(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.serverError(w, r, err)
 	default:
-		lv, err := s.listView(r.Context(), userID(r), currentUser(r).HideDone)
+		if item.Overdue(s.nowFor(r)) != wasOverdue {
+			s.renderList(w, r, currentUser(r).HideDone)
+			return
+		}
+		lv, err := s.listView(r, currentUser(r).HideDone)
 		if err != nil {
 			s.serverError(w, r, err)
 			return
@@ -274,10 +294,29 @@ func (s *server) setHideDone(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	lv, err := s.listView(r.Context(), userID(r), hide)
+	lv, err := s.listView(r, hide)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
+	s.render(w, r, http.StatusOK, part{"list", lv})
+}
+
+// wasOverdue reports whether item id is overdue now, before a change.
+func (s *server) wasOverdue(r *http.Request, id int64) bool {
+	it, err := s.svc.Get(r.Context(), userID(r), id)
+	return err == nil && it.Overdue(s.nowFor(r))
+}
+
+// renderList answers with the whole list section instead of one row, for a
+// change that moves an item into or out of the overdue group at the top.
+func (s *server) renderList(w http.ResponseWriter, r *http.Request, hideDone bool) {
+	lv, err := s.listView(r, hideDone)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	w.Header().Set("HX-Retarget", "#list-section")
+	w.Header().Set("HX-Reswap", "outerHTML")
 	s.render(w, r, http.StatusOK, part{"list", lv})
 }

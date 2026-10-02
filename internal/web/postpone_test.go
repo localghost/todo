@@ -34,8 +34,12 @@ func TestPostponeRoute(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	assertContains(t, body, `<li id="item-1" class="item">`, `<span class="due">Due `,
-		`id="toolbar" class="toolbar" hx-swap-oob="true"`)
+	// The item leaves the overdue group, so the whole list comes back.
+	if rec.Header().Get("HX-Retarget") != "#list-section" {
+		t.Fatalf("HX-Retarget = %q, want #list-section", rec.Header().Get("HX-Retarget"))
+	}
+	assertContains(t, body, `<section id="list-section"`, `<li id="item-1" class="item">`, `<span class="due">Due `,
+		`id="toolbar" class="toolbar"`)
 	assertNotContains(t, body, `class="due overdue"`, `class="postpone-btn"`)
 }
 

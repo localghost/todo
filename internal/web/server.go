@@ -352,3 +352,8 @@ func (s *server) templatesFor(loc *time.Location) (*template.Template, error) {
 
 // maxZoneSets limits the cached template sets (one per zone, about 74 KiB each).
 const maxZoneSets = 16
+
+// nowFor returns the current time in the request's time zone.
+func (s *server) nowFor(r *http.Request) time.Time {
+	return s.now().In(s.zoneFor(r))
+}

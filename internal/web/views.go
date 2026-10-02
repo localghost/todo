@@ -1,7 +1,7 @@
 package web
 
 import (
-	"context"
+	"net/http"
 
 	"todo/internal/todo"
 )
@@ -15,6 +15,9 @@ type listView struct {
 	HideDone bool
 	OOB      bool // render toolbar and empty state as htmx out-of-band swaps
 	HasDue   bool // an open item has a due date
+	// NextOverdue is the Unix time in ms when the next open item becomes
+	// overdue (0: none); app.js refreshes the list then.
+	NextOverdue int64
 }
 
 // formView is the data for the add form.
@@ -44,7 +47,10 @@ type pageView struct {
 	Username string
 }
 
-func (s *server) listView(ctx context.Context, userID int64, hideDone bool) (listView, error) {
+// listView loads the list of the request's user: overdue items first, most
+// overdue first, in the browser's zone.
+func (s *server) listView(r *http.Request, hideDone bool) (listView, error) {
+	ctx, userID, now := r.Context(), userID(r), s.nowFor(r)
 	items, err := s.svc.List(ctx, userID, hideDone)
 	if err != nil {
 		return listView{}, err
@@ -53,7 +59,11 @@ func (s *server) listView(ctx context.Context, userID int64, hideDone bool) (lis
 	if err != nil {
 		return listView{}, err
 	}
+	items = todo.OverdueFirst(items, now)
 	lv := listView{Items: items, Open: open, Done: done, Total: open + done, HideDone: hideDone}
+	if next, ok := todo.NextOverdue(items, now); ok {
+		lv.NextOverdue = next.UnixMilli()
+	}
 	for _, it := range items {
 		if !it.Done && it.DueAt != nil {
 			lv.HasDue = true

@@ -1,4 +1,4 @@
-{{define "list"}}<section id="list-section">
+{{define "list"}}<section id="list-section"{{if .NextOverdue}} data-next-overdue="{{.NextOverdue}}"{{end}}>
 {{template "toolbar" .}}
 {{template "notify-bar" .}}
 {{template "empty" .}}
