@@ -240,3 +240,20 @@ func TestRequireCurrentDoesNotTouchOldFile(t *testing.T) {
 		t.Fatalf("journal_mode = %q, want delete (unchanged)", mode)
 	}
 }
+
+func TestRequireCurrentLeavesNoWALFiles(t *testing.T) {
+	old := oldDatabase(t, 1)
+	db, _ := sql.Open("sqlite", "file:"+old)
+	if _, err := db.Exec(`PRAGMA journal_mode=WAL`); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	if _, err := sqlite.OpenWith(old, sqlite.Options{RequireCurrent: true}); err == nil {
+		t.Fatal("old file accepted")
+	}
+	for _, suffix := range []string{"-wal", "-shm"} {
+		if _, err := os.Stat(old + suffix); err == nil {
+			t.Errorf("the version check left %s; a server running as another user cannot open the database", old+suffix)
+		}
+	}
+}

@@ -210,7 +210,7 @@ func (s *server) clientIP(r *http.Request) string {
 	if vals := r.Header.Values("X-Forwarded-For"); len(vals) > 0 {
 		if !s.trustProxy {
 			s.xffWarn.Do(func() {
-				s.log.Warn("requests have X-Forwarded-For but -trust-proxy is off; all clients behind the proxy share one limit")
+				s.log.Warn("requests have X-Forwarded-For but -trust-proxy is off; if this app runs behind a reverse proxy, start it with -trust-proxy; if not, ignore this (clients can send the header themselves)")
 			})
 		} else {
 			parts := strings.Split(vals[len(vals)-1], ",")
@@ -222,7 +222,7 @@ func (s *server) clientIP(r *http.Request) string {
 			if key, ok := ipKey(last); ok {
 				return key
 			}
-			s.log.Warn("cannot read the client address from X-Forwarded-For", "value", last)
+			s.log.Warn("cannot read the client address from X-Forwarded-For", "value", cut(last, 64))
 		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
@@ -233,6 +233,14 @@ func (s *server) clientIP(r *http.Request) string {
 		return key
 	}
 	return host
+}
+
+// cut returns at most n bytes of s, so a client cannot fill the log.
+func cut(s string, n int) string {
+	if len(s) > n {
+		return s[:n] + "…"
+	}
+	return s
 }
 
 // ipKey returns the limiter key of an address: IPv4 as is, IPv6 as its /64.

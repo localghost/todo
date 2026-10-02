@@ -170,7 +170,9 @@ func OpenWith(path string, opts Options) (*Store, error) {
 		if _, err := os.Stat(path); err != nil {
 			return nil, fmt.Errorf("database %q does not exist", path)
 		}
-		ro, err := sql.Open("sqlite", "file:"+path+"?mode=ro")
+		// No journal_mode pragma: the check must not change an old file. A read-write
+		// connection also deletes the -wal and -shm files when it closes.
+		ro, err := sql.Open("sqlite", "file:"+path+"?_pragma=busy_timeout(5000)")
 		if err != nil {
 			return nil, fmt.Errorf("open database %q: %w", path, err)
 		}
