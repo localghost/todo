@@ -19,7 +19,7 @@ func dueLabel(it todo.Item, now time.Time) dueView {
 		return dueView{}
 	}
 	d := it.DueAt.In(now.Location())
-	if !it.Done && isOverdue(d, it.DueAllDay, now) {
+	if it.Overdue(now) {
 		return dueView{Text: "Overdue since " + dueWhen(d, it.DueAllDay, now), Overdue: true}
 	}
 	return dueView{Text: dueText(it, now)}
@@ -38,14 +38,6 @@ func dueWhen(d time.Time, allDay bool, now time.Time) string {
 		return dayName(d, now)
 	}
 	return dayName(d, now) + ", " + d.Format("15:04")
-}
-
-func isOverdue(d time.Time, allDay bool, now time.Time) bool {
-	if allDay {
-		y, m, day := d.Date()
-		return !now.Before(time.Date(y, m, day+1, 0, 0, 0, 0, d.Location()))
-	}
-	return now.After(d)
 }
 
 // dayName names a day relative to now: today, tomorrow, yesterday, or a date.
