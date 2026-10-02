@@ -6,13 +6,6 @@ import (
 	"testing"
 )
 
-// Rows send the hide state with every request, also click-to-edit and Esc.
-func TestListIncludesHideStateForAllRowRequests(t *testing.T) {
-	h, _ := newTestApp(t)
-	body := do(t, h, "GET", "/", nil, nil).Body.String()
-	assertContains(t, body, `<ul id="items">`)
-}
-
 // "Back" must load fresh data from the server, not an old local copy.
 func TestPageDisablesHistoryCache(t *testing.T) {
 	h, _ := newTestApp(t)

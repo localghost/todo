@@ -374,7 +374,7 @@ func TestOpenOldDatabaseWithoutItemsNeedsNoFlag(t *testing.T) {
 	}
 }
 
-func TestNewDatabaseIsVersion2AndReopens(t *testing.T) {
+func TestNewDatabaseIsCurrentVersionAndReopens(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "new.db")
 	s, err := sqlite.Open(path)
 	if err != nil {
