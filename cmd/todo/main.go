@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 	_ "time/tzdata" // every browser time zone loads, also in an image without zone files
@@ -49,7 +50,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	logger.Info("settings", "config", label, "min_password_length", cfg.Password.MinLength)
+	zone := serverZone()
+	logger.Info("settings", "config", label, "min_password_length", cfg.Password.MinLength, "zone", zone.String())
 
 	store, err := sqlite.OpenWith(*dbPath, sqlite.Options{DeleteOldItems: *deleteOldItems})
 	if err != nil {
@@ -62,7 +64,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	handler, err := web.New(todo.NewService(store), accounts, logger, web.WithSigningKey(key), web.WithTrustProxy(*trustProxy), web.WithClientIPHeader(*clientIPHeader))
+	handler, err := web.New(todo.NewService(store), accounts, logger, web.WithSigningKey(key), web.WithTrustProxy(*trustProxy), web.WithClientIPHeader(*clientIPHeader), web.WithDefaultZone(zone))
 	if err != nil {
 		return err
 	}
@@ -134,4 +136,22 @@ func loadConfig(fs *flag.FlagSet, path string) (config.Config, string, error) {
 		return cfg, "none (defaults)", nil
 	}
 	return cfg, path, nil
+}
+
+// serverZone returns the server's time zone with its IANA name: from TZ, else
+// from the /etc/localtime link, else time.Local (named "Local").
+func serverZone() *time.Location {
+	if name := strings.TrimPrefix(os.Getenv("TZ"), ":"); name != "" {
+		if loc, err := time.LoadLocation(name); err == nil {
+			return loc
+		}
+	}
+	if target, err := os.Readlink("/etc/localtime"); err == nil {
+		if _, name, ok := strings.Cut(target, "zoneinfo/"); ok {
+			if loc, err := time.LoadLocation(name); err == nil {
+				return loc
+			}
+		}
+	}
+	return time.Local
 }
