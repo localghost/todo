@@ -12,6 +12,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"todo/internal/web"
 )
 
 func mustZone(t *testing.T, name string) *time.Location {
@@ -164,5 +166,17 @@ func TestEditKeepsTheZoneItWasShownIn(t *testing.T) {
 	got, _ = env.Svc.Get(context.Background(), env.User.ID, it.ID)
 	if want := time.Date(2026, 10, 3, 13, 0, 0, 0, time.UTC); got.DueAt == nil || !got.DueAt.Equal(want) {
 		t.Fatalf("bad due_tz: due %v, want %v (London)", got.DueAt, want)
+	}
+}
+
+// Without a cookie the page names the server's zone, so a browser in that zone
+// needs no extra reload.
+func TestDefaultZoneNamesTheServerZone(t *testing.T) {
+	env := newTestEnv(t, web.WithDefaultZone(mustZone(t, "Asia/Tokyo")))
+	if z := bodyZone(t, do(t, env.H, "GET", "/", nil, nil).Body.String()); z != "Asia/Tokyo" {
+		t.Fatalf("no cookie: data-tz = %q, want Asia/Tokyo", z)
+	}
+	if z := bodyZone(t, do(t, env.H, "GET", "/", nil, tz("Europe/Warsaw")).Body.String()); z != "Europe/Warsaw" {
+		t.Fatalf("cookie: data-tz = %q, want Europe/Warsaw", z)
 	}
 }

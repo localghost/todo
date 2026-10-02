@@ -36,6 +36,7 @@ type server struct {
 	views          sync.Map           // zone name → *template.Template bound to that zone
 	zones          sync.Map           // todo_tz cookie value → *time.Location
 	viewCount      atomic.Int32       // entries in views, at most maxZoneSets
+	defaultZone    *time.Location     // zone without a valid todo_tz cookie; nil: the clock's zone
 	log            *slog.Logger
 	now            func() time.Time
 	powBits        int
@@ -66,6 +67,10 @@ func WithSigningKey(key []byte) Option { return func(s *server) { s.signingKey =
 // WithClientIPHeader makes the app take the client IP from the header name, which
 // the proxy sets (for example Fly-Client-IP on Fly.io). It wins over WithTrustProxy.
 func WithClientIPHeader(name string) Option { return func(s *server) { s.clientIPHeader = name } }
+
+// WithDefaultZone sets the time zone for browsers that send no valid todo_tz
+// cookie. Its name appears in data-tz, so it should be an IANA name, not "Local".
+func WithDefaultZone(loc *time.Location) Option { return func(s *server) { s.defaultZone = loc } }
 
 // WithTrustProxy makes the app take the client IP from X-Forwarded-For.
 func WithTrustProxy(trust bool) Option { return func(s *server) { s.trustProxy = trust } }
@@ -134,13 +139,13 @@ type part struct {
 // render executes all parts into one buffer, then writes status and body.
 // If a template fails, the client gets a 500 and no half-written HTML.
 func (s *server) render(w http.ResponseWriter, r *http.Request, status int, parts ...part) {
+	tmpl, err := s.templatesFor(s.zoneFor(r))
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
 	var buf bytes.Buffer
 	for _, p := range parts {
-		tmpl, err := s.templatesFor(s.zoneFor(r))
-		if err != nil {
-			s.serverError(w, r, err)
-			return
-		}
 		if err := tmpl.ExecuteTemplate(&buf, p.name, p.data); err != nil {
 			s.serverError(w, r, err)
 			return
@@ -288,6 +293,9 @@ func (s *server) zoneFor(r *http.Request) *time.Location {
 		if loc, ok := s.parseZone(c.Value); ok {
 			return loc
 		}
+	}
+	if s.defaultZone != nil {
+		return s.defaultZone
 	}
 	return s.now().Location()
 }
