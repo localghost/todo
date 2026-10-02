@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"todo/internal/config"
 )
 
 // The Dockerfile, fly.toml and mise.toml must name the same port, paths and app.
@@ -63,5 +65,17 @@ func TestDeployConfigMatches(t *testing.T) {
 	// During a restore there are two volumes; list the snapshots of the attached one.
 	if !strings.Contains(mise, `select(.name == \"todo_data\" and .attached_machine_id != null)`) {
 		t.Error("fly:snapshots does not select the attached todo_data volume")
+	}
+	// The image contains config.yaml at the path that -config names.
+	copied := find(docker, `(?m)^COPY config\.yaml (\S+)$`, "Dockerfile COPY config.yaml")
+	if p := find(docker, `"-config", "([^"]+)"`, "Dockerfile -config path"); p != copied {
+		t.Errorf("Dockerfile copies config.yaml to %s but starts the app with -config %s", copied, p)
+	}
+	cfg, err := config.Load("../../config.yaml", false)
+	if err != nil {
+		t.Fatalf("config.yaml: %v", err)
+	}
+	if cfg.Password.MinLength != 8 {
+		t.Errorf("config.yaml min_length = %d, want 8", cfg.Password.MinLength)
 	}
 }

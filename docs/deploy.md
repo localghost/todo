@@ -90,3 +90,15 @@ Then run `fly volumes list` and check that the volume is attached to the new mac
 
 If the volume becomes full, run `fly volumes extend <volume id> --size 2`.
 A volume can grow, but it cannot shrink.
+
+## 9. Settings
+
+The file `config.yaml` in the repository holds the app settings. Today it has one setting:
+`password.min_length`, the shortest allowed password (default 8).
+
+The image contains this file at `/etc/todo/config.yaml`. To change a setting:
+
+1. Edit `config.yaml`.
+2. Run `mise run fly:deploy`.
+
+The new minimum applies when someone signs up or changes a password. Existing passwords keep working.

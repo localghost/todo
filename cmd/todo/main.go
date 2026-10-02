@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"todo/internal/auth"
+	"todo/internal/config"
 	"todo/internal/store/sqlite"
 	"todo/internal/todo"
 	"todo/internal/web"
@@ -35,6 +36,7 @@ func main() {
 func run() error {
 	addr := flag.String("addr", "127.0.0.1:8811", "address to listen on")
 	dbPath := flag.String("db", "todo.db", "path to the SQLite database file")
+	configPath := flag.String("config", "config.yaml", "path to the settings file; if -config is not given and the file is missing, the defaults apply")
 	clientIPHeader := flag.String("client-ip-header", "", "take the client IP from this header, which the proxy sets (for example Fly-Client-IP); wins over -trust-proxy")
 	trustProxy := flag.Bool("trust-proxy", false, "take the client IP from X-Forwarded-For (only behind an HTTPS proxy that sets it)")
 	deleteOldItems := flag.Bool("delete-old-items", false, "allow deleting items from before user accounts when the database is upgraded")
@@ -42,13 +44,22 @@ func run() error {
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
+	// A path given with -config must exist, so a wrong path cannot fall back to the defaults.
+	configSet := false
+	flag.Visit(func(f *flag.Flag) { configSet = configSet || f.Name == "config" })
+	cfg, err := config.Load(*configPath, !configSet)
+	if err != nil {
+		return err
+	}
+	logger.Info("settings", "config", *configPath, "min_password_length", cfg.Password.MinLength)
+
 	store, err := sqlite.OpenWith(*dbPath, sqlite.Options{DeleteOldItems: *deleteOldItems})
 	if err != nil {
 		return err
 	}
 	defer store.Close()
 
-	accounts := auth.NewService(store)
+	accounts := auth.NewService(store, auth.WithMinPasswordChars(cfg.Password.MinLength))
 	key, err := store.SigningKey(context.Background())
 	if err != nil {
 		return err

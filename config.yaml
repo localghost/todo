@@ -1,0 +1,6 @@
+# Settings for the todo app. Restart the app after a change.
+# On Fly.io the image contains this file: edit it, then run `mise run fly:deploy`.
+password:
+  # Shortest allowed password, in characters (1–200).
+  # It applies when someone signs up or changes a password, not to existing passwords.
+  min_length: 8

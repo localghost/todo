@@ -27,7 +27,8 @@ version. The SQLite file survives restarts and new versions. The admin commands
 - Build stage `golang:1.27.1`: `CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /todo ./cmd/todo`.
   The SQLite driver is pure Go, so the binary is static.
 - Run stage `gcr.io/distroless/static-debian12`: no shell and no package manager.
-- `ENTRYPOINT ["/todo"]`, `CMD ["-addr", ":8080", "-db", "/data/todo.db", "-client-ip-header", "Fly-Client-IP"]`.
+- `ENTRYPOINT ["/todo"]`, `CMD ["-addr", ":8080", "-db", "/data/todo.db", "-client-ip-header", "Fly-Client-IP", "-config", "/etc/todo/config.yaml"]`.
+- The run stage copies `config.yaml` (settings, for example `password.min_length`) to `/etc/todo/config.yaml` (added 2026-10-02).
 - The app runs as root inside its own Fly microVM, because Fly mounts volumes as root and the
   image has no shell to change the owner. The VM holds only this app and its data.
 - `.dockerignore` keeps local databases, the built binary, `.git`, `tmp/`, `docs/`, and

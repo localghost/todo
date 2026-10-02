@@ -9,5 +9,7 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /todo ./cmd/todo
 
 FROM gcr.io/distroless/static-debian12
 COPY --from=build /todo /todo
+# Settings (password.min_length and more); edit config.yaml and deploy again to change them.
+COPY config.yaml /etc/todo/config.yaml
 ENTRYPOINT ["/todo"]
-CMD ["-addr", ":8080", "-db", "/data/todo.db", "-client-ip-header", "Fly-Client-IP"]
+CMD ["-addr", ":8080", "-db", "/data/todo.db", "-client-ip-header", "Fly-Client-IP", "-config", "/etc/todo/config.yaml"]
