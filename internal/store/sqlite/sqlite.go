@@ -16,60 +16,98 @@ import (
 	"todo/internal/todo"
 )
 
-var schema = []string{
-	`CREATE TABLE IF NOT EXISTS users (
-		id   INTEGER PRIMARY KEY,
-		name TEXT NOT NULL
-	)`,
-	`INSERT OR IGNORE INTO users (id, name) VALUES (1, 'default')`,
-	`CREATE TABLE IF NOT EXISTS items (
-		id         INTEGER PRIMARY KEY,
-		user_id    INTEGER NOT NULL REFERENCES users(id),
-		text       TEXT    NOT NULL,
-		done       INTEGER NOT NULL DEFAULT 0,
-		position   INTEGER NOT NULL,
-		created_at TEXT    NOT NULL,
-		updated_at TEXT    NOT NULL
-	)`,
-	`CREATE INDEX IF NOT EXISTS items_user_position ON items (user_id, position)`,
-}
-
 const itemCols = `id, user_id, text, done, position, created_at, updated_at, due_at, due_all_day, notified_at`
 
-// newColumns are added to items when they are missing (databases from
-// before due dates). The list only grows; never remove an entry.
-var newColumns = []struct{ name, def string }{
-	{"due_at", "TEXT"},
-	{"due_all_day", "INTEGER NOT NULL DEFAULT 0"},
-	{"notified_at", "TEXT"},
+// schemaV2 is the schema since user accounts (PRAGMA user_version = 2).
+var schemaV2 = []string{
+	`CREATE TABLE users (
+		id            INTEGER PRIMARY KEY,
+		username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
+		password_hash TEXT NOT NULL,
+		created_at    TEXT NOT NULL
+	)`,
+	`CREATE TABLE sessions (
+		token_hash TEXT PRIMARY KEY,
+		user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		created_at TEXT NOT NULL,
+		expires_at TEXT NOT NULL,
+		persistent INTEGER NOT NULL
+	)`,
+	`CREATE INDEX sessions_user ON sessions (user_id)`,
+	`CREATE TABLE settings (
+		key   TEXT PRIMARY KEY,
+		value TEXT NOT NULL
+	)`,
+	`CREATE TABLE items (
+		id          INTEGER PRIMARY KEY,
+		user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		text        TEXT    NOT NULL,
+		done        INTEGER NOT NULL DEFAULT 0,
+		position    INTEGER NOT NULL,
+		created_at  TEXT    NOT NULL,
+		updated_at  TEXT    NOT NULL,
+		due_at      TEXT,
+		due_all_day INTEGER NOT NULL DEFAULT 0,
+		notified_at TEXT
+	)`,
+	`CREATE INDEX items_user_position ON items (user_id, position)`,
 }
 
-func migrate(db *sql.DB) error {
-	rows, err := db.Query(`SELECT name FROM pragma_table_info('items')`)
+// Options change how OpenWith sets up the database.
+type Options struct {
+	// DeleteOldItems allows the step to schema version 2 to delete items
+	// from before user accounts.
+	DeleteOldItems bool
+}
+
+// OldItemsError means the database still has items from before user accounts.
+type OldItemsError struct{ Count int }
+
+func (e *OldItemsError) Error() string {
+	return fmt.Sprintf("this database has %d items from before user accounts.\n"+
+		"Start again with -delete-old-items to delete them and continue.", e.Count)
+}
+
+// migrate brings the database to schema version 2.
+func migrate(db *sql.DB, opts Options) error {
+	var version int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		return err
+	}
+	if version >= 2 {
+		return nil
+	}
+	var hasItems int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'items'`).Scan(&hasItems); err != nil {
+		return err
+	}
+	if hasItems > 0 {
+		var n int
+		if err := db.QueryRow(`SELECT COUNT(*) FROM items`).Scan(&n); err != nil {
+			return err
+		}
+		if n > 0 && !opts.DeleteOldItems {
+			return &OldItemsError{Count: n}
+		}
+	}
+	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
-	have := map[string]bool{}
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			rows.Close()
+	defer tx.Rollback()
+	steps := append([]string{
+		`DROP TABLE IF EXISTS items`,
+		`DROP TABLE IF EXISTS sessions`,
+		`DROP TABLE IF EXISTS settings`,
+		`DROP TABLE IF EXISTS users`,
+	}, schemaV2...)
+	steps = append(steps, `PRAGMA user_version = 2`)
+	for _, stmt := range steps {
+		if _, err := tx.Exec(stmt); err != nil {
 			return err
 		}
-		have[name] = true
 	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	for _, c := range newColumns {
-		if !have[c.name] {
-			if _, err := db.Exec(`ALTER TABLE items ADD COLUMN ` + c.name + ` ` + c.def); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	return tx.Commit()
 }
 
 // Store is a todo.Store backed by SQLite.
@@ -79,8 +117,14 @@ type Store struct {
 
 var _ todo.Store = (*Store)(nil)
 
-// Open opens (or creates) the database file at path and sets up the schema.
+// Open opens (or creates) the database file at path with default options.
 func Open(path string) (*Store, error) {
+	return OpenWith(path, Options{})
+}
+
+// OpenWith opens (or creates) the database file at path and brings the
+// schema to the newest version.
+func OpenWith(path string, opts Options) (*Store, error) {
 	// The DSN below uses "?" and "#" as separators.
 	if strings.ContainsAny(path, "?#") {
 		return nil, fmt.Errorf("open database %q: path must not contain '?' or '#'", path)
@@ -102,14 +146,12 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("open database %q: %w", path, err)
 	}
-	for _, stmt := range schema {
-		if _, err := db.Exec(stmt); err != nil {
-			db.Close()
-			return nil, fmt.Errorf("set up schema in %q: %w", path, err)
-		}
-	}
-	if err := migrate(db); err != nil {
+	if err := migrate(db, opts); err != nil {
 		db.Close()
+		var old *OldItemsError
+		if errors.As(err, &old) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("migrate schema in %q: %w", path, err)
 	}
 	return &Store{db: db}, nil
@@ -235,11 +277,16 @@ func (s *Store) ClaimDue(ctx context.Context, userID int64, now time.Time) ([]to
 // dueLayout has a fixed length, so SQLite can compare due times as text.
 const dueLayout = "2006-01-02T15:04:05Z"
 
+// fixedTime has a fixed length, so SQLite can compare such times as text.
+func fixedTime(t time.Time) string {
+	return t.UTC().Format(dueLayout)
+}
+
 func formatDue(t *time.Time) any {
 	if t == nil {
 		return nil
 	}
-	return t.UTC().Format(dueLayout)
+	return fixedTime(*t)
 }
 
 func parseNullTime(s sql.NullString) (*time.Time, error) {

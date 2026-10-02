@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"todo/internal/store/sqlite"
 	"todo/internal/todo"
@@ -15,6 +16,9 @@ func newService(t *testing.T) *todo.Service {
 	s, err := sqlite.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
+	}
+	if _, err := s.CreateUser(context.Background(), "tester", "x", time.Now()); err != nil {
+		t.Fatalf("CreateUser: %v", err)
 	}
 	t.Cleanup(func() { s.Close() })
 	return todo.NewService(s)

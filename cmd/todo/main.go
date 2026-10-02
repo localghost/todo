@@ -28,11 +28,12 @@ func main() {
 func run() error {
 	addr := flag.String("addr", "127.0.0.1:8811", "address to listen on")
 	dbPath := flag.String("db", "todo.db", "path to the SQLite database file")
+	deleteOldItems := flag.Bool("delete-old-items", false, "allow deleting items from before user accounts when the database is upgraded")
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
-	store, err := sqlite.Open(*dbPath)
+	store, err := sqlite.OpenWith(*dbPath, sqlite.Options{DeleteOldItems: *deleteOldItems})
 	if err != nil {
 		return err
 	}

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"todo/internal/auth"
 	"todo/internal/store/sqlite"
 	"todo/internal/todo"
 )
@@ -22,6 +23,9 @@ func newStore(t *testing.T) *sqlite.Store {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { s.Close() })
+	if _, err := s.CreateUser(context.Background(), "alice", "x", t0); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
 	return s
 }
 
@@ -39,6 +43,9 @@ func TestOpenTwiceKeepsData(t *testing.T) {
 	s, err := sqlite.Open(path)
 	if err != nil {
 		t.Fatalf("first Open: %v", err)
+	}
+	if _, err := s.CreateUser(context.Background(), "alice", "x", t0); err != nil {
+		t.Fatalf("CreateUser: %v", err)
 	}
 	if _, err := s.Create(context.Background(), 1, todo.Change{Text: "Buy milk"}, t0); err != nil {
 		t.Fatalf("Create: %v", err)
@@ -282,38 +289,111 @@ func TestUpdateItemResetsNotified(t *testing.T) {
 	}
 }
 
-func TestOpenMigratesOldDatabase(t *testing.T) {
+func oldDatabase(t *testing.T, items int) string {
+	t.Helper()
 	path := filepath.Join(t.TempDir(), "old.db")
 	db, err := sql.Open("sqlite", "file:"+path)
 	if err != nil {
 		t.Fatalf("sql.Open: %v", err)
 	}
-	for _, stmt := range []string{
+	defer db.Close()
+	stmts := []string{
 		`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)`,
 		`INSERT INTO users (id, name) VALUES (1, 'default')`,
 		`CREATE TABLE items (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id),
 			text TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0, position INTEGER NOT NULL,
-			created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
-		`INSERT INTO items (user_id, text, done, position, created_at, updated_at)
-			VALUES (1, 'Old item', 0, 1, '2026-09-01T10:00:00Z', '2026-09-01T10:00:00Z')`,
-	} {
+			created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+			due_at TEXT, due_all_day INTEGER NOT NULL DEFAULT 0, notified_at TEXT)`,
+	}
+	for i := 0; i < items; i++ {
+		stmts = append(stmts, `INSERT INTO items (user_id, text, done, position, created_at, updated_at)
+			VALUES (1, 'Old item', 0, 1, '2026-09-01T10:00:00Z', '2026-09-01T10:00:00Z')`)
+	}
+	for _, stmt := range stmts {
 		if _, err := db.Exec(stmt); err != nil {
 			t.Fatalf("old schema: %v", err)
 		}
 	}
-	db.Close()
+	return path
+}
 
-	s, err := sqlite.Open(path)
+func userVersion(t *testing.T, path string) int {
+	t.Helper()
+	db, err := sql.Open("sqlite", "file:"+path)
 	if err != nil {
-		t.Fatalf("Open old database: %v", err)
+		t.Fatalf("sql.Open: %v", err)
+	}
+	defer db.Close()
+	var v int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&v); err != nil {
+		t.Fatalf("user_version: %v", err)
+	}
+	return v
+}
+
+func TestOpenRefusesOldItemsWithoutFlag(t *testing.T) {
+	path := oldDatabase(t, 2)
+	_, err := sqlite.Open(path)
+	var old *sqlite.OldItemsError
+	if !errors.As(err, &old) || old.Count != 2 {
+		t.Fatalf("Open err = %v, want OldItemsError with 2 items", err)
+	}
+	want := "this database has 2 items from before user accounts.\nStart again with -delete-old-items to delete them and continue."
+	if err.Error() != want {
+		t.Fatalf("message = %q, want %q", err.Error(), want)
+	}
+	if v := userVersion(t, path); v != 0 {
+		t.Fatalf("user_version = %d after refusal, want 0 (unchanged)", v)
+	}
+}
+
+func TestOpenWithDeleteOldItems(t *testing.T) {
+	path := oldDatabase(t, 2)
+	s, err := sqlite.OpenWith(path, sqlite.Options{DeleteOldItems: true})
+	if err != nil {
+		t.Fatalf("OpenWith: %v", err)
 	}
 	defer s.Close()
-	items, err := s.List(context.Background(), 1, false)
-	if err != nil || len(items) != 1 || items[0].Text != "Old item" || items[0].DueAt != nil {
-		t.Fatalf("List = %+v, %v; want the old item without due date", items, err)
+	if v := userVersion(t, path); v != 2 {
+		t.Fatalf("user_version = %d, want 2", v)
 	}
-	due := t0
-	if _, err := s.UpdateItem(context.Background(), 1, items[0].ID, todo.Change{Text: "Old item", DueAt: &due}, t0); err != nil {
-		t.Fatalf("UpdateItem with due on migrated database: %v", err)
+	if _, err := s.UserByName(context.Background(), "default"); !errors.Is(err, auth.ErrNoUser) {
+		t.Fatalf("old user still there: err = %v", err)
+	}
+}
+
+func TestOpenOldDatabaseWithoutItemsNeedsNoFlag(t *testing.T) {
+	path := oldDatabase(t, 0)
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	s.Close()
+	if v := userVersion(t, path); v != 2 {
+		t.Fatalf("user_version = %d, want 2", v)
+	}
+}
+
+func TestNewDatabaseIsVersion2AndReopens(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "new.db")
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	u, err := s.CreateUser(context.Background(), "alice", "x", t0)
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	s.Close()
+	s, err = sqlite.OpenWith(path, sqlite.Options{DeleteOldItems: true})
+	if err != nil {
+		t.Fatalf("second Open: %v", err)
+	}
+	defer s.Close()
+	if _, err := s.UserByID(context.Background(), u.ID); err != nil {
+		t.Fatalf("user lost on reopen: %v", err)
+	}
+	if v := userVersion(t, path); v != 2 {
+		t.Fatalf("user_version = %d, want 2", v)
 	}
 }

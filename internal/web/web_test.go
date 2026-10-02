@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"todo/internal/store/sqlite"
 	"todo/internal/todo"
@@ -23,6 +24,9 @@ func newTestApp(t *testing.T) (http.Handler, *todo.Service) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { store.Close() })
+	if _, err := store.CreateUser(context.Background(), "tester", "x", time.Now()); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
 	svc := todo.NewService(store)
 	h, err := web.New(svc, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
