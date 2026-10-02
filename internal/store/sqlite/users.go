@@ -188,3 +188,24 @@ func (s *Store) ListUsers(ctx context.Context, now time.Time) ([]UserSummary, er
 	}
 	return list, rows.Err()
 }
+
+// SetPasswordAndEndSessions sets a new password hash and deletes the user's
+// sessions except keepTokenHash ("" deletes all), in one transaction.
+func (s *Store) SetPasswordAndEndSessions(ctx context.Context, userID int64, passwordHash, keepTokenHash string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("set password: %w", err)
+	}
+	defer tx.Rollback()
+	res, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, passwordHash, userID)
+	if err != nil {
+		return fmt.Errorf("set password: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return auth.ErrNoUser
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ? AND token_hash != ?`, userID, keepTokenHash); err != nil {
+		return fmt.Errorf("set password: %w", err)
+	}
+	return tx.Commit()
+}

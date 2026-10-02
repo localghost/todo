@@ -194,3 +194,49 @@ func TestRequireCurrent(t *testing.T) {
 		t.Fatalf("RequireCurrent changed the old file to version %d", v)
 	}
 }
+
+func TestSetPasswordAndEndSessions(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	for _, h := range []string{"keep", "other1", "other2"} {
+		s.CreateSession(ctx, auth.Session{TokenHash: h, UserID: 1, CreatedAt: t0, ExpiresAt: t0.Add(time.Hour)})
+	}
+	if err := s.SetPasswordAndEndSessions(ctx, 1, "new-hash", "keep"); err != nil {
+		t.Fatalf("SetPasswordAndEndSessions: %v", err)
+	}
+	if u, _ := s.UserByID(ctx, 1); u.PasswordHash != "new-hash" {
+		t.Fatalf("hash = %q", u.PasswordHash)
+	}
+	if _, _, err := s.SessionUser(ctx, "keep", t0); err != nil {
+		t.Fatalf("kept session ended: %v", err)
+	}
+	if _, _, err := s.SessionUser(ctx, "other1", t0); !errors.Is(err, auth.ErrNoSession) {
+		t.Fatalf("other session still valid: %v", err)
+	}
+	if err := s.SetPasswordAndEndSessions(ctx, 1, "h2", ""); err != nil {
+		t.Fatalf("end all: %v", err)
+	}
+	if _, _, err := s.SessionUser(ctx, "keep", t0); !errors.Is(err, auth.ErrNoSession) {
+		t.Fatalf("keep=\"\" must end all sessions: %v", err)
+	}
+	if err := s.SetPasswordAndEndSessions(ctx, 999, "x", ""); !errors.Is(err, auth.ErrNoUser) {
+		t.Fatalf("unknown user: %v, want ErrNoUser", err)
+	}
+}
+
+func TestRequireCurrentDoesNotTouchOldFile(t *testing.T) {
+	old := oldDatabase(t, 1)
+	if _, err := sqlite.OpenWith(old, sqlite.Options{RequireCurrent: true}); err == nil {
+		t.Fatal("old file accepted")
+	}
+	if _, err := os.Stat(old + "-wal"); err == nil {
+		t.Fatal("RequireCurrent created a -wal file (journal mode changed)")
+	}
+	db, _ := sql.Open("sqlite", "file:"+old)
+	defer db.Close()
+	var mode string
+	db.QueryRow(`PRAGMA journal_mode`).Scan(&mode)
+	if mode != "delete" {
+		t.Fatalf("journal_mode = %q, want delete (unchanged)", mode)
+	}
+}

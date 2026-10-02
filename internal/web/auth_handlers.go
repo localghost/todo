@@ -78,6 +78,9 @@ func (s *server) login(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
+	if err := s.accounts.LogOut(r.Context(), sessionToken(r)); err != nil {
+		s.log.Error("end previous session", "err", err)
+	}
 	setSessionCookie(w, token, sess)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -149,6 +152,9 @@ func (s *server) signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.serverError(w, r, err)
 		return
+	}
+	if err := s.accounts.LogOut(r.Context(), sessionToken(r)); err != nil {
+		s.log.Error("end previous session", "err", err)
 	}
 	setSessionCookie(w, token, sess)
 	http.Redirect(w, r, "/", http.StatusSeeOther)

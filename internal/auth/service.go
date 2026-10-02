@@ -138,10 +138,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, token, curre
 	if err != nil {
 		return err
 	}
-	if err := s.store.SetPasswordHash(ctx, userID, hash); err != nil {
-		return err
-	}
-	return s.store.DeleteOtherSessions(ctx, userID, HashToken(token))
+	return s.store.SetPasswordAndEndSessions(ctx, userID, hash, HashToken(token))
 }
 
 // DeleteAccount deletes the user, their items, and their sessions, if confirm
@@ -182,10 +179,7 @@ func (s *Service) ResetPassword(ctx context.Context, username string) (string, e
 	if err != nil {
 		return "", err
 	}
-	if err := s.store.SetPasswordHash(ctx, u.ID, hash); err != nil {
-		return "", err
-	}
-	if err := s.store.DeleteSessions(ctx, u.ID); err != nil {
+	if err := s.store.SetPasswordAndEndSessions(ctx, u.ID, hash, ""); err != nil {
 		return "", err
 	}
 	return string(pw), nil

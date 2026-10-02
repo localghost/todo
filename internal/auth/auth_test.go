@@ -248,3 +248,23 @@ func TestResetPassword(t *testing.T) {
 		t.Fatalf("unknown user: err = %v, want ErrNoUser", err)
 	}
 }
+
+func TestCheckPasswordRejectsExtremeParameters(t *testing.T) {
+	salt := "AAAAAAAAAAAAAAAAAAAAAA"                     // 16 bytes
+	key := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" // 32 bytes
+	for _, params := range []string{"m=4194304,t=3,p=4", "m=65536,t=11,p=4", "m=65536,t=3,p=17", "m=65536,t=3,p=0", "m=7,t=3,p=4"} {
+		h := "$argon2id$v=19$" + params + "$" + salt + "$" + key
+		start := time.Now()
+		if auth.CheckPassword(h, pw) {
+			t.Errorf("%s accepted", params)
+		}
+		if d := time.Since(start); d > 50*time.Millisecond {
+			t.Errorf("%s took %v; must be rejected before hashing", params, d)
+		}
+	}
+	for _, sk := range [][2]string{{"AAAA", key}, {salt, "AAAA"}} {
+		if auth.CheckPassword("$argon2id$v=19$m=65536,t=3,p=4$"+sk[0]+"$"+sk[1], pw) {
+			t.Errorf("short salt or key accepted: %v", sk)
+		}
+	}
+}

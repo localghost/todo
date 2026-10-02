@@ -182,3 +182,16 @@ func TestAppJSStopsClaimingWhenLoggedOut(t *testing.T) {
 	js := do(t, env.H, "GET", "/static/app.js", nil, anon).Body.String()
 	assertContains(t, js, "res.status === 401", "claimStopped = true")
 }
+
+func TestLoginEndsPreviousSession(t *testing.T) {
+	env := newTestEnv(t)
+	env.Auth.SignUp(context.Background(), "alice", pw)
+	old, _, _ := env.Auth.LogIn(context.Background(), "alice", pw, true)
+	rec := do(t, env.H, "POST", "/login", url.Values{"username": {"alice"}, "password": {pw}}, cookie(old))
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("login: %d", rec.Code)
+	}
+	if rec := do(t, env.H, "GET", "/", nil, cookie(old)); rec.Code != http.StatusSeeOther {
+		t.Fatalf("old session still valid after a new login: %d", rec.Code)
+	}
+}

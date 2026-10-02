@@ -170,6 +170,16 @@ func OpenWith(path string, opts Options) (*Store, error) {
 		if _, err := os.Stat(path); err != nil {
 			return nil, fmt.Errorf("database %q does not exist", path)
 		}
+		ro, err := sql.Open("sqlite", "file:"+path+"?mode=ro")
+		if err != nil {
+			return nil, fmt.Errorf("open database %q: %w", path, err)
+		}
+		var version int
+		err = ro.QueryRow(`PRAGMA user_version`).Scan(&version)
+		ro.Close()
+		if err != nil || version != 2 {
+			return nil, fmt.Errorf("database %q is not at the current schema version; start the server once to upgrade it", path)
+		}
 	}
 	// Without this check, SQLite reports a missing folder as "out of memory".
 	if dir := filepath.Dir(path); dir != "" {
@@ -189,11 +199,6 @@ func OpenWith(path string, opts Options) (*Store, error) {
 		return nil, fmt.Errorf("open database %q: %w", path, err)
 	}
 	if opts.RequireCurrent {
-		var version int
-		if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil || version != 2 {
-			db.Close()
-			return nil, fmt.Errorf("database %q is not at the current schema version; start the server once to upgrade it", path)
-		}
 		return &Store{db: db}, nil
 	}
 	if err := migrate(db, opts); err != nil {

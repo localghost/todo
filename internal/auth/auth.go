@@ -49,15 +49,13 @@ type Session struct {
 
 // Store keeps users and sessions.
 type Store interface {
-	CreateUser(ctx context.Context, username, passwordHash string, now time.Time) (User, error) // ErrUsernameTaken
-	UserByName(ctx context.Context, username string) (User, error)                              // ErrNoUser; case does not matter
-	UserByID(ctx context.Context, id int64) (User, error)                                       // ErrNoUser
-	SetPasswordHash(ctx context.Context, id int64, passwordHash string) error                   // ErrNoUser
-	DeleteUser(ctx context.Context, id int64) error                                             // ErrNoUser; deletes items and sessions too
+	CreateUser(ctx context.Context, username, passwordHash string, now time.Time) (User, error)            // ErrUsernameTaken
+	UserByName(ctx context.Context, username string) (User, error)                                         // ErrNoUser; case does not matter
+	UserByID(ctx context.Context, id int64) (User, error)                                                  // ErrNoUser
+	SetPasswordAndEndSessions(ctx context.Context, userID int64, passwordHash, keepTokenHash string) error // ErrNoUser; keep "" ends all
+	DeleteUser(ctx context.Context, id int64) error                                                        // ErrNoUser; deletes items and sessions too
 	CreateSession(ctx context.Context, s Session) error
 	SessionUser(ctx context.Context, tokenHash string, now time.Time) (Session, User, error) // ErrNoSession if unknown or expired
 	DeleteSession(ctx context.Context, tokenHash string) error
-	DeleteOtherSessions(ctx context.Context, userID int64, keepTokenHash string) error
 	DeleteExpiredSessions(ctx context.Context, now time.Time) (int64, error)
-	DeleteSessions(ctx context.Context, userID int64) error
 }
