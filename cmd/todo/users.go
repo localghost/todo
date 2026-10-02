@@ -15,7 +15,7 @@ import (
 	"todo/internal/store/sqlite"
 )
 
-const usersUsage = "usage: todo users list | reset-password <name> | delete <name> [-yes]   (options: -db file)"
+const usersUsage = "usage: todo users list | reset-password <name> | delete <name> [-yes]   (options: -db file; put -- before a name that starts with -)"
 
 // runUsers runs the admin command "todo users …".
 func runUsers(args []string, in io.Reader, out io.Writer) error {
@@ -68,14 +68,18 @@ func runUsers(args []string, in io.Reader, out io.Writer) error {
 		}
 		return tw.Flush()
 	case "reset-password":
-		pw, err := auth.NewService(store).ResetPassword(ctx, name)
+		u, err := store.UserByName(ctx, name)
 		if errors.Is(err, auth.ErrNoUser) {
 			return fmt.Errorf("no user %q", name)
 		}
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "New password for %s: %s\n", name, pw)
+		pw, err := auth.NewService(store).ResetPassword(ctx, u.Username)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "New password for %s: %s\n", u.Username, pw)
 		return nil
 	default: // delete
 		u, err := store.UserByName(ctx, name)

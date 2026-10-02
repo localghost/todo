@@ -95,3 +95,18 @@ func TestUsersCommandNeedsCurrentDatabase(t *testing.T) {
 		t.Fatalf("unknown command err = %v, want usage", err)
 	}
 }
+
+func TestUsersPolish(t *testing.T) {
+	path := usersDB(t)
+	var out bytes.Buffer
+	if err := runUsers([]string{"reset-password", "-db", path, "ALICE"}, nil, &out); err != nil {
+		t.Fatalf("reset: %v", err)
+	}
+	if !strings.HasPrefix(out.String(), "New password for alice: ") {
+		t.Fatalf("output %q, want the stored username", out.String())
+	}
+	err := runUsers([]string{"frobnicate"}, nil, &out)
+	if err == nil || !strings.Contains(err.Error(), "--") {
+		t.Fatalf("usage %v must mention --", err)
+	}
+}
