@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -64,7 +65,7 @@ func newTestEnv(t *testing.T, opts ...web.Option) *testEnv {
 		}
 		r.Header.Del(anonHeader)
 		if ip := r.Header.Get(fromIPHeader); ip != "" {
-			r.RemoteAddr = ip + ":40000"
+			r.RemoteAddr = net.JoinHostPort(ip, "40000")
 			r.Header.Del(fromIPHeader)
 		}
 		raw.ServeHTTP(w, r)

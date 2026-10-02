@@ -57,7 +57,10 @@ func (s *server) login(w http.ResponseWriter, r *http.Request) {
 		locked()
 		return
 	}
-	if !s.loginUser.Reserve(userKey) {
+	// A name that breaks the rules cannot exist: it gets no counter, so junk
+	// names cannot fill the limiter's memory.
+	countUser := auth.ValidateUsername(userKey) == nil
+	if countUser && !s.loginUser.Reserve(userKey) {
 		s.loginIP.Release(ip)
 		locked()
 		return
@@ -68,7 +71,9 @@ func (s *server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.loginIP.Release(ip)
-	s.loginUser.Release(userKey)
+	if countUser {
+		s.loginUser.Release(userKey)
+	}
 	if err != nil {
 		s.serverError(w, r, err)
 		return

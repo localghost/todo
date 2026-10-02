@@ -108,3 +108,27 @@ func TestProofOK(t *testing.T) {
 		t.Fatal("a nonce longer than 32 characters must fail")
 	}
 }
+
+// A token stays used in every spelling the base64 decoder accepts.
+func TestUsedTokenCannotBeReusedInAnotherSpelling(t *testing.T) {
+	c := &clock{t: time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC)}
+	tk := guard.NewTokens([]byte("0123456789abcdef0123456789abcdef"), c.now)
+	tok := tk.New()
+	c.t = c.t.Add(guard.MinFillTime)
+	if err := tk.Check(tok, "0", 0); err != nil {
+		t.Fatalf("first use: %v", err)
+	}
+	p, sig, _ := strings.Cut(tok, ".")
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+	last := strings.IndexByte(alphabet, sig[len(sig)-1])
+	flipped := sig[:len(sig)-1] + string(alphabet[last^1]) // same decoded bytes (unused low bits)
+	for name, v := range map[string]string{
+		"newline at end":      tok + "\n",
+		"newline in sig":      p + ".\n" + sig,
+		"unused bits changed": p + "." + flipped,
+	} {
+		if err := tk.Check(v, "0", 0); err == nil {
+			t.Errorf("%s: reused token accepted", name)
+		}
+	}
+}

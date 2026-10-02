@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/netip"
 	"strconv"
 	"strings"
 	"time"
@@ -200,20 +201,41 @@ func limitBody(next http.Handler) http.Handler {
 	})
 }
 
-// clientIP is the address used for the limits. With -trust-proxy it is the
-// last address in X-Forwarded-For, which the proxy adds.
+// clientIP is the key used for the limits. With -trust-proxy it is the last
+// address in X-Forwarded-For, which the proxy adds. An IPv6 address counts
+// as its /64 network, because one client usually controls a whole /64.
 func (s *server) clientIP(r *http.Request) string {
 	if s.trustProxy {
 		if vals := r.Header.Values("X-Forwarded-For"); len(vals) > 0 {
 			parts := strings.Split(vals[len(vals)-1], ",")
-			if ip := strings.TrimSpace(parts[len(parts)-1]); net.ParseIP(ip) != nil {
-				return ip
+			if key, ok := ipKey(strings.TrimSpace(parts[len(parts)-1])); ok {
+				return key
 			}
 		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		host = r.RemoteAddr
+	}
+	if key, ok := ipKey(host); ok {
+		return key
 	}
 	return host
+}
+
+// ipKey returns the limiter key of an address: IPv4 as is, IPv6 as its /64.
+func ipKey(s string) (string, bool) {
+	addr, err := netip.ParseAddr(s)
+	if err != nil {
+		return "", false
+	}
+	addr = addr.Unmap().WithZone("")
+	if addr.Is4() {
+		return addr.String(), true
+	}
+	prefix, err := addr.Prefix(64)
+	if err != nil {
+		return "", false
+	}
+	return prefix.String(), true
 }

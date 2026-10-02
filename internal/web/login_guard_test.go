@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -119,6 +120,32 @@ func TestForwardedForOnlyWithTrustProxy(t *testing.T) {
 		}
 		if code != want {
 			t.Errorf("trust=%v: %d, want %d", trust, code, want)
+		}
+	}
+}
+
+// All addresses of one IPv6 /64 network count as one client.
+func TestLoginLimitGroupsIPv6Networks(t *testing.T) {
+	env := newTestEnv(t)
+	env.Auth.SignUp(context.Background(), "alice", pw)
+	for i := 1; i <= 20; i++ {
+		login(t, env, "nobody"+strconv.Itoa(i), "wrong password", fromIP("2001:db8:1:2::"+strconv.FormatInt(int64(i), 16)))
+	}
+	if code := login(t, env, "alice", pw, fromIP("2001:db8:1:2:ffff::99")); code != http.StatusTooManyRequests {
+		t.Fatalf("same /64 after 20 failures: %d, want 429", code)
+	}
+	if code := login(t, env, "alice", pw, fromIP("2001:db8:1:3::1")); code != http.StatusSeeOther {
+		t.Fatalf("other /64: %d, want 303", code)
+	}
+}
+
+// Names that cannot exist get no username counter (no memory for junk names).
+func TestInvalidUsernamesAreNotCounted(t *testing.T) {
+	env := newTestEnv(t)
+	bad := strings.Repeat("x!", 500)
+	for i := 0; i < 6; i++ {
+		if code := login(t, env, bad, "wrong password", fromIP("203.0.113."+strconv.Itoa(i+1))); code != http.StatusUnprocessableEntity {
+			t.Fatalf("try %d with an impossible name: %d, want 422 (never locked)", i+1, code)
 		}
 	}
 }

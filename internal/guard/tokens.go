@@ -68,7 +68,9 @@ func (t *Tokens) Check(token, nonce string, bits int) error {
 		return ErrBadToken
 	}
 	got, err := b64.DecodeString(sig)
-	if err != nil || !hmac.Equal(got, t.sign(p)) {
+	// Only the one canonical spelling counts: the decoder would also accept
+	// line breaks and changed unused bits, which would bypass "one use".
+	if err != nil || b64.EncodeToString(got) != sig || !hmac.Equal(got, t.sign(p)) {
 		return ErrBadToken
 	}
 	payload, err := b64.DecodeString(p)
@@ -87,7 +89,8 @@ func (t *Tokens) Check(token, nonce string, bits int) error {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if _, seen := t.used[token]; seen {
+	// The payload is bound by the signature, so it is the stable key.
+	if _, seen := t.used[p]; seen {
 		return ErrUsedToken
 	}
 	if len(t.used) > 1000 {
@@ -97,7 +100,7 @@ func (t *Tokens) Check(token, nonce string, bits int) error {
 			}
 		}
 	}
-	t.used[token] = t.now()
+	t.used[p] = t.now()
 	return nil
 }
 
