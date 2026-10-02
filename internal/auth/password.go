@@ -63,8 +63,9 @@ func CheckPassword(encoded, password string) bool {
 		return false
 	}
 	// Bounds stop a broken or hostile stored hash from using huge memory or time:
-	// at most 4× the app's own memory and 2× its time.
-	if memory < 8*1024 || memory > 4*argonMemory || time == 0 || time > 2*argonTime || threads == 0 || threads > 16 {
+	// at most the app's own memory (so hashSlotCount checks fit in the machine) and
+	// 2× its time. If argonMemory is ever lowered, raise this bound for old hashes first.
+	if memory < 8*1024 || memory > argonMemory || time == 0 || time > 2*argonTime || threads == 0 || threads > 16 {
 		return false
 	}
 	salt, err := b64.DecodeString(parts[4])

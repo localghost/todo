@@ -255,7 +255,7 @@ func TestResetPassword(t *testing.T) {
 func TestCheckPasswordRejectsExtremeParameters(t *testing.T) {
 	salt := "AAAAAAAAAAAAAAAAAAAAAA"                     // 16 bytes
 	key := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" // 32 bytes
-	for _, params := range []string{"m=4194304,t=3,p=4", "m=65536,t=11,p=4", "m=65536,t=3,p=17", "m=65536,t=3,p=0", "m=7,t=3,p=4", "m=524288,t=3,p=4", "m=65536,t=7,p=4"} {
+	for _, params := range []string{"m=4194304,t=3,p=4", "m=65536,t=11,p=4", "m=65536,t=3,p=17", "m=65536,t=3,p=0", "m=7,t=3,p=4", "m=524288,t=3,p=4", "m=65536,t=7,p=4", "m=131072,t=3,p=4"} {
 		h := "$argon2id$v=19$" + params + "$" + salt + "$" + key
 		start := time.Now()
 		if auth.CheckPassword(h, pw) {
