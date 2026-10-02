@@ -298,3 +298,28 @@ document.addEventListener("htmx:afterRequest", (e) => {
 document.addEventListener("htmx:historyCacheMissLoadError", () => {
   location.reload();
 });
+
+// 10. Overdue items move to the top. The list section names the moment when
+// the next item becomes overdue (data-next-overdue, Unix ms); refresh the list
+// then. Never while an edit row is open: try again later. Plan at most 6 hours
+// ahead, so a sleeping laptop does not miss the moment for long.
+let overdueTimer = null;
+function planOverdueRefresh() {
+  clearTimeout(overdueTimer);
+  const section = document.getElementById("list-section");
+  const next = section ? Number(section.dataset.nextOverdue) : 0;
+  if (!next) {
+    return;
+  }
+  const wait = Math.min(Math.max(next - Date.now() + 1000, 1000), 6 * 60 * 60 * 1000);
+  overdueTimer = setTimeout(refreshForOverdue, wait);
+}
+function refreshForOverdue() {
+  if (document.querySelector(".item.editing")) {
+    overdueTimer = setTimeout(refreshForOverdue, 30000);
+    return;
+  }
+  htmx.ajax("GET", "/", { target: "#list-section", swap: "outerHTML" });
+}
+document.addEventListener("DOMContentLoaded", planOverdueRefresh);
+document.addEventListener("htmx:afterSettle", planOverdueRefresh);

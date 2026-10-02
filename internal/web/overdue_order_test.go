@@ -126,3 +126,12 @@ func TestOverdueOrderWithDoneHidden(t *testing.T) {
 	assertNotContains(t, body, ">Call the dentist<")
 	assertOrder(t, body, "Pay the rent", "Return library books", "Water the plants")
 }
+
+// app.js refreshes the list when the next item becomes overdue, never while an
+// edit row is open, and plans at most 6 hours ahead.
+func TestAppJSRefreshesWhenOverdue(t *testing.T) {
+	env := newTestEnv(t)
+	js := do(t, env.H, "GET", "/static/app.js", nil, anon).Body.String()
+	assertContains(t, js, "dataset.nextOverdue", `htmx.ajax("GET", "/", { target: "#list-section", swap: "outerHTML" })`,
+		`document.querySelector(".item.editing")`, "6 * 60 * 60 * 1000", "clearTimeout(overdueTimer)")
+}

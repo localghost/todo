@@ -134,6 +134,7 @@ Rules:
 - All service methods take a `userID`. In the first version, the `web` package always passes `1`.
 - A new item gets `position = max(position) + 1` for its user. So new items go to the end of the list.
 - The list is sorted by `position`. Done items keep their place.
+- Since 2026-10-02: overdue open items come first, most overdue first (canvas page "14 · Overdue at the top", option A: no extra heading). The other items keep the `position` order below them. The due-dates spec has the details.
 - Times are stored as UTC text in RFC 3339 format.
 
 ## 6. UI

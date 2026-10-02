@@ -110,6 +110,12 @@ The due label goes after the added date in the grey line, for example "Added 28 
 
 An item with a time is overdue when `now > due_at`. An all-day item is overdue only after its day ends. Its notification still comes at 09:00 on that day, as a reminder.
 
+### Overdue items at the top (2026-10-02)
+
+Overdue open items are at the top of the list, most overdue first (by due moment, then id). The other items keep their order. Done items are never overdue. The rule uses the browser's zone, so an all-day item moves at midnight where the user is.
+
+An item moves into or out of the group when it is added, marked done or not done, postponed, or edited. Then the answer is the whole list section (`HX-Retarget: #list-section`, `HX-Reswap: outerHTML`) instead of one row. The list section carries `data-next-overdue` (Unix ms), the moment the next open item becomes overdue. `app.js` refreshes the list then (at most 6 hours ahead; while an edit row is open it waits and tries again every 30 seconds).
+
 ## 6. UI
 
 ### Add form
@@ -187,7 +193,7 @@ A click on the notification calls `window.focus()`, so the todo tab comes to the
 
 Overdue open items show four small buttons under the grey line: "+5 min", "+10 min", "+15 min", "+30 min" (canvas page "11 · Postpone", option B, only on overdue items). Other items show none.
 
-A click sends `POST /items/{id}/postpone?minutes=10`. The new due time is the later of the current due time and now, plus the amount. For an overdue item this is now plus the amount. The item becomes a timed item (`due_all_day = 0`), and `notified_at` is reset, so it notifies again at the new time. The answer is the updated row plus the out-of-band toolbar and permission bar. After the click, focus moves to the row's checkbox, because the buttons disappear.
+A click sends `POST /items/{id}/postpone?minutes=10`. The new due time is the later of the current due time and now, plus the amount. For an overdue item this is now plus the amount. The item becomes a timed item (`due_all_day = 0`), and `notified_at` is reset, so it notifies again at the new time. The answer is the updated row plus the out-of-band toolbar and permission bar; if the item leaves the overdue group, it is the whole list instead (see "Overdue items at the top"). After the click, focus moves to the row's checkbox, because the buttons disappear.
 
 | Case | Status |
 |---|---|
