@@ -10,7 +10,7 @@ import (
 )
 
 func (s *server) index(w http.ResponseWriter, r *http.Request) {
-	lv, err := s.listView(r.Context(), userID(r), hideDoneFrom(r))
+	lv, err := s.listView(r.Context(), userID(r), currentUser(r).HideDone)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -43,7 +43,7 @@ func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	lv, err := s.listView(r.Context(), userID(r), hideDoneFrom(r))
+	lv, err := s.listView(r.Context(), userID(r), currentUser(r).HideDone)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -55,7 +55,7 @@ func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) toggleItem(w http.ResponseWriter, r *http.Request) {
-	hideDone := hideDoneFrom(r)
+	hideDone := currentUser(r).HideDone
 	id, ok := parseID(r)
 	if !ok {
 		s.oobOnly(w, r, http.StatusNotFound)
@@ -105,7 +105,7 @@ func (s *server) deleteItem(w http.ResponseWriter, r *http.Request) {
 // oobOnly answers with an empty main body (htmx removes the target row)
 // plus the out-of-band toolbar and empty state.
 func (s *server) oobOnly(w http.ResponseWriter, r *http.Request, status int) {
-	lv, err := s.listView(r.Context(), userID(r), hideDoneFrom(r))
+	lv, err := s.listView(r.Context(), userID(r), currentUser(r).HideDone)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -167,7 +167,7 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 	default:
 		// The due date may have changed, so the permission bar comes along.
-		lv, err := s.listView(r.Context(), userID(r), hideDoneFrom(r))
+		lv, err := s.listView(r.Context(), userID(r), currentUser(r).HideDone)
 		if err != nil {
 			s.serverError(w, r, err)
 			return
@@ -253,7 +253,7 @@ func (s *server) postponeItem(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.serverError(w, r, err)
 	default:
-		lv, err := s.listView(r.Context(), userID(r), hideDoneFrom(r))
+		lv, err := s.listView(r.Context(), userID(r), currentUser(r).HideDone)
 		if err != nil {
 			s.serverError(w, r, err)
 			return
@@ -261,4 +261,23 @@ func (s *server) postponeItem(w http.ResponseWriter, r *http.Request) {
 		lv.OOB = true
 		s.render(w, r, http.StatusOK, part{"item", item}, part{"oob", lv})
 	}
+}
+
+// setHideDone saves whether the list hides done items, then shows the list.
+func (s *server) setHideDone(w http.ResponseWriter, r *http.Request) {
+	hide := r.FormValue("hide_done") == "1"
+	if err := s.accounts.SetHideDone(r.Context(), userID(r), hide); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	if !isHTMX(r) {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	lv, err := s.listView(r.Context(), userID(r), hide)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.render(w, r, http.StatusOK, part{"list", lv})
 }

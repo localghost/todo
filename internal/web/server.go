@@ -115,6 +115,7 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Op
 	mux.Handle("PUT /items/{id}", s.protect(s.updateItem))
 	mux.Handle("DELETE /items/{id}", s.protect(s.deleteItem))
 	mux.Handle("POST /notifications/claim", s.protect(s.claimNotifications))
+	mux.Handle("POST /settings/hide-done", s.protect(s.setHideDone))
 	// Rejects changing requests that a browser marks as coming from another site.
 	return securityHeaders(http.NewCrossOriginProtection().Handler(limitBody(mux))), nil
 }
@@ -159,11 +160,6 @@ func (s *server) render(w http.ResponseWriter, r *http.Request, status int, part
 func (s *server) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
 	http.Error(w, "Something went wrong. Please try again.", http.StatusInternalServerError)
-}
-
-// hideDoneFrom reads the hide state from the URL query or the form body.
-func hideDoneFrom(r *http.Request) bool {
-	return r.FormValue("hide_done") == "1"
 }
 
 // parseID reads the {id} path value. It returns false for a bad ID.

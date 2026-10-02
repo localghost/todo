@@ -36,30 +36,32 @@ func TestIndexListsItemsInOrder(t *testing.T) {
 }
 
 func TestIndexHideDone(t *testing.T) {
-	h, svc := newTestApp(t)
-	mustAdd(t, svc, "Buy milk")
-	b := mustAdd(t, svc, "Call the dentist")
-	svc.Toggle(context.Background(), 1, b.ID)
+	env := newTestEnv(t)
+	mustAdd(t, env.Svc, "Buy milk")
+	b := mustAdd(t, env.Svc, "Call the dentist")
+	env.Svc.Toggle(context.Background(), 1, b.ID)
+	env.Auth.SetHideDone(context.Background(), env.User.ID, true)
 
-	body := do(t, h, "GET", "/?hide_done=1", nil, nil).Body.String()
+	body := do(t, env.H, "GET", "/", nil, nil).Body.String()
 	assertContains(t, body, "Buy milk", "Show done (1)", `aria-pressed="true"`,
-		`id="hide-done" name="hide_done" value="1"`)
+		`hx-post="/settings/hide-done"`, `hx-vals='{"hide_done":"0"}'`)
 	assertNotContains(t, body, "Call the dentist")
 }
 
 func TestIndexAllDoneHidden(t *testing.T) {
-	h, svc := newTestApp(t)
-	a := mustAdd(t, svc, "Buy milk")
-	svc.Toggle(context.Background(), 1, a.ID)
+	env := newTestEnv(t)
+	a := mustAdd(t, env.Svc, "Buy milk")
+	env.Svc.Toggle(context.Background(), 1, a.ID)
+	env.Auth.SetHideDone(context.Background(), env.User.ID, true)
 
-	body := do(t, h, "GET", "/?hide_done=1", nil, nil).Body.String()
+	body := do(t, env.H, "GET", "/", nil, nil).Body.String()
 	assertContains(t, body, "All done", "Done items are hidden.")
 	assertNotContains(t, body, "No items yet")
 }
 
 func TestIndexHTMXReturnsFragment(t *testing.T) {
 	h, _ := newTestApp(t)
-	rec := do(t, h, "GET", "/?hide_done=1", nil, htmxHeaders)
+	rec := do(t, h, "GET", "/", nil, htmxHeaders)
 	body := rec.Body.String()
 	assertContains(t, body, `id="list-section"`, `id="toolbar"`)
 	assertNotContains(t, body, "<!doctype html>", `id="add-form"`)

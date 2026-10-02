@@ -9,7 +9,7 @@ import (
 
 func TestAddReturnsRowAndOOB(t *testing.T) {
 	h, _ := newTestApp(t)
-	rec := do(t, h, "POST", "/items", url.Values{"text": {"  Buy milk "}, "hide_done": {""}}, htmxHeaders)
+	rec := do(t, h, "POST", "/items", url.Values{"text": {"  Buy milk "}}, htmxHeaders)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}

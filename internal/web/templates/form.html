@@ -1,4 +1,4 @@
-{{define "add-form"}}<form id="add-form" class="add" hx-post="/items" hx-include="#hide-done" hx-target="#items" hx-swap="beforeend">
+{{define "add-form"}}<form id="add-form" class="add" hx-post="/items" hx-target="#items" hx-swap="beforeend">
 <label class="visually-hidden" for="new-item">New item</label>
 <div class="add-row">
 <input id="new-item" name="text" placeholder="What needs to be done?" autocomplete="off" value="{{.Text}}"{{if and .Focus (not .DueError)}} autofocus{{end}}{{if .Error}} aria-invalid="true" aria-describedby="add-error"{{end}}>

@@ -4,21 +4,21 @@
 
 {{define "item"}}<li id="item-{{.ID}}" class="item{{if .Done}} done{{end}}">
 <button id="check-{{.ID}}" class="check" type="button" aria-label="{{if .Done}}Mark not done{{else}}Mark done{{end}}: {{.Text}}"
-  hx-post="/items/{{.ID}}/toggle" hx-include="#hide-done" hx-target="closest li" hx-swap="outerHTML"><span class="box">{{if .Done}}{{template "check-icon"}}{{end}}</span></button>
+  hx-post="/items/{{.ID}}/toggle" hx-target="closest li" hx-swap="outerHTML"><span class="box">{{if .Done}}{{template "check-icon"}}{{end}}</span></button>
 <div class="text-col">
 <button class="text" type="button" title="Click to edit"
   hx-get="/items/{{.ID}}/edit" hx-target="closest li" hx-swap="outerHTML">{{.Text}}</button>
 {{$d := due .}}<span class="added">{{added .CreatedAt}}{{if $d.Text}} · <span class="due{{if $d.Overdue}} overdue{{end}}">{{$d.Text}}</span>{{end}}</span>
-{{if $d.Overdue}}<span class="postpone" role="group" aria-label="Postpone">{{range postponeMinutes}}<button type="button" class="postpone-btn" aria-label="Postpone {{$.Text}} by {{.}} minutes" hx-post="/items/{{$.ID}}/postpone?minutes={{.}}" hx-include="#hide-done" hx-target="closest li" hx-swap="outerHTML">+{{.}} min</button>{{end}}</span>{{end}}
+{{if $d.Overdue}}<span class="postpone" role="group" aria-label="Postpone">{{range postponeMinutes}}<button type="button" class="postpone-btn" aria-label="Postpone {{$.Text}} by {{.}} minutes" hx-post="/items/{{$.ID}}/postpone?minutes={{.}}" hx-target="closest li" hx-swap="outerHTML">+{{.}} min</button>{{end}}</span>{{end}}
 </div>
 <button class="delete" type="button" aria-label="Delete: {{.Text}}"
-  hx-delete="/items/{{.ID}}" hx-include="#hide-done" hx-target="closest li" hx-swap="outerHTML">{{template "x-icon"}}</button>
+  hx-delete="/items/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">{{template "x-icon"}}</button>
 </li>{{end}}
 
 {{define "item-edit"}}<li id="item-{{.Item.ID}}" class="item editing{{if .Item.Done}} done{{end}}"
   hx-get="/items/{{.Item.ID}}" hx-trigger="cancel-edit" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop">
 <button class="check" type="button" disabled aria-label="Mark done (finish editing first)"><span class="box">{{if .Item.Done}}{{template "check-icon"}}{{end}}</span></button>
-<div class="edit" hx-put="/items/{{.Item.ID}}" hx-trigger="save-edit" hx-include="closest li, #hide-done" hx-validate="true"
+<div class="edit" hx-put="/items/{{.Item.ID}}" hx-trigger="save-edit" hx-include="closest li" hx-validate="true"
   hx-target="closest li" hx-swap="outerHTML" hx-sync="closest li:drop">
 <input name="text" value="{{.Text}}" aria-label="Edit item" autocomplete="off"{{if not .DueError}} autofocus{{end}}{{if .Error}} aria-invalid="true" aria-describedby="edit-error-{{.Item.ID}}"{{end}}>
 <input type="hidden" name="due_tz" value="{{zone}}">

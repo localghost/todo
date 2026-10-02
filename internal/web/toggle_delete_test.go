@@ -13,7 +13,7 @@ import (
 func TestToggleMarksDone(t *testing.T) {
 	h, s := newTestApp(t)
 	mustAdd(t, s, "Buy milk")
-	rec := do(t, h, "POST", "/items/1/toggle", url.Values{"hide_done": {""}}, htmxHeaders)
+	rec := do(t, h, "POST", "/items/1/toggle", url.Values{}, htmxHeaders)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
@@ -31,9 +31,10 @@ func TestToggleTwiceMarksNotDone(t *testing.T) {
 }
 
 func TestToggleInHideModeRemovesRow(t *testing.T) {
-	h, s := newTestApp(t)
-	mustAdd(t, s, "Buy milk")
-	rec := do(t, h, "POST", "/items/1/toggle", url.Values{"hide_done": {"1"}}, htmxHeaders)
+	env := newTestEnv(t)
+	mustAdd(t, env.Svc, "Buy milk")
+	env.Auth.SetHideDone(context.Background(), env.User.ID, true)
+	rec := do(t, env.H, "POST", "/items/1/toggle", url.Values{}, htmxHeaders) // no form value
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
@@ -66,7 +67,7 @@ func TestToggleBadID(t *testing.T) {
 func TestDeleteRemovesItem(t *testing.T) {
 	h, s := newTestApp(t)
 	mustAdd(t, s, "Buy milk")
-	rec := do(t, h, "DELETE", "/items/1?hide_done=", nil, htmxHeaders)
+	rec := do(t, h, "DELETE", "/items/1", nil, htmxHeaders)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}

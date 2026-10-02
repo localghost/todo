@@ -55,7 +55,7 @@ func TestEditRowHasDueLine(t *testing.T) {
 
 	timed := do(t, h, "GET", "/items/1/edit", nil, htmxHeaders).Body.String()
 	assertContains(t, timed,
-		`<div class="edit" hx-put="/items/1" hx-trigger="save-edit" hx-include="closest li, #hide-done"`,
+		`<div class="edit" hx-put="/items/1" hx-trigger="save-edit" hx-include="closest li"`,
 		`name="due_date" value="2026-10-03"`, `name="due_time" value="14:00"`,
 		`<button type="button" class="clear-due">Clear</button>`)
 	allDay := do(t, h, "GET", "/items/2/edit", nil, htmxHeaders).Body.String()

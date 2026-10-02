@@ -10,7 +10,7 @@ import (
 func TestListIncludesHideStateForAllRowRequests(t *testing.T) {
 	h, _ := newTestApp(t)
 	body := do(t, h, "GET", "/", nil, nil).Body.String()
-	assertContains(t, body, `<ul id="items" hx-include="#hide-done">`)
+	assertContains(t, body, `<ul id="items">`)
 }
 
 // "Back" must load fresh data from the server, not an old local copy.
