@@ -27,8 +27,9 @@ func TestDeployConfigMatches(t *testing.T) {
 
 	port := find(docker, `"-addr", ":(\d+)"`, "Dockerfile -addr port")
 	db := find(docker, `"-db", "([^"]+)"`, "Dockerfile -db path")
-	if !strings.Contains(docker, `"-trust-proxy"`) {
-		t.Error("Dockerfile does not start the app with -trust-proxy")
+	// On Fly the rightmost X-Forwarded-For entry is Fly's address, not the client's.
+	if !strings.Contains(docker, `"-client-ip-header", "Fly-Client-IP"`) || strings.Contains(docker, "-trust-proxy") {
+		t.Error("Dockerfile must take the client IP from Fly-Client-IP, not X-Forwarded-For")
 	}
 	if p := find(fly, `internal_port = (\d+)`, "fly.toml internal_port"); p != port {
 		t.Errorf("fly.toml internal_port = %s, Dockerfile -addr port = %s", p, port)
@@ -41,5 +42,26 @@ func TestDeployConfigMatches(t *testing.T) {
 	}
 	if a, b := find(fly, `(?m)^app = "([^"]+)"`, "fly.toml app"), find(mise, `FLY_APP = "([^"]+)"`, "mise.toml FLY_APP"); a != b {
 		t.Errorf("fly.toml app = %s, mise.toml FLY_APP = %s", a, b)
+	}
+
+	// Two password checks (128 MiB live) need a GC limit to stay inside 256 MB.
+	if !regexp.MustCompile(`(?m)^\s*GOMEMLIMIT = "\d+MiB"`).MatchString(fly) {
+		t.Error("fly.toml sets no GOMEMLIMIT")
+	}
+	// Due dates use the server's local time.
+	if !strings.Contains(fly, `TZ = "Europe/Warsaw"`) {
+		t.Error("fly.toml does not set TZ")
+	}
+	// The docs show kill_timeout only as a number of seconds.
+	find(fly, `(?m)^kill_timeout = (\d+)$`, "fly.toml kill_timeout in seconds")
+	// SSH does not wake a stopped machine, so every ssh task wakes it first.
+	for _, block := range strings.Split(mise, "[tasks.")[1:] {
+		if strings.Contains(block, "fly ssh") && !strings.Contains(block, `depends = ["fly:wake"]`) {
+			t.Errorf("mise task %s uses fly ssh without depends = [\"fly:wake\"]", strings.SplitN(block, "]", 2)[0])
+		}
+	}
+	// During a restore there are two volumes; list the snapshots of the attached one.
+	if !strings.Contains(mise, `select(.name == \"todo_data\" and .attached_machine_id != null)`) {
+		t.Error("fly:snapshots does not select the attached todo_data volume")
 	}
 }

@@ -10,4 +10,4 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /todo ./cmd/todo
 FROM gcr.io/distroless/static-debian12
 COPY --from=build /todo /todo
 ENTRYPOINT ["/todo"]
-CMD ["-addr", ":8080", "-db", "/data/todo.db", "-trust-proxy"]
+CMD ["-addr", ":8080", "-db", "/data/todo.db", "-client-ip-header", "Fly-Client-IP"]

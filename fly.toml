@@ -2,8 +2,14 @@
 app = "mytodo"
 primary_region = "waw"
 kill_signal = "SIGTERM"
-kill_timeout = "10s"
+kill_timeout = 10
 swap_size_mb = 256
+
+[env]
+  # Two password checks keep 128 MiB live; the GC limit keeps the heap inside 256 MB.
+  GOMEMLIMIT = "150MiB"
+  # Due dates use the server's local time.
+  TZ = "Europe/Warsaw"
 
 # The database lives on this volume. Fly takes a snapshot every day and keeps 5.
 [mounts]

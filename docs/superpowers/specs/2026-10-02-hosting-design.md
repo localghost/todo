@@ -27,7 +27,7 @@ version. The SQLite file survives restarts and new versions. The admin commands
 - Build stage `golang:1.27.1`: `CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /todo ./cmd/todo`.
   The SQLite driver is pure Go, so the binary is static.
 - Run stage `gcr.io/distroless/static-debian12`: no shell and no package manager.
-- `ENTRYPOINT ["/todo"]`, `CMD ["-addr", ":8080", "-db", "/data/todo.db", "-trust-proxy"]`.
+- `ENTRYPOINT ["/todo"]`, `CMD ["-addr", ":8080", "-db", "/data/todo.db", "-client-ip-header", "Fly-Client-IP"]`.
 - The app runs as root inside its own Fly microVM, because Fly mounts volumes as root and the
   image has no shell to change the owner. The VM holds only this app and its data.
 - `.dockerignore` keeps local databases, the built binary, `.git`, `tmp/`, `docs/`, and
@@ -47,8 +47,9 @@ version. The SQLite file survives restarts and new versions. The admin commands
 ## 5. What the app needs from Fly's proxy
 
 - Fly passes the original `Host` header, so the cross-origin check works.
-- Fly appends the client address to `X-Forwarded-For`. The app's `-trust-proxy` rule takes the
-  rightmost entry, so it gets the real client address. The app port is reachable only through
+- On Fly, the rightmost `X-Forwarded-For` entry is Fly's own address, not the client's
+  (https://fly.io/docs/networking/request-headers/). So the app uses the new flag
+  `-client-ip-header Fly-Client-IP` instead of `-trust-proxy`. The app port is reachable only through
   Fly's proxy.
 - HTTPS ends at Fly's edge. The browser sees HTTPS, so the `Secure` session cookie works.
 - The limit counters live in memory and reset when the machine stops while idle. This is
@@ -60,6 +61,12 @@ Each password check uses 64 MiB. With a limit of 2 parallel checks, the checks u
 128 MiB. The Go program, SQLite, and the VM's Linux need about 50–70 MB more. This fits in
 256 MB. A 3rd check at the same moment waits about 0.2 s. A flood of logins cannot make the
 machine run out of memory. Swap is only a safety margin.
+
+Two parallel checks keep 128 MiB live, and Go's garbage collector lets the heap grow to
+about twice that. `GOMEMLIMIT=150MiB` in `fly.toml` keeps the heap inside the machine (the
+review measured 148 MiB peak with it, 317 MiB without it).
+
+The machine uses `TZ=Europe/Warsaw`, because due dates use the server's local time.
 
 ## 7. Storage and backups
 
@@ -99,7 +106,7 @@ how to stop the app.
 ## 10. Tests and checks
 
 1. `TestDeployConfigMatches` (Go, `cmd/todo`): the db path in the `Dockerfile` is under the
-   mount destination in `fly.toml`. The `-addr` port equals `internal_port`. `-trust-proxy` is
+   mount destination in `fly.toml`. The `-addr` port equals `internal_port`. `-client-ip-header Fly-Client-IP` is
    set. The db path in `mise.toml` equals the one in the `Dockerfile`.
 2. A Go test in `internal/auth` checks that the limit of parallel password checks times the
    memory per check is at most 128 MiB.

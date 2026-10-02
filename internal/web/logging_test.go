@@ -89,3 +89,24 @@ func TestUnreadableForwardedForIsLoggedShort(t *testing.T) {
 		t.Fatalf("log has %d bytes; an attacker-controlled header must be cut", len(out))
 	}
 }
+
+// Fly always sends X-Forwarded-For; with a client IP header the app must not
+// warn about it.
+func TestClientIPHeaderHasNoForwardedForWarning(t *testing.T) {
+	store, err := sqlite.Open(filepath.Join(t.TempDir(), "log.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	var logs syncBuffer
+	h, _ := web.New(todo.NewService(store), auth.NewService(store), slog.New(slog.NewTextHandler(&logs, nil)), web.WithClientIPHeader("Fly-Client-IP"))
+	v := url.Values{"username": {"alice"}, "password": {"wrong password"}}
+	req := httptest.NewRequest("POST", "/login", strings.NewReader(v.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Fly-Client-IP", "198.51.100.7")
+	req.Header.Set("X-Forwarded-For", "198.51.100.7, 66.241.124.1")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+	if out := logs.String(); strings.Contains(out, "X-Forwarded-For") {
+		t.Fatalf("unexpected X-Forwarded-For warning:\n%s", out)
+	}
+}

@@ -28,20 +28,21 @@ var templateFS embed.FS
 var staticFS embed.FS
 
 type server struct {
-	svc        *todo.Service
-	accounts   *auth.Service
-	tmpl       *template.Template
-	log        *slog.Logger
-	now        func() time.Time
-	powBits    int
-	trustProxy bool
-	xffWarn    sync.Once
-	signingKey []byte
-	tokens     *guard.Tokens
-	signupTry  *guard.Limiter // sign-up attempts per IP
-	signupNew  *guard.Limiter // new accounts per IP
-	loginUser  *guard.Limiter // wrong passwords per lowercase username
-	loginIP    *guard.Limiter // failed logins per IP
+	svc            *todo.Service
+	accounts       *auth.Service
+	tmpl           *template.Template
+	log            *slog.Logger
+	now            func() time.Time
+	powBits        int
+	trustProxy     bool
+	clientIPHeader string
+	xffWarn        sync.Once
+	signingKey     []byte
+	tokens         *guard.Tokens
+	signupTry      *guard.Limiter // sign-up attempts per IP
+	signupNew      *guard.Limiter // new accounts per IP
+	loginUser      *guard.Limiter // wrong passwords per lowercase username
+	loginIP        *guard.Limiter // failed logins per IP
 }
 
 // Option changes how the app is set up.
@@ -56,6 +57,10 @@ func WithPowBits(bits int) Option { return func(s *server) { s.powBits = bits } 
 // WithSigningKey sets the key for sign-up form tokens. Without it, a random
 // key is used, and open sign-up forms stop working after a restart.
 func WithSigningKey(key []byte) Option { return func(s *server) { s.signingKey = key } }
+
+// WithClientIPHeader makes the app take the client IP from the header name, which
+// the proxy sets (for example Fly-Client-IP on Fly.io). It wins over WithTrustProxy.
+func WithClientIPHeader(name string) Option { return func(s *server) { s.clientIPHeader = name } }
 
 // WithTrustProxy makes the app take the client IP from X-Forwarded-For.
 func WithTrustProxy(trust bool) Option { return func(s *server) { s.trustProxy = trust } }
@@ -207,7 +212,13 @@ func limitBody(next http.Handler) http.Handler {
 // address in X-Forwarded-For, which the proxy adds. An IPv6 address counts
 // as its /64 network, because one client usually controls a whole /64.
 func (s *server) clientIP(r *http.Request) string {
-	if vals := r.Header.Values("X-Forwarded-For"); len(vals) > 0 {
+	if s.clientIPHeader != "" {
+		v := strings.TrimSpace(r.Header.Get(s.clientIPHeader))
+		if key, ok := ipKey(v); ok {
+			return key
+		}
+		s.log.Warn("cannot read the client address", "header", s.clientIPHeader, "value", cut(v, 64))
+	} else if vals := r.Header.Values("X-Forwarded-For"); len(vals) > 0 {
 		if !s.trustProxy {
 			s.xffWarn.Do(func() {
 				s.log.Warn("requests have X-Forwarded-For but -trust-proxy is off; if this app runs behind a reverse proxy, start it with -trust-proxy; if not, ignore this (clients can send the header themselves)")

@@ -24,7 +24,7 @@ All common commands are mise tasks. `mise tasks ls` lists them.
 
 ## 3. Check the proxy rule once
 
-The app takes the client address from the `X-Forwarded-For` header that Fly adds.
+The app takes the client address from the `Fly-Client-IP` header that Fly's proxy sets.
 Check once that this works:
 
 1. Log out and enter a wrong password 6 times.
@@ -52,6 +52,8 @@ If the line shows a Fly address, all users share one login limit. Stop and repor
 The new password appears in the output. Give it to the user. They can change it on the account page.
 `fly:delete-user` asks for confirmation first.
 
+If the machine is stopped, these tasks start it first with a web request. This takes a few seconds.
+
 ## 6. Snapshots and restore
 
 To list the snapshots, run `mise run fly:snapshots`.
@@ -64,9 +66,11 @@ To restore the database from a snapshot:
 3. Find the machine ID with `fly machine list` and the new volume ID with `fly volumes list`.
 4. Start a copy of the machine with the new volume:
    `fly machine clone <machine id> --attach-volume <new volume id>:/data`.
-5. Open the app and check your items.
-6. Remove the old machine: `fly machine destroy <old machine id> --force`.
-7. Remove the old volume: `fly volumes destroy <old volume id>`.
+5. Remove the old machine at once, so that only the new machine gets requests:
+   `fly machine destroy <old machine id> --force`.
+   Changes saved on the old machine after step 1 are lost.
+6. Open the app and check your items. If they are wrong, keep the old volume and ask for help.
+7. When the items are correct, remove the old volume: `fly volumes destroy <old volume id>`.
 
 Fly's documentation: https://fly.io/docs/volumes/snapshots/
 

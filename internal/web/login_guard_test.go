@@ -169,3 +169,25 @@ func TestForwardedForWithPort(t *testing.T) {
 		t.Fatalf("other client: %d, want 303", code)
 	}
 }
+
+// On Fly the rightmost X-Forwarded-For entry is Fly's own address, so the app
+// takes the client address from the Fly-Client-IP header.
+func TestClientIPHeader(t *testing.T) {
+	env := newTestEnv(t, web.WithClientIPHeader("Fly-Client-IP"))
+	env.Auth.SignUp(context.Background(), "alice", pw)
+	fly := func(client string) map[string]string {
+		h := fromIP("172.16.0.1") // Fly's proxy
+		h["Fly-Client-IP"] = client
+		h["X-Forwarded-For"] = client + ", 66.241.124.1"
+		return h
+	}
+	for i := 0; i < 20; i++ {
+		login(t, env, "nobody"+strconv.Itoa(i), "wrong password", fly("198.51.100.7"))
+	}
+	if code := login(t, env, "alice", pw, fly("198.51.100.7")); code != http.StatusTooManyRequests {
+		t.Fatalf("same client: %d, want 429", code)
+	}
+	if code := login(t, env, "alice", pw, fly("203.0.113.9")); code != http.StatusSeeOther {
+		t.Fatalf("other client behind the same proxy: %d, want 303", code)
+	}
+}
