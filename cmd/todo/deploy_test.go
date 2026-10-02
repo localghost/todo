@@ -90,7 +90,7 @@ func TestDeployConfigMatches(t *testing.T) {
 		t.Errorf("mise.toml TODO_CONFIG = %s, Dockerfile copies config.yaml to %s", m, copied)
 	}
 	for _, block := range strings.Split(mise, "[tasks.")[1:] {
-		if strings.Contains(block, "fly ssh") && !strings.Contains(block, "-config $TODO_CONFIG") {
+		if strings.Contains(block, "/todo users") && !strings.Contains(block, "-config $TODO_CONFIG") {
 			t.Errorf("mise task %s runs a users command without -config $TODO_CONFIG", strings.SplitN(block, "]", 2)[0])
 		}
 	}
