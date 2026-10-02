@@ -21,13 +21,27 @@ const (
 
 var b64 = base64.RawStdEncoding
 
+// hashSlotCount limits parallel argon2 hashes: each needs 64 MiB, so many
+// parallel logins could otherwise use all memory.
+const hashSlotCount = 4
+
+var hashSlots = make(chan struct{}, hashSlotCount)
+
+// withHashSlot runs f when one of the hash slots is free.
+func withHashSlot(f func()) {
+	hashSlots <- struct{}{}
+	defer func() { <-hashSlots }()
+	f()
+}
+
 // HashPassword returns the argon2id hash of password in its standard text form.
 func HashPassword(password string) (string, error) {
 	salt := make([]byte, argonSalt)
 	if _, err := rand.Read(salt); err != nil {
 		return "", fmt.Errorf("hash password: %w", err)
 	}
-	key := argon2.IDKey([]byte(password), salt, argonTime, argonMemory, argonThreads, argonKey)
+	var key []byte
+	withHashSlot(func() { key = argon2.IDKey([]byte(password), salt, argonTime, argonMemory, argonThreads, argonKey) })
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 		argon2.Version, argonMemory, argonTime, argonThreads, b64.EncodeToString(salt), b64.EncodeToString(key)), nil
 }
@@ -56,7 +70,8 @@ func CheckPassword(encoded, password string) bool {
 	if err != nil || len(key) == 0 {
 		return false
 	}
-	got := argon2.IDKey([]byte(password), salt, time, memory, threads, uint32(len(key)))
+	var got []byte
+	withHashSlot(func() { got = argon2.IDKey([]byte(password), salt, time, memory, threads, uint32(len(key))) })
 	return subtle.ConstantTimeCompare(got, key) == 1
 }
 

@@ -64,7 +64,9 @@ func run() error {
 
 // serve runs the HTTP server on ln until ctx is done, then shuts it down.
 func serve(ctx context.Context, ln net.Listener, h http.Handler, logger *slog.Logger) error {
-	srv := &http.Server{Handler: h, ReadHeaderTimeout: 5 * time.Second}
+	// Timeouts keep slow or idle clients from holding connections open forever.
+	srv := &http.Server{Handler: h, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second,
+		WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second}
 	errCh := make(chan error, 1)
 	go func() { errCh <- srv.Serve(ln) }()
 	logger.Info("listening", "url", "http://"+ln.Addr().String())

@@ -397,3 +397,25 @@ func TestNewDatabaseIsVersion2AndReopens(t *testing.T) {
 		t.Fatalf("user_version = %d, want 2", v)
 	}
 }
+
+// A file of another app (no items table, other tables) must not be changed.
+func TestOpenRefusesForeignDatabase(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "other.db")
+	db, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	if _, err := db.Exec(`CREATE TABLE sessions (id INTEGER PRIMARY KEY, data TEXT)`); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	db.Close()
+	if _, err := sqlite.OpenWith(path, sqlite.Options{DeleteOldItems: true}); err == nil || !strings.Contains(err.Error(), "another app") {
+		t.Fatalf("Open foreign database err = %v, want an 'another app' error", err)
+	}
+	db, _ = sql.Open("sqlite", "file:"+path)
+	defer db.Close()
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE name = 'sessions'`).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("foreign table dropped: %d, %v", n, err)
+	}
+}

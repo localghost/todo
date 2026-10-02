@@ -4,6 +4,7 @@ package web
 import (
 	"bytes"
 	"embed"
+	"errors"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -63,7 +64,7 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger) (http.Hand
 	mux.Handle("DELETE /items/{id}", s.protect(s.deleteItem))
 	mux.Handle("POST /notifications/claim", s.protect(s.claimNotifications))
 	// Rejects changing requests that a browser marks as coming from another site.
-	return securityHeaders(http.NewCrossOriginProtection().Handler(mux)), nil
+	return securityHeaders(http.NewCrossOriginProtection().Handler(limitBody(mux))), nil
 }
 
 // noDirListing answers 404 for folder paths, so the file server never lists files.
@@ -128,6 +129,34 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("Content-Security-Policy", contentSecurityPolicy)
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "same-origin")
+		if !strings.HasPrefix(r.URL.Path, "/static/") {
+			// Private data: the browser must not keep it (for example for Back after logout).
+			h.Set("Cache-Control", "no-store")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// maxBody is the largest request body the app accepts.
+const maxBody = 64 << 10
+
+// limitBody rejects request bodies over maxBody before the form is parsed.
+func limitBody(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet || r.Method == http.MethodHead {
+			next.ServeHTTP(w, r)
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, maxBody)
+		if err := r.ParseForm(); err != nil {
+			var tooBig *http.MaxBytesError
+			if errors.As(err, &tooBig) {
+				http.Error(w, "Request too large.", http.StatusRequestEntityTooLarge)
+				return
+			}
+			http.Error(w, "Bad request.", http.StatusBadRequest)
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
 }

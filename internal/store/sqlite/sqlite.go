@@ -21,7 +21,7 @@ const itemCols = `id, user_id, text, done, position, created_at, updated_at, due
 // schemaV2 is the schema since user accounts (PRAGMA user_version = 2).
 var schemaV2 = []string{
 	`CREATE TABLE users (
-		id            INTEGER PRIMARY KEY,
+		id            INTEGER PRIMARY KEY AUTOINCREMENT,
 		username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
 		password_hash TEXT NOT NULL,
 		created_at    TEXT NOT NULL
@@ -68,6 +68,24 @@ func (e *OldItemsError) Error() string {
 		"Start again with -delete-old-items to delete them and continue.", e.Count)
 }
 
+// userTables lists the tables that are not SQLite's own.
+func userTables(db *sql.DB) ([]string, error) {
+	rows, err := db.Query(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		names = append(names, name)
+	}
+	return names, rows.Err()
+}
+
 // migrate brings the database to schema version 2.
 func migrate(db *sql.DB, opts Options) error {
 	var version int
@@ -77,11 +95,27 @@ func migrate(db *sql.DB, opts Options) error {
 	if version >= 2 {
 		return nil
 	}
-	var hasItems int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'items'`).Scan(&hasItems); err != nil {
+	tables, err := userTables(db)
+	if err != nil {
 		return err
 	}
-	if hasItems > 0 {
+	// Before version 2 the app had only the tables users and items. Any other
+	// table means -db points to another app's file: change nothing.
+	hasItems := false
+	var foreign []string
+	for _, name := range tables {
+		switch name {
+		case "items":
+			hasItems = true
+		case "users":
+		default:
+			foreign = append(foreign, name)
+		}
+	}
+	if len(foreign) > 0 {
+		return fmt.Errorf("the database has tables of another app (%s); use another -db file", strings.Join(foreign, ", "))
+	}
+	if hasItems {
 		var n int
 		if err := db.QueryRow(`SELECT COUNT(*) FROM items`).Scan(&n); err != nil {
 			return err

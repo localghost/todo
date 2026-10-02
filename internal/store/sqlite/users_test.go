@@ -2,11 +2,14 @@ package sqlite_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"todo/internal/auth"
+	"todo/internal/store/sqlite"
 	"todo/internal/todo"
 )
 
@@ -103,5 +106,45 @@ func TestDeleteUserCascades(t *testing.T) {
 	}
 	if err := s.DeleteUser(ctx, 1); !errors.Is(err, auth.ErrNoUser) {
 		t.Fatalf("second DeleteUser err = %v, want ErrNoUser", err)
+	}
+}
+
+// A deleted user's ID is never given to a new user, so leftover rows
+// (for example after a delete without foreign keys) cannot move to someone else.
+func TestUserIDsAreNotReused(t *testing.T) {
+	s := newStore(t) // alice = 1
+	ctx := context.Background()
+	bob, _ := s.CreateUser(ctx, "bob", "x", t0)
+	if err := s.DeleteUser(ctx, bob.ID); err != nil {
+		t.Fatalf("DeleteUser: %v", err)
+	}
+	carol, err := s.CreateUser(ctx, "carol", "x", t0)
+	if err != nil || carol.ID == bob.ID {
+		t.Fatalf("carol = %+v, %v; must not reuse bob's ID %d", carol, err, bob.ID)
+	}
+}
+
+// The cascade really deletes session rows (SessionUser's JOIN would hide orphans).
+func TestDeleteUserRemovesSessionRows(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "c.db")
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+	u, _ := s.CreateUser(ctx, "alice", "x", t0)
+	s.CreateSession(ctx, auth.Session{TokenHash: "a", UserID: u.ID, CreatedAt: t0, ExpiresAt: t0.Add(time.Hour)})
+	if err := s.DeleteUser(ctx, u.ID); err != nil {
+		t.Fatalf("DeleteUser: %v", err)
+	}
+	db, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	defer db.Close()
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sessions`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("session rows after DeleteUser = %d, %v; want 0", n, err)
 	}
 }
