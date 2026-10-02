@@ -369,3 +369,14 @@ document.addEventListener("htmx:afterSwap", () => {
   }
   keptEdit = null;
 });
+
+// 12. Another tab may have changed "hide done". A row answer brings the
+// current toolbar; if its state differs from the list on this page, load the
+// list again, so the page does not show a mix of both states.
+document.addEventListener("htmx:oobAfterSwap", () => {
+  const toolbar = document.getElementById("toolbar");
+  const section = document.getElementById("list-section");
+  if (toolbar && section && toolbar.dataset.hideDone !== section.dataset.hideDone) {
+    htmx.ajax("GET", "/", { target: "#list-section", swap: "outerHTML" });
+  }
+});

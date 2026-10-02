@@ -150,7 +150,7 @@ func TestRowAnswerCarriesNextOverdue(t *testing.T) {
 	rec := do(t, env.H, "POST", "/items", form, warsawHTMX())
 	assertRetarget(t, rec, false)
 	next := time.Date(2026, 10, 2, 16, 1, 0, 0, warsaw).UnixMilli()
-	assertContains(t, rec.Body.String(), `id="toolbar" class="toolbar" hx-swap-oob="true" data-next-overdue="`+strconv.FormatInt(next, 10)+`"`)
+	assertContains(t, rec.Body.String(), `id="toolbar" class="toolbar" hx-swap-oob="true" data-hide-done="false" data-next-overdue="`+strconv.FormatInt(next, 10)+`"`)
 }
 
 // tzHarness-like run of app.js with stubbed DOM, htmx and timers; it prints one

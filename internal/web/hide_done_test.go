@@ -5,6 +5,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -77,5 +81,53 @@ func TestNoHideStateInPages(t *testing.T) {
 		if t.Failed() {
 			t.Fatalf("%s still carries the hide state", name)
 		}
+	}
+}
+
+// The list section and the toolbar name the hide state they were made with, so
+// app.js can see when another tab changed it.
+func TestHideStateMarkersInListAndToolbar(t *testing.T) {
+	env := newTestEnv(t)
+	mustAdd(t, env.Svc, "Buy milk")
+	assertContains(t, do(t, env.H, "GET", "/", nil, nil).Body.String(),
+		`<section id="list-section" data-hide-done="false">`, `id="toolbar" class="toolbar" data-hide-done="false"`)
+	env.Auth.SetHideDone(context.Background(), env.User.ID, true) // another tab hides done items
+	rec := do(t, env.H, "POST", "/items/1/toggle", url.Values{}, htmxHeaders)
+	assertContains(t, rec.Body.String(), `id="toolbar" class="toolbar" hx-swap-oob="true" data-hide-done="true"`)
+}
+
+const hideStateHarness = `
+const src = require("fs").readFileSync(process.argv[2], "utf8");
+let ajax = 0, toolbarState = "false", sectionState = "false";
+const handlers = {};
+const document = {
+  addEventListener: (name, fn) => (handlers[name] = handlers[name] || []).push(fn),
+  getElementById: (id) => id === "toolbar" ? { dataset: { hideDone: toolbarState } }
+    : id === "list-section" ? { dataset: { hideDone: sectionState } } : null,
+  querySelector: () => null, activeElement: null, body: {},
+};
+const fire = (name) => (handlers[name] || []).forEach((fn) => fn({ detail: {} }));
+new Function("document", "window", "navigator", "fetch", "setInterval", "setTimeout", "clearTimeout", "htmx",
+  src)(document, {}, {}, () => new Promise(() => {}), () => 0, () => 0, () => {}, { ajax: () => { ajax++; } });
+fire("htmx:oobAfterSwap"); console.log(JSON.stringify({ name: "same state", ajax }));
+toolbarState = "true"; fire("htmx:oobAfterSwap"); console.log(JSON.stringify({ name: "other tab hid done", ajax }));
+`
+
+func TestAppJSReloadsListWhenHideStateDiffers(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is not installed")
+	}
+	harness := filepath.Join(t.TempDir(), "harness.js")
+	if err := os.WriteFile(harness, []byte(hideStateHarness), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command(node, harness, "static/app.js").CombinedOutput()
+	if err != nil {
+		t.Fatalf("node: %v\n%s", err, out)
+	}
+	want := `{"name":"same state","ajax":0}` + "\n" + `{"name":"other tab hid done","ajax":1}`
+	if got := strings.TrimSpace(string(out)); got != want {
+		t.Fatalf("got\n%s\nwant\n%s", got, want)
 	}
 }
