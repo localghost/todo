@@ -45,8 +45,64 @@ func Load(path string, allowMissing bool) (Config, error) {
 	if err := dec.Decode(&cfg); err != nil && !errors.Is(err, io.EOF) {
 		return cfg, fmt.Errorf("config %s: %w", path, err)
 	}
+	// A second document would be ignored without notice.
+	if err := dec.Decode(new(yaml.Node)); err == nil {
+		return cfg, fmt.Errorf("config %s: only one YAML document is allowed", path)
+	} else if !errors.Is(err, io.EOF) {
+		return cfg, fmt.Errorf("config %s: %w", path, err)
+	}
+	// The decoder keeps the default for a null value and cuts 8.5 to 8, so
+	// check the value in the YAML tree.
+	if err := checkMinLength(data); err != nil {
+		return cfg, fmt.Errorf("config %s: %w", path, err)
+	}
 	if n := cfg.Password.MinLength; n < 1 || n > auth.MaxPasswordChars {
 		return cfg, fmt.Errorf("config %s: password.min_length must be between 1 and %d, got %d", path, auth.MaxPasswordChars, n)
 	}
 	return cfg, nil
+}
+
+// checkMinLength reports a present password section or min_length that has no
+// value, and a min_length that is not a whole number.
+func checkMinLength(data []byte) error {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil || len(doc.Content) == 0 {
+		return err
+	}
+	password := mapValue(doc.Content[0], "password")
+	if password == nil {
+		return nil
+	}
+	if password.Tag == "!!null" {
+		return fmt.Errorf("line %d: password has no value", password.Line)
+	}
+	v := mapValue(password, "min_length")
+	switch {
+	case v == nil || v.Tag == "!!int":
+		return nil
+	case v.Tag == "!!null":
+		return fmt.Errorf("line %d: password.min_length has no value", v.Line)
+	default:
+		return fmt.Errorf("line %d: password.min_length must be a whole number, got %q", v.Line, v.Value)
+	}
+}
+
+// mapValue returns the value of key in the mapping node m, or nil.
+func mapValue(m *yaml.Node, key string) *yaml.Node {
+	if m.Kind == yaml.AliasNode {
+		m = m.Alias
+	}
+	if m.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if m.Content[i].Value == key {
+			v := m.Content[i+1]
+			if v.Kind == yaml.AliasNode {
+				v = v.Alias
+			}
+			return v
+		}
+	}
+	return nil
 }

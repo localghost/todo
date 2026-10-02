@@ -61,6 +61,12 @@ func TestLoadRejectsBadFiles(t *testing.T) {
 		{"zero", "password:\n  min_length: 0\n", "password.min_length"},
 		{"above maximum", "password:\n  min_length: 201\n", "password.min_length"},
 		{"not a number", "password:\n  min_length: eight\n", "eight"},
+		{"second document", "password:\n  min_length: 12\n---\npassword:\n  min_length: 14\n", "one YAML document"},
+		{"empty first documents", "---\n---\npassword:\n  min_length: 12\n", "one YAML document"},
+		{"decimal number", "password:\n  min_length: 8.5\n", "whole number"},
+		{"empty value", "password:\n  min_length:\n", "no value"},
+		{"null value", "password:\n  min_length: null\n", "no value"},
+		{"null section", "password: null\n", "no value"},
 	} {
 		path := write(t, tc.text)
 		_, err := config.Load(path, false)
