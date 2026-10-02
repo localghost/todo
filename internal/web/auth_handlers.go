@@ -100,3 +100,57 @@ func (s *server) logout(w http.ResponseWriter, r *http.Request) {
 	clearSessionCookie(w)
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
+
+type accountView struct {
+	Username      string
+	MemberSince   string
+	PasswordError string
+	PasswordOK    bool
+	DeleteError   string
+}
+
+func (s *server) accountView(r *http.Request) accountView {
+	u := currentUser(r)
+	return accountView{Username: u.Username, MemberSince: u.CreatedAt.In(s.now().Location()).Format("2 Jan 2006")}
+}
+
+func (s *server) accountPage(w http.ResponseWriter, r *http.Request) {
+	s.render(w, r, http.StatusOK, part{"account", s.accountView(r)})
+}
+
+func (s *server) changePassword(w http.ResponseWriter, r *http.Request) {
+	view := s.accountView(r)
+	err := s.accounts.ChangePassword(r.Context(), userID(r), sessionToken(r),
+		r.PostFormValue("current_password"), r.PostFormValue("new_password"))
+	var rule *auth.RuleError
+	switch {
+	case errors.Is(err, auth.ErrWrongPassword):
+		view.PasswordError = "The current password is wrong."
+	case errors.As(err, &rule):
+		view.PasswordError = rule.Msg
+	case err != nil:
+		s.serverError(w, r, err)
+		return
+	default:
+		view.PasswordOK = true
+		s.render(w, r, http.StatusOK, part{"account", view})
+		return
+	}
+	s.render(w, r, http.StatusUnprocessableEntity, part{"account", view})
+}
+
+func (s *server) deleteAccount(w http.ResponseWriter, r *http.Request) {
+	err := s.accounts.DeleteAccount(r.Context(), userID(r), r.PostFormValue("confirm_username"))
+	if errors.Is(err, auth.ErrConfirmMismatch) {
+		view := s.accountView(r)
+		view.DeleteError = "The username does not match."
+		s.render(w, r, http.StatusUnprocessableEntity, part{"account", view})
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	clearSessionCookie(w)
+	http.Redirect(w, r, "/login?deleted=1", http.StatusSeeOther)
+}

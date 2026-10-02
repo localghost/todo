@@ -111,8 +111,8 @@ func TestStaticDirectoryListingIs404(t *testing.T) {
 func TestContentColumnWidth(t *testing.T) {
 	h, _ := newTestApp(t)
 	body := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
-	assertContains(t, body, "max-width: 784px;")
-	assertNotContains(t, body, "max-width: 560px;")
+	// The list column (main) is 784 px; other pages, like the account page, have their own width.
+	assertContains(t, body, "main {\n  max-width: 784px;")
 }
 
 // Each item shows when it was added, also when done; edit mode hides it.
