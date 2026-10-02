@@ -129,3 +129,28 @@ func TestUsersResetFollowsConfig(t *testing.T) {
 		t.Fatal("an explicit -config path that does not exist must be an error")
 	}
 }
+
+// Only reset-password uses the settings; list and delete must work even if the
+// default config.yaml is broken, so an admin can act in an emergency.
+func TestUsersListAndDeleteIgnoreDefaultConfig(t *testing.T) {
+	path := usersDB(t)
+	dir := t.TempDir()
+	bad := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(bad, []byte("password:\n  min_lenght: 12\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+	var out bytes.Buffer
+	if err := runUsers([]string{"list", "-db", path}, nil, &out); err != nil {
+		t.Fatalf("list with a broken default config.yaml: %v", err)
+	}
+	if err := runUsers([]string{"delete", "-yes", "-db", path, "bob"}, nil, &out); err != nil {
+		t.Fatalf("delete with a broken default config.yaml: %v", err)
+	}
+	if err := runUsers([]string{"reset-password", "-db", path, "alice"}, nil, &out); err == nil {
+		t.Fatal("reset-password must read config.yaml and fail on a broken file")
+	}
+	if err := runUsers([]string{"list", "-db", path, "-config", bad}, nil, &out); err == nil {
+		t.Fatal("an explicit -config with a broken file must be an error")
+	}
+}

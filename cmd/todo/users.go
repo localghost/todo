@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"todo/internal/auth"
+	"todo/internal/config"
 	"todo/internal/store/sqlite"
 )
 
@@ -49,9 +50,16 @@ func runUsers(args []string, in io.Reader, out io.Writer) error {
 		return errors.New(usersUsage)
 	}
 
-	cfg, _, err := loadConfig(fs, *configPath)
-	if err != nil {
-		return err
+	// Only reset-password uses the settings. list and delete read the file only
+	// when -config was given, so a broken default file cannot block them.
+	cfg := config.Default()
+	configSet := false
+	fs.Visit(func(f *flag.Flag) { configSet = configSet || f.Name == "config" })
+	if cmd == "reset-password" || configSet {
+		var err error
+		if cfg, _, err = loadConfig(fs, *configPath); err != nil {
+			return err
+		}
 	}
 	store, err := sqlite.OpenWith(*dbPath, sqlite.Options{RequireCurrent: true})
 	if err != nil {
