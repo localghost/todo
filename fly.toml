@@ -1,5 +1,5 @@
 # Fly.io configuration. Common commands are mise tasks (mise.toml); see docs/deploy.md.
-app = "mytodo"
+app = "todoit"
 primary_region = "waw"
 kill_signal = "SIGTERM"
 kill_timeout = 10

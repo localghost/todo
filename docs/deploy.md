@@ -5,18 +5,18 @@ All common commands are mise tasks. `mise tasks ls` lists them.
 
 ## 1. What runs where
 
-- The app runs on one Fly machine named `mytodo` in Warsaw (`waw`).
+- The app runs on one Fly machine named `todoit` in Warsaw (`waw`).
 - The machine has 256 MB of memory. It stops when nobody uses it and starts on the next request.
 - The volume `todo_data` (1 GB) holds the database `/data/todo.db`.
 - Fly takes a snapshot of the volume every day and keeps it for 5 days.
-- The address is `https://mytodo.fly.dev`.
+- The address is `https://todoit.fly.dev`.
 
 ## 2. First setup
 
 1. Install the tools: `mise trust && mise install`. This installs `flyctl` and `jq`.
 2. Log in to Fly: `fly auth login`.
 3. Create the app and the volume: `mise run fly:setup`.
-   If the name `mytodo` is taken, change it in `fly.toml` (`app`) and in `mise.toml` (`FLY_APP`).
+   If the name `todoit` is taken, change it in `fly.toml` (`app`) and in `mise.toml` (`FLY_APP`).
    Then run the task again.
 4. Build the image on Fly without deploying it: `mise run fly:build`.
 5. Deploy: `mise run fly:deploy`.

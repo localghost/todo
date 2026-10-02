@@ -4,7 +4,7 @@ Date: 2026-10-02. Status: design approved by the user; spec waiting for review.
 
 ## 1. Goal
 
-The todo app runs on the internet at `https://mytodo.fly.dev`. One command deploys a new
+The todo app runs on the internet at `https://todoit.fly.dev`. One command deploys a new
 version. The SQLite file survives restarts and new versions. The admin commands
 (`todo users …`) work on the server. Common operations are mise tasks.
 
@@ -13,8 +13,8 @@ version. The SQLite file survives restarts and new versions. The admin commands
 | Topic | Decision |
 |-------|----------|
 | Platform | Fly.io, one machine in region `waw` (Warsaw) |
-| App name | `mytodo` (must be free on Fly; change in `fly.toml` and `mise.toml` if taken) |
-| Address | `mytodo.fly.dev`, HTTPS from Fly. Own domain later is possible. |
+| App name | `todoit` (must be free on Fly; change in `fly.toml` and `mise.toml` if taken) |
+| Address | `todoit.fly.dev`, HTTPS from Fly. Own domain later is possible. |
 | Image build | Small `Dockerfile`, built by Fly's remote builder. No local Docker. |
 | Machine | 256 MB RAM, shared CPU, 256 MB swap. Stops when idle, starts on a request. |
 | Storage | One 1 GB volume `todo_data` at `/data`. Database `/data/todo.db`. |
@@ -35,7 +35,7 @@ version. The SQLite file survives restarts and new versions. The admin commands
 
 ## 4. Fly configuration (`fly.toml`)
 
-- `app = "mytodo"`, `primary_region = "waw"`, `kill_signal = "SIGTERM"`, `kill_timeout = "10s"`,
+- `app = "todoit"`, `primary_region = "waw"`, `kill_signal = "SIGTERM"`, `kill_timeout = "10s"`,
   `swap_size_mb = 256`.
 - `[mounts]`: `source = "todo_data"`, `destination = "/data"`, `snapshot_retention = 5`.
 - `[http_service]`: `internal_port = 8080`, `force_https = true`, `auto_stop_machines = "stop"`,
@@ -113,7 +113,7 @@ how to stop the app.
 3. `mise tasks ls` lists all tasks without errors.
 4. User checks after `fly auth login`:
    - `mise run fly:build` builds the image.
-   - After the first deploy, the user signs up at `https://mytodo.fly.dev`.
+   - After the first deploy, the user signs up at `https://todoit.fly.dev`.
    - After 6 wrong logins, the "login blocked" line in `mise run fly:logs` shows the user's own
      public IP. This proves the proxy rule.
    - `mise run fly:users` lists the new user.
