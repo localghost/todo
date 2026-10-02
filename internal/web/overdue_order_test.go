@@ -2,9 +2,13 @@ package web_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -134,4 +138,96 @@ func TestAppJSRefreshesWhenOverdue(t *testing.T) {
 	js := do(t, env.H, "GET", "/static/app.js", nil, anon).Body.String()
 	assertContains(t, js, "dataset.nextOverdue", `htmx.ajax("GET", "/", { target: "#list-section", swap: "outerHTML" })`,
 		`document.querySelector(".item.editing")`, "6 * 60 * 60 * 1000", "clearTimeout(overdueTimer)")
+}
+
+// A row-only answer must still tell app.js about a new due moment: the OOB
+// toolbar carries data-next-overdue.
+func TestRowAnswerCarriesNextOverdue(t *testing.T) {
+	env := newTestEnv(t)
+	warsaw := mustZone(t, "Europe/Warsaw")
+	env.Clock.t = time.Date(2026, 10, 2, 16, 0, 0, 0, warsaw)
+	form := url.Values{"text": {"Call Bob"}, "due_date": {"2026-10-02"}, "due_time": {"16:01"}}
+	rec := do(t, env.H, "POST", "/items", form, warsawHTMX())
+	assertRetarget(t, rec, false)
+	next := time.Date(2026, 10, 2, 16, 1, 0, 0, warsaw).UnixMilli()
+	assertContains(t, rec.Body.String(), `id="toolbar" class="toolbar" hx-swap-oob="true" data-next-overdue="`+strconv.FormatInt(next, 10)+`"`)
+}
+
+// tzHarness-like run of app.js with stubbed DOM, htmx and timers; it prints one
+// JSON line per step: the planned delay and how many refreshes ran.
+const overdueHarness = `
+const src = require("fs").readFileSync(process.argv[2], "utf8");
+let now = 1000000000000, timers = [], ajax = 0, editing = false, next = 0;
+const handlers = {};
+const document = {
+  addEventListener: (name, fn) => (handlers[name] = handlers[name] || []).push(fn),
+  getElementById: (id) => (id === "toolbar" && next ? { dataset: { nextOverdue: String(next) } } : null),
+  querySelector: (sel) => (sel === ".item.editing" && editing ? {} : null),
+  activeElement: null, body: {},
+};
+const fire = (name, detail) => (handlers[name] || []).forEach((fn) => fn({ detail: detail || {} }));
+const setTimeout = (fn, ms) => { timers.push({ fn, ms }); return timers.length; };
+const clearTimeout = (id) => { if (id) timers[id - 1] = null; };
+const live = () => timers.filter(Boolean);
+const htmx = { ajax: () => { ajax++; } };
+const DateShim = { now: () => now };
+new Function("document", "window", "navigator", "fetch", "setInterval", "setTimeout", "clearTimeout", "htmx", "Date",
+  src)(document, {}, {}, () => new Promise(() => {}), () => 0, setTimeout, clearTimeout, htmx, DateShim);
+const step = (name) => { const t = live(); console.log(JSON.stringify({ name, wait: t.length ? t[t.length - 1].ms : -1, ajax })); };
+const runLast = () => { const t = live(); const last = t[t.length - 1]; timers = []; last.fn(); };
+
+next = now + 60000; fire("DOMContentLoaded"); step("plan in 1 min");
+now = next + 1000; runLast(); step("fired");
+fire("htmx:afterSettle"); step("same moment again");
+editing = true; next = now + 1; timers = []; fire("htmx:afterSettle"); now += 2000; runLast(); step("edit row open");
+editing = false; next = now + 10 * 24 * 3600 * 1000; timers = []; fire("htmx:afterSettle"); step("10 days ahead");
+next = 0; timers = []; fire("htmx:afterSettle"); step("no moment");
+`
+
+func TestAppJSOverdueTimer(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is not installed")
+	}
+	harness := filepath.Join(t.TempDir(), "harness.js")
+	if err := os.WriteFile(harness, []byte(overdueHarness), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command(node, harness, "static/app.js").CombinedOutput()
+	if err != nil {
+		t.Fatalf("node: %v\n%s", err, out)
+	}
+	want := map[string][2]int{ // wait in ms (-1: no timer), refreshes so far
+		"plan in 1 min":     {61000, 0},
+		"fired":             {-1, 1},
+		"same moment again": {30000, 1}, // no 1-second loop when the server still names a past moment
+		"edit row open":     {30000, 1}, // no refresh while editing; try again in 30 s
+		"10 days ahead":     {6 * 60 * 60 * 1000, 1},
+		"no moment":         {-1, 1},
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(lines) != len(want) {
+		t.Fatalf("got %d steps, want %d:\n%s", len(lines), len(want), out)
+	}
+	for _, line := range lines {
+		var got struct {
+			Name string
+			Wait int
+			Ajax int
+		}
+		if err := json.Unmarshal([]byte(line), &got); err != nil {
+			t.Fatalf("%q: %v", line, err)
+		}
+		if w := want[got.Name]; got.Wait != w[0] || got.Ajax != w[1] {
+			t.Errorf("%s: wait %d, refreshes %d; want %d, %d", got.Name, got.Wait, got.Ajax, w[0], w[1])
+		}
+	}
+}
+
+// Focus after a whole-list answer, and an open edit row survives one.
+func TestAppJSKeepsFocusAndEditRow(t *testing.T) {
+	env := newTestEnv(t)
+	js := do(t, env.H, "GET", "/static/app.js", nil, anon).Body.String()
+	assertContains(t, js, `e.detail.elt`, `.closest("li.item")`, `check ? check.id : "new-item"`,
+		"keptEdit", "fresh.replaceWith(keptEdit)", `getElementById("toolbar")`)
 }

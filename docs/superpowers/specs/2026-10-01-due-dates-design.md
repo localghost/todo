@@ -114,7 +114,7 @@ An item with a time is overdue when `now > due_at`. An all-day item is overdue o
 
 Overdue open items are at the top of the list, most overdue first (by due moment, then id). The other items keep their order. Done items are never overdue. The rule uses the browser's zone, so an all-day item moves at midnight where the user is.
 
-An item moves into or out of the group when it is added, marked done or not done, postponed, or edited. Then the answer is the whole list section (`HX-Retarget: #list-section`, `HX-Reswap: outerHTML`) instead of one row. The list section carries `data-next-overdue` (Unix ms), the moment the next open item becomes overdue. `app.js` refreshes the list then (at most 6 hours ahead; while an edit row is open it waits and tries again every 30 seconds).
+An item moves into or out of the group when it is added, marked done or not done, postponed, or edited. Then the answer is the whole list section (`HX-Retarget: #list-section`, `HX-Reswap: outerHTML`) instead of one row. The toolbar carries `data-next-overdue` (Unix ms), the moment the next open item becomes overdue; it comes with every list and row answer. `app.js` refreshes the list then (at most 6 hours ahead; while an edit row is open it waits and tries again every 30 seconds; if the server still names a moment it already refreshed for, it waits at least 30 seconds). A whole-list answer keeps an edit row that is open in another row.
 
 ## 6. UI
 

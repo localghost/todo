@@ -7,9 +7,12 @@
 let focusAfterSwap = null;
 
 document.addEventListener("htmx:beforeSwap", (e) => {
-  const row = e.detail.target;
+  // The row of the element that sent the request; the target can be the whole
+  // list section when an item moves into or out of the overdue group.
+  const source = e.detail.elt;
+  const row = source && source.closest ? source.closest("li.item") : null;
   const active = document.activeElement;
-  if (!row.matches("li.item") || !active || !row.contains(active)) {
+  if (!row || !active || !row.contains(active)) {
     return;
   }
   if (active.matches(".postpone-btn")) {
@@ -20,8 +23,10 @@ document.addEventListener("htmx:beforeSwap", (e) => {
   if (!active.matches(".check, .delete")) {
     return;
   }
+  // Keep the id, not the node: a whole-list answer replaces the node.
   const neighbor = row.nextElementSibling || row.previousElementSibling;
-  focusAfterSwap = neighbor ? neighbor.querySelector(".check") : document.getElementById("new-item");
+  const check = neighbor && neighbor.querySelector(".check");
+  focusAfterSwap = check ? check.id : "new-item";
 });
 
 document.addEventListener("htmx:afterSettle", () => {
@@ -299,27 +304,68 @@ document.addEventListener("htmx:historyCacheMissLoadError", () => {
   location.reload();
 });
 
-// 10. Overdue items move to the top. The list section names the moment when
-// the next item becomes overdue (data-next-overdue, Unix ms); refresh the list
-// then. Never while an edit row is open: try again later. Plan at most 6 hours
-// ahead, so a sleeping laptop does not miss the moment for long.
+// 10. Overdue items move to the top. The toolbar (swapped with every list and
+// row answer) names the moment when the next item becomes overdue
+// (data-next-overdue, Unix ms); refresh the list then. Never while an edit row
+// is open: try again later. Plan at most 6 hours ahead, so a sleeping laptop
+// does not miss the moment for long. If the server still names a moment we
+// already refreshed for (an error, or this clock is ahead), wait 30 s, so the
+// page cannot ask every second.
 let overdueTimer = null;
+let refreshedFor = 0;
 function planOverdueRefresh() {
   clearTimeout(overdueTimer);
-  const section = document.getElementById("list-section");
-  const next = section ? Number(section.dataset.nextOverdue) : 0;
+  const toolbar = document.getElementById("toolbar");
+  const next = toolbar ? Number(toolbar.dataset.nextOverdue) : 0;
   if (!next) {
     return;
   }
-  const wait = Math.min(Math.max(next - Date.now() + 1000, 1000), 6 * 60 * 60 * 1000);
-  overdueTimer = setTimeout(refreshForOverdue, wait);
+  let wait = next - Date.now() + 1000;
+  if (next <= refreshedFor) {
+    wait = Math.max(wait, 30000);
+  }
+  wait = Math.min(Math.max(wait, 1000), 6 * 60 * 60 * 1000);
+  overdueTimer = setTimeout(() => refreshForOverdue(next), wait);
 }
-function refreshForOverdue() {
+function refreshForOverdue(next) {
   if (document.querySelector(".item.editing")) {
-    overdueTimer = setTimeout(refreshForOverdue, 30000);
+    overdueTimer = setTimeout(() => refreshForOverdue(next), 30000);
     return;
   }
+  refreshedFor = next;
   htmx.ajax("GET", "/", { target: "#list-section", swap: "outerHTML" });
 }
 document.addEventListener("DOMContentLoaded", planOverdueRefresh);
 document.addEventListener("htmx:afterSettle", planOverdueRefresh);
+
+// 11. A whole-list answer (an item moved into or out of the overdue group, or
+// the overdue refresh) must not replace a row that is being edited elsewhere:
+// put the open edit row back after the swap, with its focus.
+let keptEdit = null;
+let keptFocus = false;
+document.addEventListener("htmx:beforeSwap", (e) => {
+  keptEdit = null;
+  if (!e.detail.target || e.detail.target.id !== "list-section") {
+    return;
+  }
+  const editing = document.querySelector(".item.editing");
+  if (!editing || (e.detail.elt && editing.contains(e.detail.elt))) {
+    return;
+  }
+  keptEdit = editing;
+  keptFocus = editing.contains(document.activeElement);
+});
+document.addEventListener("htmx:afterSwap", () => {
+  if (!keptEdit) {
+    return;
+  }
+  const fresh = document.getElementById(keptEdit.id);
+  if (fresh) {
+    fresh.replaceWith(keptEdit);
+    const input = keptEdit.querySelector('input[name="text"]');
+    if (keptFocus && input) {
+      input.focus();
+    }
+  }
+  keptEdit = null;
+});

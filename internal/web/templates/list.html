@@ -1,11 +1,11 @@
-{{define "list"}}<section id="list-section"{{if .NextOverdue}} data-next-overdue="{{.NextOverdue}}"{{end}}>
+{{define "list"}}<section id="list-section">
 {{template "toolbar" .}}
 {{template "notify-bar" .}}
 {{template "empty" .}}
 <ul id="items">{{range .Items}}{{template "item" .}}{{end}}</ul>
 </section>{{end}}
 
-{{define "toolbar"}}<div id="toolbar" class="toolbar"{{if .OOB}} hx-swap-oob="true"{{end}}>
+{{define "toolbar"}}<div id="toolbar" class="toolbar"{{if .OOB}} hx-swap-oob="true"{{end}}{{if .NextOverdue}} data-next-overdue="{{.NextOverdue}}"{{end}}>
 <span class="counter">{{.Open}} open · {{.Done}} done</span>
 <button class="filter" type="button" aria-pressed="{{.HideDone}}"
   hx-post="/settings/hide-done" {{if .HideDone}}hx-vals='{"hide_done":"0"}'{{else}}hx-vals='{"hide_done":"1"}'{{end}} hx-target="#list-section" hx-swap="outerHTML">{{if .HideDone}}Show done ({{.Done}}){{else}}Hide done ({{.Done}}){{end}}</button>
