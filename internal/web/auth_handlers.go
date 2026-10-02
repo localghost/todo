@@ -192,7 +192,7 @@ type accountView struct {
 
 func (s *server) accountView(r *http.Request) accountView {
 	u := currentUser(r)
-	return accountView{Username: u.Username, MemberSince: u.CreatedAt.In(s.now().Location()).Format("2 Jan 2006"),
+	return accountView{Username: u.Username, MemberSince: u.CreatedAt.In(s.zoneFor(r)).Format("2 Jan 2006"),
 		MinPassword: s.accounts.MinPasswordChars()}
 }
 

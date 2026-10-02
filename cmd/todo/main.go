@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata" // every browser time zone loads, also in an image without zone files
 
 	"todo/internal/auth"
 	"todo/internal/config"

@@ -27,7 +27,7 @@ func (s *server) index(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 	text, date, clock := r.FormValue("text"), r.FormValue("due_date"), r.FormValue("due_time")
-	item, err := s.svc.Add(r.Context(), userID(r), text, date, clock)
+	item, err := s.svc.AddIn(r.Context(), userID(r), text, date, clock, s.zoneFor(r))
 	var dueErr *todo.DueError
 	if errors.Is(err, todo.ErrEmptyText) || errors.As(err, &dueErr) {
 		view := formView{Text: text, DueDate: date, DueTime: clock, Focus: true, Error: errors.Is(err, todo.ErrEmptyText)}
@@ -118,7 +118,7 @@ func (s *server) editItem(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	date, clock := dueInputs(item, s.now().Location())
+	date, clock := dueInputs(item, s.zoneFor(r))
 	s.render(w, r, http.StatusOK, part{"item-edit", editView{Item: item, Text: item.Text, DueDate: date, DueTime: clock}})
 }
 
@@ -137,7 +137,7 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	text, date, clock := r.FormValue("text"), r.FormValue("due_date"), r.FormValue("due_time")
-	item, err := s.svc.Edit(r.Context(), userID(r), id, text, date, clock)
+	item, err := s.svc.EditIn(r.Context(), userID(r), id, text, date, clock, s.zoneFor(r))
 	var dueErr *todo.DueError
 	switch {
 	case errors.Is(err, todo.ErrEmptyText) || errors.As(err, &dueErr):
@@ -210,7 +210,7 @@ func (s *server) claimNotifications(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]notification, 0, len(items))
 	for _, it := range items {
-		title, due := notifyText(it, now)
+		title, due := notifyText(it, now.In(s.zoneFor(r)))
 		out = append(out, notification{ID: it.ID, Title: title, Text: it.Text, Due: due})
 	}
 	w.Header().Set("Content-Type", "application/json")

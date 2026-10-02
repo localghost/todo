@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,7 +31,9 @@ var staticFS embed.FS
 type server struct {
 	svc            *todo.Service
 	accounts       *auth.Service
-	tmpl           *template.Template
+	base           *template.Template // parsed once, never executed; cloned per zone
+	views          sync.Map           // zone name → *template.Template bound to that zone
+	zones          sync.Map           // todo_tz cookie value → *time.Location
 	log            *slog.Logger
 	now            func() time.Time
 	powBits        int
@@ -80,16 +83,11 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Op
 	s.signupNew = guard.NewLimiter(5, time.Hour, s.now)
 	s.loginUser = guard.NewLimiter(5, 15*time.Minute, s.now)
 	s.loginIP = guard.NewLimiter(20, 15*time.Minute, s.now)
-	funcs := template.FuncMap{
-		"added":           func(t time.Time) string { return addedLabel(t, s.now()) },
-		"due":             func(it todo.Item) dueView { return dueLabel(it, s.now()) },
-		"postponeMinutes": func() []int { return todo.PostponeMinutes },
-	}
-	tmpl, err := template.New("").Funcs(funcs).ParseFS(templateFS, "templates/*.html")
+	tmpl, err := template.New("").Funcs(s.zoneFuncs(time.UTC)).ParseFS(templateFS, "templates/*.html")
 	if err != nil {
 		return nil, err
 	}
-	s.tmpl = tmpl
+	s.base = tmpl
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", noDirListing(http.FileServerFS(staticFS)))
@@ -136,7 +134,12 @@ type part struct {
 func (s *server) render(w http.ResponseWriter, r *http.Request, status int, parts ...part) {
 	var buf bytes.Buffer
 	for _, p := range parts {
-		if err := s.tmpl.ExecuteTemplate(&buf, p.name, p.data); err != nil {
+		tmpl, err := s.templatesFor(s.zoneFor(r))
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		if err := tmpl.ExecuteTemplate(&buf, p.name, p.data); err != nil {
 			s.serverError(w, r, err)
 			return
 		}
@@ -269,4 +272,52 @@ func ipKey(s string) (string, bool) {
 		return "", false
 	}
 	return prefix.String(), true
+}
+
+// zoneCookie names the browser's time zone; static/tz.js sets it.
+const zoneCookie = "todo_tz"
+
+var zoneName = regexp.MustCompile(`^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$`)
+
+// zoneFor returns the browser's time zone from the todo_tz cookie, or the
+// server's zone if the cookie is missing or names no known zone.
+func (s *server) zoneFor(r *http.Request) *time.Location {
+	c, err := r.Cookie(zoneCookie)
+	if err != nil || len(c.Value) > 64 || c.Value == "Local" || !zoneName.MatchString(c.Value) {
+		return s.now().Location()
+	}
+	if loc, ok := s.zones.Load(c.Value); ok {
+		return loc.(*time.Location)
+	}
+	loc, err := time.LoadLocation(c.Value)
+	if err != nil {
+		return s.now().Location()
+	}
+	s.zones.Store(c.Value, loc)
+	return loc
+}
+
+// zoneFuncs returns the template functions that show times in loc.
+func (s *server) zoneFuncs(loc *time.Location) template.FuncMap {
+	return template.FuncMap{
+		"added":           func(t time.Time) string { return addedLabel(t, s.now().In(loc)) },
+		"due":             func(it todo.Item) dueView { return dueLabel(it, s.now().In(loc)) },
+		"zone":            func() string { return loc.String() },
+		"postponeMinutes": func() []int { return todo.PostponeMinutes },
+	}
+}
+
+// templatesFor returns the templates bound to loc. There is one set per zone,
+// made on first use from the never-executed base set.
+func (s *server) templatesFor(loc *time.Location) (*template.Template, error) {
+	if t, ok := s.views.Load(loc.String()); ok {
+		return t.(*template.Template), nil
+	}
+	t, err := s.base.Clone()
+	if err != nil {
+		return nil, err
+	}
+	t.Funcs(s.zoneFuncs(loc))
+	actual, _ := s.views.LoadOrStore(loc.String(), t)
+	return actual.(*template.Template), nil
 }
