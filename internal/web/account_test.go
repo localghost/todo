@@ -52,7 +52,7 @@ func TestChangePasswordPage(t *testing.T) {
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("short new: %d, want 422", rec.Code)
 	}
-	assertContains(t, rec.Body.String(), "Use at least 10 characters.")
+	assertContains(t, rec.Body.String(), "Use at least 8 characters.")
 
 	rec = do(t, env.H, "POST", "/account/password",
 		url.Values{"current_password": {pw}, "new_password": {"new password 1"}}, cookie(token))

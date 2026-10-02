@@ -80,7 +80,7 @@ The rules live in a new package `internal/auth`.
 |---|---|---|
 | Username characters and length | `^[A-Za-z0-9_-]{3,32}$` | "Use 3–32 letters, digits, - or _." |
 | Username unique | Case does not matter ("Zbigniew" = "zbigniew") | "This username is taken." |
-| Password length | 10–200 characters (counted in Unicode characters) | "Use at least 10 characters." / "Use at most 200 characters." |
+| Password length | N–200 characters (counted in Unicode characters). N is `password.min_length` in `config.yaml`, default 8 (changed 2026-10-02; was a fixed 10). | "Use at least N characters." / "Use at most 200 characters." |
 
 The username keeps the case the user typed, for display. Login finds the user without regard to case.
 
@@ -189,7 +189,7 @@ The log-in, sign-up, and account pages are plain HTML forms with `POST` and redi
 Texts and layout follow canvas page 13:
 
 - Log in: fields "Username" and "Password", the checkbox "Keep me logged in", the button "Log in", and the link "No account yet? Sign up".
-- Sign up: "Username" with the hint "3–32 letters, digits, - or _", and "Password" with a "Show" button and the hint "At least 10 characters". The note says "There is no email. If you forget your password, ask the admin." Below are the button "Create account" and the link "Already have an account? Log in".
+- Sign up: "Username" with the hint "3–32 letters, digits, - or _", and "Password" with a "Show" button and the hint "At least N characters" (N from `config.yaml`). The note says "There is no email. If you forget your password, ask the admin." Below are the button "Create account" and the link "Already have an account? Log in".
 - List header: "Signed in as <name> · Account · Log out". "Log out" is a small form with a button styled as a link, because logout must be a `POST`.
 - Account page: "← Back to my list", "Signed in as <name> · member since <date>", the "Change password" section, and the "Delete account" section in red.
 

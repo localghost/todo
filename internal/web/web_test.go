@@ -36,6 +36,12 @@ type testEnv struct {
 
 func newTestEnv(t *testing.T, opts ...web.Option) *testEnv {
 	t.Helper()
+	return newTestEnvAuth(t, nil, opts...)
+}
+
+// newTestEnvAuth is newTestEnv with options for the auth service.
+func newTestEnvAuth(t *testing.T, authOpts []auth.Option, opts ...web.Option) *testEnv {
+	t.Helper()
 	store, err := sqlite.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -45,7 +51,7 @@ func newTestEnv(t *testing.T, opts ...web.Option) *testEnv {
 	if err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}
-	accounts := auth.NewService(store)
+	accounts := auth.NewService(store, authOpts...)
 	token, _, err := accounts.StartSession(context.Background(), user.ID, false)
 	if err != nil {
 		t.Fatalf("StartSession: %v", err)

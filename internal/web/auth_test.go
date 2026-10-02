@@ -79,7 +79,7 @@ func TestSignup(t *testing.T) {
 	env := newTestEnv(t)
 	body := do(t, env.H, "GET", "/signup", nil, anon).Body.String()
 	assertContains(t, body, `<form method="post" action="/signup" class="auth-form" id="signup-form" data-pow-bits="4">`,
-		"Create an account", "3–32 letters, digits, - or _", "At least 10 characters", `class="show-password"`,
+		"Create an account", "3–32 letters, digits, - or _", "At least 8 characters", `class="show-password"`,
 		"There is no email. If you forget your password, ask the admin.", "Create account", `href="/login"`,
 		`<script src="/static/auth.js" defer></script>`, `name="form_token"`, `name="pow_nonce"`,
 		`<div class="hp" aria-hidden="true">`, `name="website" tabindex="-1" autocomplete="off"`)
@@ -97,7 +97,7 @@ func TestSignup(t *testing.T) {
 	}{
 		{"BOB", pw, "This username is taken."},
 		{"b", pw, "Use 3–32 letters, digits, - or _."},
-		{"carol", "short", "Use at least 10 characters."},
+		{"carol", "short", "Use at least 8 characters."},
 	}
 	for _, c := range cases {
 		rec := do(t, env.H, "POST", "/signup", signupForm(t, env, c.user, c.pass), anon)

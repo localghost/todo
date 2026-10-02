@@ -52,16 +52,19 @@ func TestUsernameRules(t *testing.T) {
 }
 
 func TestPasswordRulesCountCharacters(t *testing.T) {
-	if err := auth.ValidatePassword("zażółćgęśl"); err != nil { // 10 characters, 16 bytes
-		t.Errorf("10 non-ASCII characters: %v, want nil", err)
+	if err := auth.ValidatePassword("zażółćgę", 8); err != nil { // 8 characters, 13 bytes
+		t.Errorf("8 non-ASCII characters: %v, want nil", err)
 	}
-	if msg := ruleMsg(t, auth.ValidatePassword("zażółćgęś")); msg != "Use at least 10 characters." { // 9 characters, 15 bytes
-		t.Errorf("9 characters msg = %q", msg)
+	if msg := ruleMsg(t, auth.ValidatePassword("zażółćg", 8)); msg != "Use at least 8 characters." { // 7 characters, 11 bytes
+		t.Errorf("7 characters msg = %q", msg)
 	}
-	if msg := ruleMsg(t, auth.ValidatePassword(strings.Repeat("a", 201))); msg != "Use at most 200 characters." {
+	if msg := ruleMsg(t, auth.ValidatePassword("zażółćgęśl", 12)); msg != "Use at least 12 characters." {
+		t.Errorf("10 characters with minimum 12 msg = %q", msg)
+	}
+	if msg := ruleMsg(t, auth.ValidatePassword(strings.Repeat("a", 201), 8)); msg != "Use at most 200 characters." {
 		t.Errorf("201 characters msg = %q", msg)
 	}
-	if err := auth.ValidatePassword(strings.Repeat("ą", 200)); err != nil {
+	if err := auth.ValidatePassword(strings.Repeat("ą", 200), 8); err != nil {
 		t.Errorf("200 characters: %v, want nil", err)
 	}
 }
@@ -190,7 +193,7 @@ func TestChangePassword(t *testing.T) {
 	if err := a.ChangePassword(ctx, u.ID, current, "wrong one!!", "new password 1"); !errors.Is(err, auth.ErrWrongPassword) {
 		t.Fatalf("wrong current err = %v, want ErrWrongPassword", err)
 	}
-	if err := a.ChangePassword(ctx, u.ID, current, pw, "short"); ruleMsg(t, err) != "Use at least 10 characters." {
+	if err := a.ChangePassword(ctx, u.ID, current, pw, "short"); ruleMsg(t, err) != "Use at least 8 characters." {
 		t.Fatalf("short new password err = %v", err)
 	}
 	if err := a.ChangePassword(ctx, u.ID, current, pw, "new password 1"); err != nil {
@@ -266,5 +269,41 @@ func TestCheckPasswordRejectsExtremeParameters(t *testing.T) {
 		if auth.CheckPassword("$argon2id$v=19$m=65536,t=3,p=4$"+sk[0]+"$"+sk[1], pw) {
 			t.Errorf("short salt or key accepted: %v", sk)
 		}
+	}
+}
+
+func TestMinPasswordCharsOption(t *testing.T) {
+	ctx := context.Background()
+	store, err := sqlite.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { store.Close() })
+
+	a := auth.NewService(store)
+	if n := a.MinPasswordChars(); n != 8 {
+		t.Fatalf("default MinPasswordChars = %d, want 8", n)
+	}
+	if _, err := a.SignUp(ctx, "dave", "1234567"); ruleMsg(t, err) != "Use at least 8 characters." {
+		t.Fatalf("7 characters: %v", err)
+	}
+	if _, err := a.SignUp(ctx, "dave", "12345678"); err != nil {
+		t.Fatalf("8 characters: %v", err)
+	}
+
+	strict := auth.NewService(store, auth.WithMinPasswordChars(12))
+	if n := strict.MinPasswordChars(); n != 12 {
+		t.Fatalf("MinPasswordChars = %d, want 12", n)
+	}
+	if _, err := strict.SignUp(ctx, "erin", "12345678901"); ruleMsg(t, err) != "Use at least 12 characters." {
+		t.Fatalf("sign-up with 11 characters: %v", err)
+	}
+	u, err := strict.SignUp(ctx, "erin", "123456789012")
+	if err != nil {
+		t.Fatalf("sign-up with 12 characters: %v", err)
+	}
+	token, _, _ := strict.LogIn(ctx, "erin", "123456789012", false)
+	if err := strict.ChangePassword(ctx, u.ID, token, "123456789012", "12345678901"); ruleMsg(t, err) != "Use at least 12 characters." {
+		t.Fatalf("change to 11 characters: %v", err)
 	}
 }

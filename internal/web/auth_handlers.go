@@ -22,6 +22,7 @@ type signupView struct {
 	PasswordError string
 	FormToken     string
 	PowBits       int
+	MinPassword   int
 }
 
 // alreadyLoggedIn sends a logged-in browser from the log-in and sign-up pages to the list.
@@ -96,7 +97,7 @@ const signupFailed = "Sign-up failed. Please wait a moment and try again."
 
 // newSignupView returns a sign-up view with a fresh form token.
 func (s *server) newSignupView(username string) signupView {
-	return signupView{Username: username, FormToken: s.tokens.New(), PowBits: s.powBits}
+	return signupView{Username: username, FormToken: s.tokens.New(), PowBits: s.powBits, MinPassword: s.accounts.MinPasswordChars()}
 }
 
 func (s *server) signupPage(w http.ResponseWriter, r *http.Request) {
@@ -186,11 +187,13 @@ type accountView struct {
 	PasswordError string
 	PasswordOK    bool
 	DeleteError   string
+	MinPassword   int
 }
 
 func (s *server) accountView(r *http.Request) accountView {
 	u := currentUser(r)
-	return accountView{Username: u.Username, MemberSince: u.CreatedAt.In(s.now().Location()).Format("2 Jan 2006")}
+	return accountView{Username: u.Username, MemberSince: u.CreatedAt.In(s.now().Location()).Format("2 Jan 2006"),
+		MinPassword: s.accounts.MinPasswordChars()}
 }
 
 func (s *server) accountPage(w http.ResponseWriter, r *http.Request) {

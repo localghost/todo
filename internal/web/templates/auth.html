@@ -51,7 +51,7 @@
 <div class="password-wrap"><input id="signup-password" name="password" type="password" autocomplete="new-password" required{{if .PasswordError}} autofocus{{end}}{{if .PasswordError}} aria-invalid="true" aria-describedby="signup-password-error"{{end}}>
 <button type="button" class="show-password" data-target="signup-password">Show</button></div>
 {{if .PasswordError}}<span class="field-error" id="signup-password-error">{{.PasswordError}}</span>{{end}}
-<span class="hint">At least 10 characters</span></div>
+<span class="hint">At least {{.MinPassword}} characters</span></div>
 <p class="note">There is no email. If you forget your password, ask the admin.</p>
 <button type="submit" class="btn-primary">Create account</button>
 <p class="field-error" id="signup-check-error" role="alert"></p>
@@ -78,7 +78,7 @@
 <div class="field"><label for="new-password">New password</label>
 <div class="password-wrap"><input id="new-password" name="new_password" type="password" autocomplete="new-password" required>
 <button type="button" class="show-password" data-target="new-password">Show</button></div>
-<span class="hint">At least 10 characters</span></div>
+<span class="hint">At least {{.MinPassword}} characters</span></div>
 <div><button type="submit" class="btn-primary">Change password</button></div>
 </form>
 </section>

@@ -22,12 +22,21 @@ const (
 
 // Service holds the account and session rules.
 type Service struct {
-	store Store
-	now   func() time.Time
+	store            Store
+	now              func() time.Time
+	minPasswordChars int
 }
 
 // Option changes a Service.
 type Option func(*Service)
+
+// WithMinPasswordChars sets the shortest allowed new password, in characters.
+func WithMinPasswordChars(n int) Option {
+	return func(s *Service) { s.minPasswordChars = n }
+}
+
+// MinPasswordChars returns the shortest allowed new password, in characters.
+func (s *Service) MinPasswordChars() int { return s.minPasswordChars }
 
 // WithClock replaces the clock (for tests).
 func WithClock(now func() time.Time) Option {
@@ -36,7 +45,7 @@ func WithClock(now func() time.Time) Option {
 
 // NewService returns a Service that keeps accounts in store.
 func NewService(store Store, opts ...Option) *Service {
-	s := &Service{store: store, now: time.Now}
+	s := &Service{store: store, now: time.Now, minPasswordChars: DefaultMinPasswordChars}
 	for _, o := range opts {
 		o(s)
 	}
@@ -54,7 +63,7 @@ func (s *Service) SignUp(ctx context.Context, username, password string) (User, 
 	if err := ValidateUsername(username); err != nil {
 		return User{}, err
 	}
-	if err := ValidatePassword(password); err != nil {
+	if err := ValidatePassword(password, s.minPasswordChars); err != nil {
 		return User{}, err
 	}
 	hash, err := HashPassword(password)
@@ -131,7 +140,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, token, curre
 	if !CheckPassword(u.PasswordHash, current) {
 		return ErrWrongPassword
 	}
-	if err := ValidatePassword(next); err != nil {
+	if err := ValidatePassword(next, s.minPasswordChars); err != nil {
 		return err
 	}
 	hash, err := HashPassword(next)
