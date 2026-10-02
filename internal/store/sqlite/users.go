@@ -20,12 +20,12 @@ func isUniqueViolation(err error) bool {
 	return errors.As(err, &coded) && coded.Code() == sqliteConstraintUnique
 }
 
-const userCols = `id, username, password_hash, created_at`
+const userCols = `id, username, password_hash, created_at, hide_done`
 
 func scanUser(r scanner) (auth.User, error) {
 	var u auth.User
 	var created string
-	if err := r.Scan(&u.ID, &u.Username, &u.PasswordHash, &created); err != nil {
+	if err := r.Scan(&u.ID, &u.Username, &u.PasswordHash, &created, &u.HideDone); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return auth.User{}, auth.ErrNoUser
 		}

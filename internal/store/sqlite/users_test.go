@@ -260,3 +260,17 @@ func TestSetHideDone(t *testing.T) {
 		t.Fatalf("unknown user: %v, want ErrNoUser", err)
 	}
 }
+
+func TestUserQueriesReadHideDone(t *testing.T) {
+	s := newStore(t) // alice, ID 1
+	ctx := context.Background()
+	if err := s.SetHideDone(ctx, 1, true); err != nil {
+		t.Fatal(err)
+	}
+	if u, err := s.UserByID(ctx, 1); err != nil || !u.HideDone {
+		t.Fatalf("UserByID = %+v, %v; want HideDone", u, err)
+	}
+	if u, err := s.UserByName(ctx, "alice"); err != nil || !u.HideDone {
+		t.Fatalf("UserByName = %+v, %v; want HideDone", u, err)
+	}
+}
