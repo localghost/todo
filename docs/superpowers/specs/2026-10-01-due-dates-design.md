@@ -61,7 +61,7 @@ NotifiedAt *time.Time // nil: not notified yet
 
 ## 4. Rules (service)
 
-The service reads two text inputs, in the server's local time zone:
+The service reads two text inputs, in the browser's time zone (changed 2026-10-02; was the server's zone). The browser sends its zone in the `todo_tz` cookie (`static/tz.js`); without a valid cookie the server's zone applies:
 
 - `due_date` in the format `YYYY-MM-DD`, for example `2026-10-03`.
 - `due_time` in the format `HH:MM`, for example `14:00`. It is optional.
@@ -203,7 +203,7 @@ A click sends `POST /items/{id}/postpone?minutes=10`. The new due time is the la
 | An item is deleted or done before the due time | `ClaimDue` does not return it |
 | Two tabs are open | Each item goes to one tab only |
 | An item is undone after it was notified | No new notification. Only a change of the due date resets it. |
-| Server and browser are in different time zones | The server's local time is used for the labels and for 09:00 |
+| Server and browser are in different time zones | The browser's zone (cookie `todo_tz`) is used for input, labels and 09:00; the server's zone only without a valid cookie. An all-day item stays a UTC moment (09:00 where it was saved), so a zone 9+ hours west may show the day before. |
 
 ## 10. Testing
 

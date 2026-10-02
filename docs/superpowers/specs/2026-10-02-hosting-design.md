@@ -67,7 +67,7 @@ Two parallel checks keep 128 MiB live, and Go's garbage collector lets the heap 
 about twice that. `GOMEMLIMIT=150MiB` in `fly.toml` keeps the heap inside the machine (the
 review measured 148 MiB peak with it, 317 MiB without it).
 
-The machine uses `TZ=Europe/Warsaw`, because due dates use the server's local time.
+The machine uses `TZ=Europe/Warsaw` as the fallback zone. Since 2026-10-02 due dates use the browser's zone (cookie `todo_tz`); `TZ` applies only without it.
 
 ## 7. Storage and backups
 

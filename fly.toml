@@ -8,7 +8,7 @@ swap_size_mb = 256
 [env]
   # Two password checks keep 128 MiB live; the GC limit keeps the heap inside 256 MB.
   GOMEMLIMIT = "150MiB"
-  # Due dates use the server's local time.
+  # Fallback zone for due dates when the browser sends none (cookie todo_tz).
   TZ = "Europe/Warsaw"
 
 # The database lives on this volume. Fly takes a snapshot every day and keeps 5.
