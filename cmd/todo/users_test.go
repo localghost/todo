@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -108,5 +109,23 @@ func TestUsersPolish(t *testing.T) {
 	err := runUsers([]string{"frobnicate"}, nil, &out)
 	if err == nil || !strings.Contains(err.Error(), "--") {
 		t.Fatalf("usage %v must mention --", err)
+	}
+}
+
+func TestUsersResetFollowsConfig(t *testing.T) {
+	path := usersDB(t)
+	cfg := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(cfg, []byte("password:\n  min_length: 20\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runUsers([]string{"reset-password", "-db", path, "-config", cfg, "alice"}, nil, &out); err != nil {
+		t.Fatalf("reset: %v", err)
+	}
+	if pw := strings.TrimSpace(strings.TrimPrefix(out.String(), "New password for alice: ")); len(pw) != 20 {
+		t.Fatalf("new password %q has %d characters, want 20", pw, len(pw))
+	}
+	if err := runUsers([]string{"list", "-db", path, "-config", filepath.Join(t.TempDir(), "missing.yaml")}, nil, &out); err == nil {
+		t.Fatal("an explicit -config path that does not exist must be an error")
 	}
 }

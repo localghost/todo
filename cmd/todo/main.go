@@ -44,14 +44,11 @@ func run() error {
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
-	// A path given with -config must exist, so a wrong path cannot fall back to the defaults.
-	configSet := false
-	flag.Visit(func(f *flag.Flag) { configSet = configSet || f.Name == "config" })
-	cfg, err := config.Load(*configPath, !configSet)
+	cfg, label, err := loadConfig(flag.CommandLine, *configPath)
 	if err != nil {
 		return err
 	}
-	logger.Info("settings", "config", *configPath, "min_password_length", cfg.Password.MinLength)
+	logger.Info("settings", "config", label, "min_password_length", cfg.Password.MinLength)
 
 	store, err := sqlite.OpenWith(*dbPath, sqlite.Options{DeleteOldItems: *deleteOldItems})
 	if err != nil {
@@ -120,4 +117,20 @@ func cleanSessions(ctx context.Context, accounts *auth.Service, logger *slog.Log
 		case <-tick.C:
 		}
 	}
+}
+
+// loadConfig reads the settings file. A path given with -config must exist, so
+// a wrong path cannot fall back to the defaults; the default path may be
+// missing. The label names the file for the log.
+func loadConfig(fs *flag.FlagSet, path string) (config.Config, string, error) {
+	set := false
+	fs.Visit(func(f *flag.Flag) { set = set || f.Name == "config" })
+	cfg, found, err := config.Load(path, !set)
+	if err != nil {
+		return cfg, "", err
+	}
+	if !found {
+		return cfg, "none (defaults)", nil
+	}
+	return cfg, path, nil
 }

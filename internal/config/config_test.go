@@ -34,9 +34,9 @@ func TestLoad(t *testing.T) {
 		{"comments only", "# nothing set\n", 8},
 		{"no password section", "{}\n", 8},
 	} {
-		cfg, err := config.Load(write(t, tc.text), false)
-		if err != nil {
-			t.Fatalf("%s: %v", tc.name, err)
+		cfg, found, err := config.Load(write(t, tc.text), false)
+		if err != nil || !found {
+			t.Fatalf("%s: found %v, %v", tc.name, found, err)
 		}
 		if cfg.Password.MinLength != tc.want {
 			t.Errorf("%s: min_length = %d, want %d", tc.name, cfg.Password.MinLength, tc.want)
@@ -46,11 +46,11 @@ func TestLoad(t *testing.T) {
 
 func TestLoadMissingFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "nope.yaml")
-	cfg, err := config.Load(path, true)
-	if err != nil || cfg.Password.MinLength != 8 {
+	cfg, found, err := config.Load(path, true)
+	if err != nil || found || cfg.Password.MinLength != 8 {
 		t.Fatalf("allowed missing file: %+v, %v; want defaults", cfg, err)
 	}
-	if _, err := config.Load(path, false); err == nil || !strings.Contains(err.Error(), path) {
+	if _, _, err := config.Load(path, false); err == nil || !strings.Contains(err.Error(), path) {
 		t.Fatalf("missing file not allowed: %v, want an error naming %s", err, path)
 	}
 }
@@ -69,7 +69,7 @@ func TestLoadRejectsBadFiles(t *testing.T) {
 		{"null section", "password: null\n", "no value"},
 	} {
 		path := write(t, tc.text)
-		_, err := config.Load(path, false)
+		_, _, err := config.Load(path, false)
 		if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), path) {
 			t.Errorf("%s: error %v, want one naming %q and the path", tc.name, err, tc.want)
 		}

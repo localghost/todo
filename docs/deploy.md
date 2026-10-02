@@ -55,6 +55,10 @@ The new password appears in the output. Give it to the user. They can change it 
 
 If the machine is stopped, these tasks start it first with a web request. This takes a few seconds.
 
+If a username starts with `-`, put `--` before it, for example `mise run fly:reset-password -- --help`.
+
+The new password from `fly:reset-password` has 16 characters, or more if `min_length` in `config.yaml` is higher.
+
 ## 6. Snapshots and restore
 
 To list the snapshots, run `mise run fly:snapshots`.
@@ -103,3 +107,5 @@ The image contains this file at `/etc/todo/config.yaml`. To change a setting:
 2. Run `mise run fly:deploy`.
 
 The new minimum applies when someone signs up or changes a password. Existing passwords keep working.
+
+Before 2026-10-02 the minimum was a fixed 10. The default 8 is a weaker rule. Set `min_length: 10` or more to keep the old rule.

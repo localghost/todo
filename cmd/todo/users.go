@@ -15,7 +15,7 @@ import (
 	"todo/internal/store/sqlite"
 )
 
-const usersUsage = "usage: todo users list | reset-password <name> | delete <name> [-yes]   (options: -db file; put -- before a name that starts with -)"
+const usersUsage = "usage: todo users list | reset-password <name> | delete <name> [-yes]   (options: -db file, -config file; put -- before a name that starts with -)"
 
 // runUsers runs the admin command "todo users …".
 func runUsers(args []string, in io.Reader, out io.Writer) error {
@@ -27,6 +27,7 @@ func runUsers(args []string, in io.Reader, out io.Writer) error {
 	fs.SetOutput(io.Discard)
 	dbPath := fs.String("db", "todo.db", "path to the SQLite database file")
 	yes := fs.Bool("yes", false, "delete without asking")
+	configPath := fs.String("config", "config.yaml", "path to the settings file")
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("%v; %s", err, usersUsage)
 	}
@@ -48,6 +49,10 @@ func runUsers(args []string, in io.Reader, out io.Writer) error {
 		return errors.New(usersUsage)
 	}
 
+	cfg, _, err := loadConfig(fs, *configPath)
+	if err != nil {
+		return err
+	}
 	store, err := sqlite.OpenWith(*dbPath, sqlite.Options{RequireCurrent: true})
 	if err != nil {
 		return err
@@ -75,7 +80,7 @@ func runUsers(args []string, in io.Reader, out io.Writer) error {
 		if err != nil {
 			return err
 		}
-		pw, err := auth.NewService(store).ResetPassword(ctx, u.Username)
+		pw, err := auth.NewService(store, auth.WithMinPasswordChars(cfg.Password.MinLength)).ResetPassword(ctx, u.Username)
 		if err != nil {
 			return err
 		}

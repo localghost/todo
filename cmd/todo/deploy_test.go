@@ -71,7 +71,16 @@ func TestDeployConfigMatches(t *testing.T) {
 	if p := find(docker, `"-config", "([^"]+)"`, "Dockerfile -config path"); p != copied {
 		t.Errorf("Dockerfile copies config.yaml to %s but starts the app with -config %s", copied, p)
 	}
-	cfg, err := config.Load("../../config.yaml", false)
+	// The admin commands on Fly read the same settings file as the server.
+	if m := find(mise, `TODO_CONFIG = "([^"]+)"`, "mise.toml TODO_CONFIG"); m != copied {
+		t.Errorf("mise.toml TODO_CONFIG = %s, Dockerfile copies config.yaml to %s", m, copied)
+	}
+	for _, block := range strings.Split(mise, "[tasks.")[1:] {
+		if strings.Contains(block, "fly ssh") && !strings.Contains(block, "-config $TODO_CONFIG") {
+			t.Errorf("mise task %s runs a users command without -config $TODO_CONFIG", strings.SplitN(block, "]", 2)[0])
+		}
+	}
+	cfg, _, err := config.Load("../../config.yaml", false)
 	if err != nil {
 		t.Fatalf("config.yaml: %v", err)
 	}
@@ -94,6 +103,11 @@ func TestDeployGuideUsesMise(t *testing.T) {
 	mise, err := os.ReadFile("../../mise.toml")
 	if err != nil {
 		t.Fatal(err)
+	}
+	for _, want := range []string{"-- --help", "fixed 10"} {
+		if !strings.Contains(string(guide), want) {
+			t.Errorf("docs/deploy.md does not contain %q", want)
+		}
 	}
 	if !strings.Contains(string(mise), `[tasks."fly:login"]`) {
 		t.Error(`mise.toml has no fly:login task`)

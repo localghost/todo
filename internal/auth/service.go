@@ -176,7 +176,8 @@ func (s *Service) ResetPassword(ctx context.Context, username string) (string, e
 	if err != nil {
 		return "", err
 	}
-	pw := make([]byte, 16)
+	// 16 random characters, or more if the minimum is higher.
+	pw := make([]byte, max(16, s.minPasswordChars))
 	for i := range pw {
 		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(resetAlphabet))))
 		if err != nil {

@@ -29,13 +29,25 @@ func Default() Config {
 	return Config{Password: Password{MinLength: auth.DefaultMinPasswordChars}}
 }
 
-// Load reads the settings from path. Keys that config.yaml leaves out keep their
-// defaults. If allowMissing is true, a missing file gives the defaults.
-func Load(path string, allowMissing bool) (Config, error) {
+// Load reads the settings from path and reports whether the file was read.
+// Keys that config.yaml leaves out keep their defaults. If allowMissing is
+// true, a missing file gives the defaults.
+func Load(path string, allowMissing bool) (Config, bool, error) {
+	cfg, err := load(path, allowMissing)
+	if errors.Is(err, errMissing) {
+		return cfg, false, nil
+	}
+	return cfg, err == nil, err
+}
+
+// errMissing marks an allowed missing file inside load.
+var errMissing = errors.New("missing")
+
+func load(path string, allowMissing bool) (Config, error) {
 	cfg := Default()
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) && allowMissing {
-		return cfg, nil
+		return cfg, errMissing
 	}
 	if err != nil {
 		return cfg, fmt.Errorf("config %s: %w", path, err)

@@ -7,6 +7,7 @@ jq = "latest"
 [env]
 FLY_APP = "todoit"          # flyctl reads FLY_APP; fly.toml names the same app
 TODO_DB = "/data/todo.db"   # database path on the server (see Dockerfile)
+TODO_CONFIG = "/etc/todo/config.yaml"   # settings file in the image (see Dockerfile)
 
 [tasks."fly:login"]
 description = "Log in to Fly.io (opens the browser)"
@@ -49,20 +50,20 @@ run = "curl -fsS -o /dev/null --retry 3 https://$FLY_APP.fly.dev/login"
 [tasks."fly:users"]
 depends = ["fly:wake"]
 description = "List the users"
-run = 'fly ssh console -C "/todo users list -db $TODO_DB"'
+run = 'fly ssh console -C "/todo users list -db $TODO_DB -config $TODO_CONFIG"'
 
 [tasks."fly:reset-password"]
 depends = ["fly:wake"]
 description = "Set a new random password for a user and print it"
 usage = 'arg "<name>" help="Username"'
-run = 'fly ssh console -C "/todo users reset-password -db $TODO_DB -- ${usage_name}"'
+run = 'fly ssh console -C "/todo users reset-password -db $TODO_DB -config $TODO_CONFIG -- ${usage_name}"'
 
 [tasks."fly:delete-user"]
 depends = ["fly:wake"]
 description = "Delete a user and all their items (asks first)"
 usage = 'arg "<name>" help="Username"'
 confirm = "Delete this user and all their items?"
-run = 'fly ssh console -C "/todo users delete -yes -db $TODO_DB -- ${usage_name}"'
+run = 'fly ssh console -C "/todo users delete -yes -db $TODO_DB -config $TODO_CONFIG -- ${usage_name}"'
 
 [tasks."fly:snapshots"]
 description = "List the daily snapshots of the data volume"

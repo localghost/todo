@@ -318,3 +318,21 @@ func TestCheckPasswordAcceptsOwnHashes(t *testing.T) {
 		t.Fatalf("own hash %s rejected", h)
 	}
 }
+
+func TestResetPasswordFollowsMinimum(t *testing.T) {
+	ctx := context.Background()
+	store, err := sqlite.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { store.Close() })
+	a := auth.NewService(store)
+	a.SignUp(ctx, "alice", pw)
+	if p, err := a.ResetPassword(ctx, "alice"); err != nil || len(p) != 16 {
+		t.Fatalf("default reset = %q, %v; want 16 characters", p, err)
+	}
+	strict := auth.NewService(store, auth.WithMinPasswordChars(20))
+	if p, err := strict.ResetPassword(ctx, "alice"); err != nil || len(p) != 20 {
+		t.Fatalf("reset with minimum 20 = %q, %v; want 20 characters", p, err)
+	}
+}
