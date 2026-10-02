@@ -37,21 +37,6 @@ func TestCreateUserAndFind(t *testing.T) {
 	}
 }
 
-func TestSetPasswordHash(t *testing.T) {
-	s := newStore(t)
-	ctx := context.Background()
-	if err := s.SetPasswordHash(ctx, 1, "new"); err != nil {
-		t.Fatalf("SetPasswordHash: %v", err)
-	}
-	u, _ := s.UserByID(ctx, 1)
-	if u.PasswordHash != "new" {
-		t.Fatalf("hash = %q, want new", u.PasswordHash)
-	}
-	if err := s.SetPasswordHash(ctx, 999, "x"); !errors.Is(err, auth.ErrNoUser) {
-		t.Fatalf("SetPasswordHash(999) err = %v, want ErrNoUser", err)
-	}
-}
-
 func TestSessions(t *testing.T) {
 	s := newStore(t)
 	ctx := context.Background()
@@ -75,12 +60,6 @@ func TestSessions(t *testing.T) {
 	}
 	if n, err := s.DeleteExpiredSessions(ctx, t0); err != nil || n != 1 {
 		t.Fatalf("DeleteExpiredSessions = %d, %v; want 1", n, err)
-	}
-	if err := s.DeleteOtherSessions(ctx, 1, "a"); err != nil {
-		t.Fatalf("DeleteOtherSessions: %v", err)
-	}
-	if _, _, err := s.SessionUser(ctx, "b", t0); !errors.Is(err, auth.ErrNoSession) {
-		t.Fatalf("other session still valid: %v", err)
 	}
 	if err := s.DeleteSession(ctx, "a"); err != nil {
 		t.Fatalf("DeleteSession: %v", err)
@@ -151,7 +130,7 @@ func TestDeleteUserRemovesSessionRows(t *testing.T) {
 	}
 }
 
-func TestListUsersAndDeleteSessions(t *testing.T) {
+func TestListUsers(t *testing.T) {
 	s := newStore(t) // alice
 	ctx := context.Background()
 	bob, _ := s.CreateUser(ctx, "Bob", "x", t0)
@@ -167,15 +146,6 @@ func TestListUsersAndDeleteSessions(t *testing.T) {
 	}
 	if list[0].Username != "alice" || list[0].Items != 2 || list[0].Sessions != 1 || list[1].Username != "Bob" || list[1].Sessions != 1 {
 		t.Fatalf("ListUsers = %+v (want alice 2 items 1 session, then Bob)", list)
-	}
-	if err := s.DeleteSessions(ctx, 1); err != nil {
-		t.Fatalf("DeleteSessions: %v", err)
-	}
-	if _, _, err := s.SessionUser(ctx, "live", t0); !errors.Is(err, auth.ErrNoSession) {
-		t.Fatalf("alice's session still valid: %v", err)
-	}
-	if _, _, err := s.SessionUser(ctx, "bob", t0); err != nil {
-		t.Fatalf("bob's session ended: %v", err)
 	}
 }
 

@@ -195,3 +195,28 @@ func TestLoginEndsPreviousSession(t *testing.T) {
 		t.Fatalf("old session still valid after a new login: %d", rec.Code)
 	}
 }
+
+func TestSignupEndsPreviousSession(t *testing.T) {
+	env := newTestEnv(t)
+	env.Auth.SignUp(context.Background(), "alice", pw)
+	old, _, _ := env.Auth.LogIn(context.Background(), "alice", pw, true)
+	v := signupForm(t, env, "bob", pw) // the form comes from an anonymous page load
+	if rec := do(t, env.H, "POST", "/signup", v, cookie(old)); rec.Code != http.StatusSeeOther {
+		t.Fatalf("sign-up: %d", rec.Code)
+	}
+	if rec := do(t, env.H, "GET", "/", nil, cookie(old)); rec.Code != http.StatusSeeOther {
+		t.Fatalf("old session still valid after a sign-up in the same browser: %d", rec.Code)
+	}
+}
+
+func TestLoginWithInvalidOldCookie(t *testing.T) {
+	env := newTestEnv(t)
+	env.Auth.SignUp(context.Background(), "alice", pw)
+	rec := do(t, env.H, "POST", "/login", url.Values{"username": {"alice"}, "password": {pw}}, cookie("garbage"))
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/" {
+		t.Fatalf("login: %d %q, want 303 /", rec.Code, rec.Header().Get("Location"))
+	}
+	if c := sessionFrom(t, rec); c.Value == "" || c.Value == "garbage" {
+		t.Fatalf("no new session cookie: %+v", c)
+	}
+}

@@ -48,7 +48,7 @@
 {{if .UsernameError}}<span class="field-error" id="signup-username-error">{{.UsernameError}}</span>{{end}}
 <span class="hint">3–32 letters, digits, - or _</span></div>
 <div class="field"><label for="signup-password">Password</label>
-<div class="password-wrap"><input id="signup-password" name="password" type="password" autocomplete="new-password" required{{if .PasswordError}} autofocus{{end}}{{if .PasswordError}} aria-invalid="true" aria-describedby="signup-password-error"{{end}}>
+<div class="password-wrap"><input id="signup-password" name="password" type="password" autocomplete="new-password" required{{if .PasswordError}} autofocus aria-invalid="true" aria-describedby="signup-password-error"{{end}}>
 <button type="button" class="show-password" data-target="signup-password">Show</button></div>
 {{if .PasswordError}}<span class="field-error" id="signup-password-error">{{.PasswordError}}</span>{{end}}
 <span class="hint">At least {{.MinPassword}} characters</span></div>

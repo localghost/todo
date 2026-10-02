@@ -79,10 +79,6 @@ func (s *Store) changeUser(ctx context.Context, q string, args ...any) error {
 	return nil
 }
 
-func (s *Store) SetPasswordHash(ctx context.Context, id int64, passwordHash string) error {
-	return s.changeUser(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, passwordHash, id)
-}
-
 func (s *Store) DeleteUser(ctx context.Context, id int64) error {
 	return s.changeUser(ctx, `DELETE FROM users WHERE id = ?`, id)
 }
@@ -132,27 +128,12 @@ func (s *Store) DeleteSession(ctx context.Context, tokenHash string) error {
 	return nil
 }
 
-func (s *Store) DeleteOtherSessions(ctx context.Context, userID int64, keepTokenHash string) error {
-	if _, err := s.db.ExecContext(ctx,
-		`DELETE FROM sessions WHERE user_id = ? AND token_hash != ?`, userID, keepTokenHash); err != nil {
-		return fmt.Errorf("delete other sessions: %w", err)
-	}
-	return nil
-}
-
 func (s *Store) DeleteExpiredSessions(ctx context.Context, now time.Time) (int64, error) {
 	res, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at <= ?`, fixedTime(now))
 	if err != nil {
 		return 0, fmt.Errorf("delete expired sessions: %w", err)
 	}
 	return res.RowsAffected()
-}
-
-func (s *Store) DeleteSessions(ctx context.Context, userID int64) error {
-	if _, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID); err != nil {
-		return fmt.Errorf("delete sessions: %w", err)
-	}
-	return nil
 }
 
 // UserSummary is one line of the admin user list.
