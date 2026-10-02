@@ -261,6 +261,9 @@ document.addEventListener("keydown", (e) => {
 // 7. Enter saves and Escape cancels an edit row. (These were htmx trigger
 // filters, which need eval; the CSP does not allow eval.)
 document.addEventListener("keydown", (e) => {
+  if (e.isComposing || e.keyCode === 229) {
+    return; // the key ends an IME composition; it is not a real Enter
+  }
   const row = e.target.closest && e.target.closest("li.editing");
   if (!row) {
     return;
@@ -288,4 +291,10 @@ document.addEventListener("htmx:afterRequest", (e) => {
   if (line && e.detail.successful) {
     line.textContent = "";
   }
+});
+
+// 9. If the session ended and the user presses Back, htmx cannot load the
+// old page (401). Reload, so the server sends the log-in page.
+document.addEventListener("htmx:historyCacheMissLoadError", () => {
+  location.reload();
 });

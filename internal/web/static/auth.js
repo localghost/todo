@@ -8,7 +8,6 @@ document.addEventListener("click", (e) => {
   const show = input.type === "password";
   input.type = show ? "text" : "password";
   button.textContent = show ? "Hide" : "Show";
-  button.setAttribute("aria-pressed", show ? "true" : "false");
 });
 
 // Sign-up: before the form is sent, find a proof-of-work nonce (about one
@@ -25,12 +24,18 @@ if (signupForm) {
     const label = button.textContent;
     button.disabled = true;
     button.textContent = "Checking that you are human…";
+    const errorLine = document.getElementById("signup-check-error");
+    errorLine.textContent = "";
     try {
+      if (!window.crypto || !crypto.subtle) {
+        throw new Error("no crypto.subtle");
+      }
       nonceField.value = await solve(signupForm.elements.form_token.value, Number(signupForm.dataset.powBits));
       signupForm.submit();
     } catch (err) {
       button.disabled = false;
       button.textContent = label;
+      errorLine.textContent = "Your browser could not run the sign-up check. Please use an up-to-date browser over HTTPS.";
     }
   });
 }
