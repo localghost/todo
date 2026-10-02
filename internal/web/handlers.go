@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"todo/internal/todo"
 )
@@ -153,7 +154,7 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		loc = s.zoneFor(r)
 	}
-	wasOverdue := s.wasOverdue(r, id)
+	old := s.oldItem(r, id)
 	item, err := s.svc.EditIn(r.Context(), userID(r), id, text, date, clock, loc)
 	var dueErr *todo.DueError
 	switch {
@@ -177,7 +178,7 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.serverError(w, r, err)
 	default:
-		if item.Overdue(s.nowFor(r)) != wasOverdue {
+		if placeChanged(old, item, s.nowFor(r)) {
 			s.renderList(w, r, currentUser(r).HideDone)
 			return
 		}
@@ -252,7 +253,7 @@ func (s *server) postponeItem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unknown postpone amount.", http.StatusBadRequest)
 		return
 	}
-	wasOverdue := s.wasOverdue(r, id)
+	old := s.oldItem(r, id)
 	item, err := s.svc.Postpone(r.Context(), userID(r), id, minutes)
 	switch {
 	case errors.Is(err, todo.ErrBadPostpone):
@@ -269,7 +270,7 @@ func (s *server) postponeItem(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.serverError(w, r, err)
 	default:
-		if item.Overdue(s.nowFor(r)) != wasOverdue {
+		if placeChanged(old, item, s.nowFor(r)) {
 			s.renderList(w, r, currentUser(r).HideDone)
 			return
 		}
@@ -302,10 +303,19 @@ func (s *server) setHideDone(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, http.StatusOK, part{"list", lv})
 }
 
-// wasOverdue reports whether item id is overdue now, before a change.
-func (s *server) wasOverdue(r *http.Request, id int64) bool {
-	it, err := s.svc.Get(r.Context(), userID(r), id)
-	return err == nil && it.Overdue(s.nowFor(r))
+// oldItem returns item id before a change (a zero item if it is missing).
+func (s *server) oldItem(r *http.Request, id int64) todo.Item {
+	it, _ := s.svc.Get(r.Context(), userID(r), id)
+	return it
+}
+
+// placeChanged reports whether a change moves the item in the list: into or
+// out of the overdue group, or to another place inside it.
+func placeChanged(old, item todo.Item, now time.Time) bool {
+	if old.Overdue(now) != item.Overdue(now) {
+		return true
+	}
+	return item.Overdue(now) && !old.DueAt.Equal(*item.DueAt)
 }
 
 // renderList answers with the whole list section instead of one row, for a

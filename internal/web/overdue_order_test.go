@@ -249,3 +249,19 @@ func TestOverdueOrderUsesBrowserZone(t *testing.T) {
 	assertOrder(t, body, "Buy milk", "Pay the rent")
 	assertNotContains(t, body, `class="due overdue"`)
 }
+
+// An edit that keeps the item overdue but moves its due time re-sorts the group.
+func TestEditInsideOverdueGroupResorts(t *testing.T) {
+	env := newTestEnv(t)
+	warsaw := mustZone(t, "Europe/Warsaw")
+	env.Clock.t = time.Date(2026, 10, 2, 16, 0, 0, 0, warsaw)
+	env.Svc.AddIn(context.Background(), env.User.ID, "Call Anna", "2026-10-02", "10:00", warsaw)
+	b, _ := env.Svc.AddIn(context.Background(), env.User.ID, "Call Bob", "2026-10-02", "14:00", warsaw)
+	form := url.Values{"text": {"Call Bob"}, "due_date": {"2026-10-02"}, "due_time": {"08:00"}, "due_tz": {"Europe/Warsaw"}}
+	rec := do(t, env.H, "PUT", "/items/"+strconv.FormatInt(b.ID, 10), form, warsawHTMX())
+	assertRetarget(t, rec, true)
+	assertOrder(t, rec.Body.String(), "Call Bob", "Call Anna")
+
+	form.Set("text", "Call Bob today") // text only: the place stays, so only the row comes back
+	assertRetarget(t, do(t, env.H, "PUT", "/items/"+strconv.FormatInt(b.ID, 10), form, warsawHTMX()), false)
+}
