@@ -173,19 +173,19 @@ Rule for this project: each new UI/UX decision is first proposed in Claude Desig
 
 | Action | Route | Response |
 |---|---|---|
-| Show page | `GET /` (optional `?hide_done=1`) | Full page |
+| Show page | `GET /` | Full page, with the user's saved hide state |
 | Add item | `POST /items` (form field `text`) | New row, added at the end of the list. The input is cleared. |
 | Mark done or not done | `POST /items/{id}/toggle` | Updated row. If done items are hidden and the item is now done: empty response, and htmx removes the row. |
 | Start edit | `GET /items/{id}/edit` | Row with an input field |
 | Save edit | `PUT /items/{id}` (form field `text`) | Normal row with the new text |
 | Cancel edit | `GET /items/{id}` | Normal row with the old text |
 | Delete | `DELETE /items/{id}` | Empty response. htmx removes the row. |
-| Show or hide done items | `GET /?hide_done=1` or `GET /` with `hx-push-url` | The list body and toolbar. The server sends this fragment if the request has the `HX-Request` header. Without the header, it sends the full page. |
+| Show or hide done items | `POST /settings/hide-done` (form field `hide_done` = `1` or `0`) | Saves the state for the user, then sends the list body and toolbar. Without the `HX-Request` header: redirect to `/`. |
 | Static files | `GET /static/...` | CSS and htmx, from the embedded files |
 
 The htmx requests send form data (`application/x-www-form-urlencoded`), the htmx default. Handlers read it with `r.FormValue`.
 
-The current hide state is in the URL (`?hide_done=1`). A page reload keeps it. Requests that change items send the hide state as a form value (`hide_done`), so the server knows if a done row must disappear.
+The hide state is a per-user setting on the server (`users.hide_done`, schema version 3; changed 2026-10-02, it was in the URL before). It is the same in every tab and on every device. Requests that change items do not send it: the server reads it from the logged-in user, so it knows if a done row must disappear.
 
 Out-of-band swaps (`hx-swap-oob`):
 

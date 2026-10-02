@@ -63,6 +63,8 @@ Version 2 has these tables:
 
 The step to version 2 drops the old `items` and `users` tables and creates the new ones. SQLite cannot add `ON DELETE CASCADE` to an existing column, so the tables are created again.
 
+The step to version 3 (2026-10-02) adds `users.hide_done INTEGER NOT NULL DEFAULT 0`, the per-user "hide done items" setting. It keeps all data.
+
 Start rule for old data: before the step to version 2, the server counts the old items. If there are any and the flag `-delete-old-items` is not set, the server does not start. It prints this message and exits with code 1:
 
 ```
