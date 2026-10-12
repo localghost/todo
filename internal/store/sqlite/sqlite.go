@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -309,6 +310,63 @@ func (s *Store) UpdateItem(ctx context.Context, userID, id int64, c todo.Change,
 		return todo.Item{}, err
 	}
 	return s.Get(ctx, userID, id)
+}
+
+// Move puts item id right after item afterID (0: first) and writes the
+// positions 1, 2, 3, … for all items of the user, in the new order.
+func (s *Store) Move(ctx context.Context, userID, id, afterID int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("move item: %w", err)
+	}
+	defer tx.Rollback()
+	rows, err := tx.QueryContext(ctx, `SELECT id FROM items WHERE user_id = ? ORDER BY position, id`, userID)
+	if err != nil {
+		return fmt.Errorf("move item: %w", err)
+	}
+	var ids []int64
+	for rows.Next() {
+		var x int64
+		if err := rows.Scan(&x); err != nil {
+			rows.Close()
+			return fmt.Errorf("move item: %w", err)
+		}
+		ids = append(ids, x)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("move item: %w", err)
+	}
+	moved, ok := moveAfter(ids, id, afterID)
+	if !ok {
+		return todo.ErrNotFound
+	}
+	for i, x := range moved {
+		if _, err := tx.ExecContext(ctx, `UPDATE items SET position = ? WHERE id = ?`, i+1, x); err != nil {
+			return fmt.Errorf("move item: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("move item: %w", err)
+	}
+	return nil
+}
+
+// moveAfter returns ids with id moved right after afterID (0: first). It
+// returns false if id, or a non-zero afterID, is not in ids.
+func moveAfter(ids []int64, id, afterID int64) ([]int64, bool) {
+	if !slices.Contains(ids, id) || (afterID != 0 && !slices.Contains(ids, afterID)) {
+		return nil, false
+	}
+	if afterID == id {
+		return ids, true
+	}
+	rest := slices.DeleteFunc(slices.Clone(ids), func(x int64) bool { return x == id })
+	at := 0
+	if afterID != 0 {
+		at = slices.Index(rest, afterID) + 1
+	}
+	return slices.Insert(rest, at, id), true
 }
 
 func (s *Store) ClaimDue(ctx context.Context, userID int64, now time.Time) ([]todo.Item, error) {

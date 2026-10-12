@@ -45,6 +45,9 @@ type Store interface {
 	UpdateItem(ctx context.Context, userID, id int64, c Change, now time.Time) (Item, error)
 	SetDone(ctx context.Context, userID, id int64, done bool, now time.Time) (Item, error)
 	Delete(ctx context.Context, userID, id int64) error
+	// Move puts item id right after item afterID in the user's list, or
+	// first if afterID is 0.
+	Move(ctx context.Context, userID, id, afterID int64) error
 	Counts(ctx context.Context, userID int64) (open, done int, err error)
 	// ClaimDue marks open, due, not yet notified items as notified at now
 	// and returns them. Each item is returned only once.
