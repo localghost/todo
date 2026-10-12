@@ -31,22 +31,55 @@ function stepTarget(row, dir) {
 }
 
 // Move requests go out one at a time and in order, so fast key presses
-// reach the server in the same order as on the page.
+// reach the server in the same order as on the page. Each move keeps the row
+// order from before it. If a move fails, the server still has that order: the
+// page puts it back, and the moves after it are dropped (a new round starts).
 let moveQueue = Promise.resolve();
+let moveRound = 0;
 
-function sendMove(row, putBack) {
-  const id = row.id.slice("item-".length);
-  const body = new URLSearchParams({ after: afterFor(row) });
-  moveQueue = moveQueue.then(() => postMove(id, body, putBack));
+// rowIds returns the ids of the rows in list, in page order.
+function rowIds(list) {
+  return Array.from(list.children, (row) => row.id);
 }
 
-async function postMove(id, body, putBack) {
+// restoreOrder puts the rows of #items back in the order of ids. It finds the
+// rows by id, because htmx may have replaced some of them. Rows that are gone
+// are skipped; rows that are not in ids (for example a new item) go last.
+function restoreOrder(ids) {
+  const list = document.getElementById("items");
+  if (!list) {
+    return;
+  }
+  const known = new Set(ids);
+  const rest = Array.from(list.children).filter((row) => !known.has(row.id));
+  for (const id of ids) {
+    const row = document.getElementById(id);
+    if (row && row.parentElement === list) {
+      list.appendChild(row);
+    }
+  }
+  rest.forEach((row) => list.appendChild(row));
+}
+
+// sendMove saves the new place of row. before is the row order before the move.
+function sendMove(row, before) {
+  const id = row.id.slice("item-".length);
+  const body = new URLSearchParams({ after: afterFor(row) });
+  const round = moveRound;
+  moveQueue = moveQueue
+    .then(() => (round === moveRound ? postMove(id, body, before) : undefined))
+    // An error must not stop the queue: the moves after it must still go out.
+    .catch((err) => console.warn("Cannot save the new order", err));
+}
+
+async function postMove(id, body, before) {
   const errorLine = document.getElementById("error");
   let res;
   try {
     res = await fetch(`/items/${id}/move`, { method: "POST", headers: { "HX-Request": "true" }, body });
   } catch (err) {
-    putBack();
+    moveRound++;
+    restoreOrder(before);
     if (errorLine) {
       errorLine.textContent = NETWORK_ERROR;
     }
@@ -66,10 +99,12 @@ async function postMove(id, body, putBack) {
   if (res.status === 404 || res.status === 422) {
     // The page shows an old state (another tab, or the item became overdue).
     // Load the true order. app.js section 11 keeps an open edit row.
+    moveRound++;
     htmx.ajax("GET", "/", { target: "#list-section", swap: "outerHTML" });
     return;
   }
-  putBack();
+  moveRound++;
+  restoreOrder(before);
   if (errorLine) {
     errorLine.textContent = "Something went wrong. Please try again.";
   }
@@ -84,6 +119,9 @@ function announce(row) {
   }
 }
 
+// The row order when the current drag started.
+let dragBefore = [];
+
 // Start SortableJS on the list. htmx replaces the list after some answers,
 // so this runs again for each new list.
 function startSortable(list) {
@@ -97,18 +135,16 @@ function startSortable(list) {
     chosenClass: "drag-chosen",
     animation: 150,
     onMove: (e) => !e.related.classList.contains("overdue-row"),
-    onStart: () => document.body.classList.add("dragging"),
+    onStart: () => {
+      document.body.classList.add("dragging");
+      dragBefore = rowIds(list);
+    },
     onEnd: (e) => {
       document.body.classList.remove("dragging");
       if (e.oldIndex === e.newIndex) {
         return; // dropped at the start place: nothing changed
       }
-      const row = e.item;
-      const oldIndex = e.oldIndex;
-      sendMove(row, () => {
-        row.remove();
-        list.insertBefore(row, list.children[oldIndex] || null);
-      });
+      sendMove(e.item, dragBefore);
     },
   });
 }
@@ -119,21 +155,25 @@ document.addEventListener("htmx:load", (e) => {
 });
 document.addEventListener("DOMContentLoaded", () => startSortable(document.getElementById("items")));
 
+// moveByKey moves row one place up (-1) or down (+1), if it can move.
+function moveByKey(row, dir) {
+  const ref = stepTarget(row, dir);
+  if (ref === undefined) {
+    return;
+  }
+  const list = row.parentElement;
+  const before = rowIds(list);
+  list.insertBefore(row, ref);
+  row.querySelector(".grip").focus(); // a moved node can lose the focus
+  announce(row);
+  sendMove(row, before);
+}
+
 // Arrow Up and Arrow Down on a focused grip move the row one place.
 document.addEventListener("keydown", (e) => {
   if (!e.target.matches || !e.target.matches(".grip") || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) {
     return;
   }
   e.preventDefault();
-  const row = e.target.closest("li.item");
-  const before = stepTarget(row, e.key === "ArrowUp" ? -1 : 1);
-  if (before === undefined) {
-    return;
-  }
-  const list = row.parentElement;
-  const oldNext = row.nextElementSibling;
-  list.insertBefore(row, before);
-  row.querySelector(".grip").focus(); // a moved node can lose the focus
-  announce(row);
-  sendMove(row, () => list.insertBefore(row, oldNext));
+  moveByKey(e.target.closest("li.item"), e.key === "ArrowUp" ? -1 : 1);
 });

@@ -146,3 +146,13 @@ func TestGripOnNormalRowsOnly(t *testing.T) {
 	assertNotContains(t, edit, `class="grip"`)
 	assertContains(t, edit, `class="grip-space"`)
 }
+
+// The edit row of an overdue item stays in the overdue group: the page must
+// not treat it as a normal row (no drop next to it, not counted in "N of M").
+func TestOverdueEditRowIsMarked(t *testing.T) {
+	env, ids := overdueEnv(t)
+	edit := do(t, env.H, "GET", "/items/"+strconv.FormatInt(ids["Call the dentist"], 10)+"/edit", nil, warsawHTMX()).Body.String()
+	assertContains(t, edit, `class="item editing overdue-row"`)
+	normal := do(t, env.H, "GET", "/items/"+strconv.FormatInt(ids["Water the plants"], 10)+"/edit", nil, warsawHTMX()).Body.String()
+	assertNotContains(t, normal, "overdue-row")
+}

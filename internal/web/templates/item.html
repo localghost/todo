@@ -18,7 +18,7 @@
   hx-delete="/items/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">{{template "x-icon"}}</button>
 </li>{{end}}
 
-{{define "item-edit"}}<li id="item-{{.Item.ID}}" class="item editing{{if .Item.Done}} done{{end}}"
+{{define "item-edit"}}<li id="item-{{.Item.ID}}" class="item editing{{if .Item.Done}} done{{end}}{{if (due .Item).Overdue}} overdue-row{{end}}"
   hx-get="/items/{{.Item.ID}}" hx-trigger="cancel-edit" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop">
 <span class="grip-space" aria-hidden="true"></span>
 <button class="check" type="button" disabled aria-label="Mark done (finish editing first)"><span class="box">{{if .Item.Done}}{{template "check-icon"}}{{end}}</span></button>
