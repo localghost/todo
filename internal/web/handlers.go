@@ -284,6 +284,39 @@ func (s *server) postponeItem(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// moveItem puts an item right after the item in the form field "after"
+// (empty: first). The page has already moved the row, so success is 204.
+// On an error the page gets the whole list, to show the true order.
+func (s *server) moveItem(w http.ResponseWriter, r *http.Request) {
+	hideDone := currentUser(r).HideDone
+	id, ok := parseID(r)
+	after, okAfter := parseAfter(r.FormValue("after"))
+	if !ok || !okAfter {
+		s.renderListStatus(w, r, hideDone, http.StatusNotFound)
+		return
+	}
+	err := s.svc.Move(r.Context(), userID(r), id, after, s.nowFor(r))
+	switch {
+	case errors.Is(err, todo.ErrNotFound):
+		s.renderListStatus(w, r, hideDone, http.StatusNotFound)
+	case errors.Is(err, todo.ErrCannotMove):
+		s.renderListStatus(w, r, hideDone, http.StatusUnprocessableEntity)
+	case err != nil:
+		s.serverError(w, r, err)
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// parseAfter reads the form field "after": empty means 0, the first place.
+func parseAfter(v string) (int64, bool) {
+	if v == "" {
+		return 0, true
+	}
+	id, err := strconv.ParseInt(v, 10, 64)
+	return id, err == nil && id > 0
+}
+
 // setHideDone saves whether the list hides done items, then shows the list.
 func (s *server) setHideDone(w http.ResponseWriter, r *http.Request) {
 	hide := r.FormValue("hide_done") == "1"
@@ -321,6 +354,11 @@ func placeChanged(old, item todo.Item, now time.Time) bool {
 // renderList answers with the whole list section instead of one row, for a
 // change that moves an item into or out of the overdue group at the top.
 func (s *server) renderList(w http.ResponseWriter, r *http.Request, hideDone bool) {
+	s.renderListStatus(w, r, hideDone, http.StatusOK)
+}
+
+// renderListStatus is renderList with another status code.
+func (s *server) renderListStatus(w http.ResponseWriter, r *http.Request, hideDone bool, status int) {
 	lv, err := s.listView(r, hideDone)
 	if err != nil {
 		s.serverError(w, r, err)
@@ -328,5 +366,5 @@ func (s *server) renderList(w http.ResponseWriter, r *http.Request, hideDone boo
 	}
 	w.Header().Set("HX-Retarget", "#list-section")
 	w.Header().Set("HX-Reswap", "outerHTML")
-	s.render(w, r, http.StatusOK, part{"list", lv})
+	s.render(w, r, status, part{"list", lv})
 }

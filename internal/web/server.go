@@ -110,6 +110,7 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Op
 	mux.Handle("POST /items", s.protect(s.addItem))
 	mux.Handle("POST /items/{id}/toggle", s.protect(s.toggleItem))
 	mux.Handle("POST /items/{id}/postpone", s.protect(s.postponeItem))
+	mux.Handle("POST /items/{id}/move", s.protect(s.moveItem))
 	mux.Handle("GET /items/{id}/edit", s.protect(s.editItem))
 	mux.Handle("GET /items/{id}", s.protect(s.showItem))
 	mux.Handle("PUT /items/{id}", s.protect(s.updateItem))

@@ -97,6 +97,14 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   display: flex; align-items: center; justify-content: center;
   background: none; border: none; padding: 0; cursor: pointer;
 }
+/* Drag order (spec 2026-10-12): only the grip starts a drag. touch-action
+   lets a finger on the grip drag the row instead of scrolling the page. */
+.grip, .grip-space { width: 24px; height: 44px; flex-shrink: 0; margin-top: -2px; }
+.grip {
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; padding: 0;
+  color: var(--muted); cursor: grab; touch-action: none;
+}
 .box {
   width: 20px; height: 20px; border-radius: 5px;
   border: 2px solid var(--muted); background: var(--card);
