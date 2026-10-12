@@ -310,7 +310,8 @@ document.addEventListener("htmx:historyCacheMissLoadError", () => {
 // is open: try again later. Plan at most 6 hours ahead, so a sleeping laptop
 // does not miss the moment for long. If the server still names a moment we
 // already refreshed for (an error, or this clock is ahead), wait 30 s, so the
-// page cannot ask every second.
+// page cannot ask every second. Never during a drag (order.js sets the body
+// class "dragging").
 let overdueTimer = null;
 let refreshedFor = 0;
 function planOverdueRefresh() {
@@ -328,7 +329,7 @@ function planOverdueRefresh() {
   overdueTimer = setTimeout(() => refreshForOverdue(next), wait);
 }
 function refreshForOverdue(next) {
-  if (document.querySelector(".item.editing")) {
+  if (document.querySelector(".item.editing") || document.body.classList.contains("dragging")) {
     overdueTimer = setTimeout(() => refreshForOverdue(next), 30000);
     return;
   }

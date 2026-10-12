@@ -157,13 +157,13 @@ func TestRowAnswerCarriesNextOverdue(t *testing.T) {
 // JSON line per step: the planned delay and how many refreshes ran.
 const overdueHarness = `
 const src = require("fs").readFileSync(process.argv[2], "utf8");
-let now = 1000000000000, timers = [], ajax = 0, editing = false, next = 0;
+let now = 1000000000000, timers = [], ajax = 0, editing = false, dragging = false, next = 0;
 const handlers = {};
 const document = {
   addEventListener: (name, fn) => (handlers[name] = handlers[name] || []).push(fn),
   getElementById: (id) => (id === "toolbar" && next ? { dataset: { nextOverdue: String(next) } } : null),
   querySelector: (sel) => (sel === ".item.editing" && editing ? {} : null),
-  activeElement: null, body: {},
+  activeElement: null, body: { classList: { contains: (c) => c === "dragging" && dragging } },
 };
 const fire = (name, detail) => (handlers[name] || []).forEach((fn) => fn({ detail: detail || {} }));
 const setTimeout = (fn, ms) => { timers.push({ fn, ms }); return timers.length; };
@@ -180,6 +180,8 @@ next = now + 60000; fire("DOMContentLoaded"); step("plan in 1 min");
 now = next + 1000; runLast(); step("fired");
 fire("htmx:afterSettle"); step("same moment again");
 editing = true; next = now + 1; timers = []; fire("htmx:afterSettle"); now += 2000; runLast(); step("edit row open");
+editing = false; dragging = true; next = now + 1; timers = []; fire("htmx:afterSettle"); now += 2000; runLast(); step("drag running");
+dragging = false;
 editing = false; next = now + 10 * 24 * 3600 * 1000; timers = []; fire("htmx:afterSettle"); step("10 days ahead");
 next = 0; timers = []; fire("htmx:afterSettle"); step("no moment");
 `
@@ -202,6 +204,7 @@ func TestAppJSOverdueTimer(t *testing.T) {
 		"fired":             {-1, 1},
 		"same moment again": {30000, 1}, // no 1-second loop when the server still names a past moment
 		"edit row open":     {30000, 1}, // no refresh while editing; try again in 30 s
+		"drag running":      {30000, 1}, // no refresh during a drag; try again in 30 s
 		"10 days ahead":     {6 * 60 * 60 * 1000, 1},
 		"no moment":         {-1, 1},
 	}
