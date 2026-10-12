@@ -111,6 +111,19 @@ func (s *Service) Delete(ctx context.Context, userID, id int64) error {
 	return s.store.Delete(ctx, userID, id)
 }
 
+// Move puts item id after item afterID (0: first). now carries the browser's
+// zone, because the overdue rule uses it for all-day items.
+func (s *Service) Move(ctx context.Context, userID, id, afterID int64, now time.Time) error {
+	it, err := s.store.Get(ctx, userID, id)
+	if err != nil {
+		return err
+	}
+	if it.Overdue(now) {
+		return ErrCannotMove
+	}
+	return s.store.Move(ctx, userID, id, afterID)
+}
+
 func (s *Service) Counts(ctx context.Context, userID int64) (open, done int, err error) {
 	return s.store.Counts(ctx, userID)
 }

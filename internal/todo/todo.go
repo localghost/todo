@@ -12,6 +12,8 @@ var (
 	ErrEmptyText = errors.New("todo: text is empty")
 	// ErrNotFound means the item does not exist or belongs to another user.
 	ErrNotFound = errors.New("todo: item not found")
+	// ErrCannotMove means the item is overdue; overdue items stay at the top.
+	ErrCannotMove = errors.New("todo: an overdue item cannot move")
 )
 
 // Item is one entry in a user's todo list.
