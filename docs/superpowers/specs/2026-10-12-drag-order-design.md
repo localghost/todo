@@ -94,13 +94,13 @@ The existing `htmx-config` in `page.html` already swaps `404` and `422` answers 
 
 - `item.html`: the `item` template gets the grip button on normal rows: `<button class="grip" type="button" aria-label="Move: {{.Text}}">`. An overdue row gets no grip and the class `overdue-row` on its `<li>`. The `item-edit` template gets no grip.
 - `list.html`: a visually hidden live region `<p id="move-status" class="visually-hidden" aria-live="polite"></p>` inside `#list-section`.
-- `page.html`: `<script src="/static/Sortable.min.js" defer></script>` before `app.js`.
+- `page.html`: `<script src="/static/Sortable.min.js" defer></script>` before `app.js`, and `<script src="/static/order.js" defer></script>` after `app.js`. The `htmx-config` sets `attributesToSettle` to `class`, `width`, and `height`, without `style`. After a drag, SortableJS leaves a `style` attribute on the rows. Without this setting, htmx copies it to the new rows during a swap, and the CSP blocks it with a console error.
 - `app.css`: the grip style, the drag styles from SortableJS (the ghost row and the chosen row), and `.visually-hidden` if it does not exist yet.
 
 ### Browser (`internal/web/static`)
 
 - `Sortable.min.js`: one release file of SortableJS. The plan picks the exact version and checks its checksum. The MIT license note stays at the top of the file.
-- `app.js`, a new section 13, "Drag and keyboard order":
+- `order.js`, a new file for the drag and keyboard order. It loads after `app.js` and uses its `NETWORK_ERROR`. It sets the body class `dragging` while a drag runs:
   1. Start SortableJS on `#items` at page load and again after each htmx swap that replaces `#list-section`. Options: `handle: ".grip"`, only rows without `.overdue-row` and `.editing` can be dragged, and an `onMove` check that stops a drop above an overdue row.
   2. On a drop at a new place, find the nearest normal row above the dropped row. Send its id as `after`, or empty if there is none.
   3. Arrow Up and Arrow Down on a focused grip: move the row in the page, keep the focus on its grip, write "Moved to N of M" into `#move-status`, and send the same request.
@@ -108,13 +108,14 @@ The existing `htmx-config` in `page.html` already swaps `404` and `422` answers 
 
 ## 5. Errors and edge cases
 
-1. The item or the `after` item is gone, for example deleted in another tab: the server answers `404` with the whole list. The page shows the true order.
-2. The item became overdue between page load and drop: the server answers `422` with the whole list. The item then shows at the top, as an overdue item.
+1. The item or the `after` item is gone, for example deleted in another tab: the server answers `404` with the whole list. The page loads the list again with `GET /` (the same call as the overdue refresh, so `app.js` section 11 keeps an open edit row) and shows the true order.
+2. The item became overdue between page load and drop: the server answers `422` with the whole list. The page loads the list again, as in point 1. The item then shows at the top, as an overdue item.
 3. A bad id in the URL or in `after`: the same answer as point 1.
-4. A network error or a `5xx` answer: the script puts the row back at its old place. The error line shows the usual message ("Cannot reach the server. Please try again.").
-5. A drop at the same place, or a drag cancelled with Escape: no request goes out.
-6. The overdue refresh timer (section 10 in `app.js`) fires during a drag: it waits 30 seconds and tries again, the same as it does now while an edit row is open.
-7. An edit row is open while the user drags another row: a whole-list answer keeps the edit row, because section 11 in `app.js` already does this.
+4. A network error or a `5xx` answer: the script puts the row back at its old place. For a network error, the error line says "Cannot reach the server. Please try again." For a `5xx` answer, it says "Something went wrong. Please try again."
+5. A drop at the start place: no request goes out. (SortableJS has no Escape key to cancel a drag.)
+6. A `401` answer (the session ended): the page reloads, so the server shows the log-in page.
+7. The overdue refresh timer (section 10 in `app.js`) fires during a drag: it waits 30 seconds and tries again, the same as it does now while an edit row is open.
+8. An edit row is open while the user drags another row: a whole-list answer keeps the edit row, because section 11 in `app.js` already does this.
 
 ## 6. Testing
 
@@ -125,7 +126,7 @@ The existing `htmx-config` in `page.html` already swaps `404` and `422` answers 
    - Hidden done items keep their order relative to the other items.
    - A new item still goes to the end after a move.
 2. Service:
-   - An overdue item returns `ErrCannotMove`, and the store is not called.
+   - An overdue item returns `ErrCannotMove`, and the order does not change. (The tests use a real store, so they check the order, not the store calls.)
    - An all-day item uses the zone of `now`: it can move on its due day and cannot move on the next day.
 3. Web:
    - `POST /items/{id}/move` answers `204` and saves the order.

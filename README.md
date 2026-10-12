@@ -10,6 +10,8 @@ A small todo list for the browser. Everyone has their own account and their own 
 - Give an item a due date and time. The browser can remind you, and you can postpone by
   5, 10, 15 or 30 minutes.
 - Overdue items move to the top of the list.
+- Drag items by the grip (⋮⋮) to change their order, or use the arrow keys. Overdue items
+  stay at the top.
 - Times are shown in your browser's time zone.
 
 ## Run it yourself

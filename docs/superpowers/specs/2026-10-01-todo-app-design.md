@@ -135,6 +135,7 @@ Rules:
 - A new item gets `position = max(position) + 1` for its user. So new items go to the end of the list.
 - The list is sorted by `position`. Done items keep their place.
 - Since 2026-10-02: overdue open items come first, most overdue first (canvas page "14 · Overdue at the top", option A: no extra heading). The other items keep the `position` order below them. The due-dates spec has the details.
+- Since 2026-10-12: the user can drag items to change the order. A move renumbers the user's `position` values. See `2026-10-12-drag-order-design.md`.
 - Times are stored as UTC text in RFC 3339 format.
 
 ## 6. UI
@@ -234,7 +235,7 @@ These items are not in the first version. The design prepares for them:
 
 1. JSON API: add `internal/web/api.go` with `/api/items` routes on the same `todo.Service`.
 2. More users: add login and sessions in `internal/web`. Pass the real user ID to the service. The service and the store do not change.
-3. Drag-and-drop order: use SortableJS with htmx. Add a service method that saves new `position` values.
+3. Drag-and-drop order: use SortableJS with htmx. Add a service method that saves new `position` values. Done on 2026-10-12, see `2026-10-12-drag-order-design.md`.
 
 ---
 
