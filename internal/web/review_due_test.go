@@ -11,7 +11,7 @@ func TestEditUpdatesNotifyBar(t *testing.T) {
 	h, svc := newTestApp(t)
 	mustAdd(t, svc, "Call the dentist")
 	rec := do(t, h, "PUT", "/items/1",
-		url.Values{"text": {"Call the dentist"}, "due_date": {"2026-10-03"}, "due_time": {""}}, htmxHeaders)
+		url.Values{"text": {"Call the dentist"}, "due_date": {"2099-10-03"}, "due_time": {""}}, htmxHeaders)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}

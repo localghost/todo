@@ -53,11 +53,11 @@ func TestNotifyBarHasDue(t *testing.T) {
 	ctx := context.Background()
 	assertContains(t, do(t, h, "GET", "/", nil, nil).Body.String(), `<div id="notify-bar" class="notify-bar" data-has-due="false"></div>`)
 
-	done, _ := svc.Add(ctx, 1, "Done with due", "2026-10-03", "")
+	done, _ := svc.Add(ctx, 1, "Done with due", "2099-10-03", "")
 	svc.Toggle(ctx, 1, done.ID)
 	assertContains(t, do(t, h, "GET", "/", nil, nil).Body.String(), `data-has-due="false"`)
 
-	rec := do(t, h, "POST", "/items", url.Values{"text": {"Open with due"}, "due_date": {"2026-10-03"}}, htmxHeaders)
+	rec := do(t, h, "POST", "/items", url.Values{"text": {"Open with due"}, "due_date": {"2099-10-03"}}, htmxHeaders)
 	assertContains(t, rec.Body.String(), `<div id="notify-bar" class="notify-bar" data-has-due="true" hx-swap-oob="true"></div>`)
 }
 
