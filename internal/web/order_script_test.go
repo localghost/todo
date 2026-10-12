@@ -105,3 +105,12 @@ func TestOrderScriptHelpers(t *testing.T) {
 		}
 	}
 }
+
+// After a drag, SortableJS leaves a style attribute on the rows. htmx must not
+// copy it to the new rows during a swap: the CSP blocks inline styles, and the
+// browser would log a CSP error.
+func TestHTMXDoesNotSettleStyle(t *testing.T) {
+	env := newTestEnv(t)
+	body := do(t, env.H, "GET", "/", nil, nil).Body.String()
+	assertContains(t, body, `"attributesToSettle":["class","width","height"]`)
+}
