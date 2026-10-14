@@ -6,8 +6,11 @@ Mockups: canvas "Todo app UI proposal", page "16 · Labels", the boards marked N
 ## What changes
 
 - The add form and edit mode lose the Labels field and its suggestion buttons.
-- Each row's grey line ends with a small round **+**. On a computer it shows when the pointer is
-  on the row or focus is in it, and always on a row without labels. On a touch screen it always shows.
+- Each row's grey line ends with a small grey **+** (9 px, `#8C8A84`, no circle; a 24 px click
+  area, 32 px on a touch screen). On a computer it shows when the pointer is on the row or focus is
+  in it, also on a row without labels. On a touch screen it always shows. Pointing at it shows a
+  light grey disc; while its list is open it is blue. Source: option C on the canvas board "NEW:
+  smaller gray +" (2026-10-14), which replaced the 24 px dashed blue circle.
 - Clicking + opens a small list right under it, with a pointer at the +. At the top is a search
   field; below it, one per line, the user's labels that the item does not have. Typing narrows the
   list. A name that matches no label adds a last line "Create “name”".
