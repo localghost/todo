@@ -212,6 +212,7 @@ async function run(name, answers, steps) {
   await run("old state on the page", [422, 204], [{ move: "A", dir: 1 }, { move: "A", dir: 1 }]);
   await run("drag and drop", [204], [{ drag: "A", to: 1 }, { drop: true }]);
   await run("request hangs", ["hang"], [{ move: "A", dir: 1 }]);
+  await run("list removed during a drag", [204], [{ drag: "A", to: 1 }, { cleanup: true }]);
 })();
 `
 
@@ -258,6 +259,9 @@ func TestOrderScriptQueue(t *testing.T) {
 		"drag and drop": {Order: "BACD", Sent: 1},
 		// A request that never answers times out like a network error.
 		"request hangs": {Order: "ABCD", Sent: 1, Error: network},
+		// htmx removes the list during a drag: the drag stops, nothing is sent,
+		// and "dragging" does not stay on (it would stop the overdue refresh).
+		"list removed during a drag": {Order: "BACD", Destroyed: 1},
 	}
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	if len(lines) != len(want) {

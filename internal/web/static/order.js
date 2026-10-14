@@ -128,8 +128,9 @@ function announce(row) {
   }
 }
 
-// The row order when the current drag started.
-let dragBefore = [];
+// The row order when the current drag started. null means that there is no
+// drag to save.
+let dragBefore = null;
 
 // Start SortableJS on the list. htmx replaces the list after some answers,
 // so this runs again for each new list.
@@ -139,6 +140,10 @@ function startSortable(list) {
   }
   Sortable.create(list, {
     handle: ".grip",
+    // The edit row has no grip, so the handle option already stops a drag of
+    // it. Do not add :not(.editing) here: SortableJS counts oldIndex and
+    // newIndex only among draggable rows, so a move past the edit row would
+    // keep the same index, and onEnd would not send it.
     draggable: "li.item:not(.overdue-row)",
     ghostClass: "drag-ghost",
     chosenClass: "drag-chosen",
@@ -150,13 +155,32 @@ function startSortable(list) {
     },
     onEnd: (e) => {
       document.body.classList.remove("dragging");
-      if (e.oldIndex === e.newIndex) {
-        return; // dropped at the start place: nothing changed
+      const before = dragBefore;
+      dragBefore = null;
+      if (before === null || e.oldIndex === e.newIndex) {
+        return; // the list is gone, or the row is at the start place
       }
-      sendMove(e.item, dragBefore);
+      sendMove(e.item, before);
     },
   });
 }
+
+// When htmx removes the list (for example to load it again), stop its
+// SortableJS. A drag on it must not stay open: "dragging" would stop the
+// overdue refresh in app.js. htmx sends this event before it removes the
+// list, and destroy calls onEnd, so dragBefore is cleared first.
+document.addEventListener("htmx:beforeCleanupElement", (e) => {
+  const elt = e.detail.elt;
+  if (elt.id !== "items" || typeof Sortable === "undefined") {
+    return;
+  }
+  dragBefore = null;
+  const sortable = Sortable.get(elt);
+  if (sortable) {
+    sortable.destroy();
+  }
+  document.body.classList.remove("dragging");
+});
 
 document.addEventListener("htmx:load", (e) => {
   const elt = e.detail.elt;
