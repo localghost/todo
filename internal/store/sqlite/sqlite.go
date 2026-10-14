@@ -20,7 +20,7 @@ import (
 const itemCols = `id, user_id, text, done, position, created_at, updated_at, due_at, due_all_day, notified_at`
 
 // currentVersion is the schema version this code writes (PRAGMA user_version).
-const currentVersion = 3
+const currentVersion = 4
 
 // schemaV2 is the schema since user accounts (PRAGMA user_version = 2).
 var schemaV2 = []string{
@@ -100,7 +100,10 @@ func migrate(db *sql.DB, opts Options) error {
 		return err
 	}
 	if version >= 2 {
-		return migrateToV3(db, version)
+		if err := migrateToV3(db, version); err != nil {
+			return err
+		}
+		return migrateToV4(db, max(version, 3))
 	}
 	tables, err := userTables(db)
 	if err != nil {
@@ -151,7 +154,10 @@ func migrate(db *sql.DB, opts Options) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	return migrateToV3(db, 2)
+	if err := migrateToV3(db, 2); err != nil {
+		return err
+	}
+	return migrateToV4(db, 3)
 }
 
 // migrateToV3 adds the per-user setting hide_done (schema version 3).
@@ -167,6 +173,40 @@ func migrateToV3(db *sql.DB, version int) error {
 	for _, stmt := range []string{
 		`ALTER TABLE users ADD COLUMN hide_done INTEGER NOT NULL DEFAULT 0`,
 		`PRAGMA user_version = 3`,
+	} {
+		if _, err := tx.Exec(stmt); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// migrateToV4 adds the tables for labels (schema version 4).
+func migrateToV4(db *sql.DB, version int) error {
+	if version >= 4 {
+		return nil
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, stmt := range []string{
+		`CREATE TABLE labels (
+			id         INTEGER PRIMARY KEY,
+			user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			name       TEXT    NOT NULL COLLATE NOCASE,
+			color      TEXT    NOT NULL,
+			created_at TEXT    NOT NULL,
+			UNIQUE (user_id, name)
+		)`,
+		`CREATE TABLE item_labels (
+			item_id  INTEGER NOT NULL REFERENCES items(id)  ON DELETE CASCADE,
+			label_id INTEGER NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+			PRIMARY KEY (item_id, label_id)
+		)`,
+		`CREATE INDEX item_labels_label ON item_labels (label_id)`,
+		`PRAGMA user_version = 4`,
 	} {
 		if _, err := tx.Exec(stmt); err != nil {
 			return err
@@ -251,12 +291,21 @@ func (s *Store) Close() error {
 }
 
 func (s *Store) List(ctx context.Context, userID int64, hideDone bool) ([]todo.Item, error) {
+	return s.ListLabel(ctx, userID, hideDone, 0)
+}
+
+func (s *Store) ListLabel(ctx context.Context, userID int64, hideDone bool, labelID int64) ([]todo.Item, error) {
 	q := `SELECT ` + itemCols + ` FROM items WHERE user_id = ?`
+	args := []any{userID}
 	if hideDone {
 		q += ` AND done = 0`
 	}
+	if labelID != 0 {
+		q += ` AND id IN (SELECT item_id FROM item_labels WHERE label_id = ?)`
+		args = append(args, labelID)
+	}
 	q += ` ORDER BY position, id`
-	rows, err := s.db.QueryContext(ctx, q, userID)
+	rows, err := s.db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list items: %w", err)
 	}
@@ -272,6 +321,9 @@ func (s *Store) List(ctx context.Context, userID int64, hideDone bool) ([]todo.I
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("list items: %w", err)
 	}
+	if err := attachLabels(ctx, s.db, userID, items, 0); err != nil {
+		return nil, err
+	}
 	return items, nil
 }
 
@@ -282,12 +334,24 @@ func (s *Store) Get(ctx context.Context, userID, id int64) (todo.Item, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return todo.Item{}, todo.ErrNotFound
 	}
-	return it, err
+	if err != nil {
+		return todo.Item{}, err
+	}
+	items := []todo.Item{it}
+	if err := attachLabels(ctx, s.db, userID, items, id); err != nil {
+		return todo.Item{}, err
+	}
+	return items[0], nil
 }
 
 func (s *Store) Create(ctx context.Context, userID int64, c todo.Change, now time.Time) (todo.Item, error) {
 	ts := formatTime(now)
-	res, err := s.db.ExecContext(ctx,
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return todo.Item{}, fmt.Errorf("create item: %w", err)
+	}
+	defer tx.Rollback()
+	res, err := tx.ExecContext(ctx,
 		`INSERT INTO items (user_id, text, done, position, created_at, updated_at, due_at, due_all_day)
 		 VALUES (?, ?, 0, (SELECT COALESCE(MAX(position), 0) + 1 FROM items WHERE user_id = ?), ?, ?, ?, ?)`,
 		userID, c.Text, userID, ts, ts, formatDue(c.DueAt), c.DueAllDay)
@@ -298,16 +362,38 @@ func (s *Store) Create(ctx context.Context, userID int64, c todo.Change, now tim
 	if err != nil {
 		return todo.Item{}, fmt.Errorf("create item: %w", err)
 	}
+	if err := setItemLabels(ctx, tx, userID, id, c.Labels, now); err != nil {
+		return todo.Item{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return todo.Item{}, fmt.Errorf("create item: %w", err)
+	}
 	return s.Get(ctx, userID, id)
 }
 
 func (s *Store) UpdateItem(ctx context.Context, userID, id int64, c todo.Change, now time.Time) (todo.Item, error) {
-	if err := s.update(ctx,
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return todo.Item{}, fmt.Errorf("update item: %w", err)
+	}
+	defer tx.Rollback()
+	if err := updateOne(ctx, tx,
 		`UPDATE items SET text = ?, due_at = ?, due_all_day = ?, updated_at = ?,
 		 notified_at = CASE WHEN ? THEN NULL ELSE notified_at END
 		 WHERE id = ? AND user_id = ?`,
 		c.Text, formatDue(c.DueAt), c.DueAllDay, formatTime(now), c.ResetNotified, id, userID); err != nil {
 		return todo.Item{}, err
+	}
+	if !c.KeepLabels {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM item_labels WHERE item_id = ?`, id); err != nil {
+			return todo.Item{}, fmt.Errorf("update item: %w", err)
+		}
+		if err := setItemLabels(ctx, tx, userID, id, c.Labels, now); err != nil {
+			return todo.Item{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return todo.Item{}, fmt.Errorf("update item: %w", err)
 	}
 	return s.Get(ctx, userID, id)
 }
@@ -458,9 +544,17 @@ func (s *Store) Delete(ctx context.Context, userID, id int64) error {
 }
 
 func (s *Store) Counts(ctx context.Context, userID int64) (open, done int, err error) {
-	err = s.db.QueryRowContext(ctx,
-		`SELECT COALESCE(SUM(done = 0), 0), COALESCE(SUM(done = 1), 0) FROM items WHERE user_id = ?`,
-		userID).Scan(&open, &done)
+	return s.CountsLabel(ctx, userID, 0)
+}
+
+func (s *Store) CountsLabel(ctx context.Context, userID, labelID int64) (open, done int, err error) {
+	q := `SELECT COALESCE(SUM(done = 0), 0), COALESCE(SUM(done = 1), 0) FROM items WHERE user_id = ?`
+	args := []any{userID}
+	if labelID != 0 {
+		q += ` AND id IN (SELECT item_id FROM item_labels WHERE label_id = ?)`
+		args = append(args, labelID)
+	}
+	err = s.db.QueryRowContext(ctx, q, args...).Scan(&open, &done)
 	if err != nil {
 		return 0, 0, fmt.Errorf("count items: %w", err)
 	}
@@ -469,7 +563,19 @@ func (s *Store) Counts(ctx context.Context, userID int64) (open, done int, err e
 
 // update runs a statement that must change exactly one row.
 func (s *Store) update(ctx context.Context, q string, args ...any) error {
-	res, err := s.db.ExecContext(ctx, q, args...)
+	return updateOne(ctx, s.db, q, args...)
+}
+
+// execer is a *sql.DB or a *sql.Tx.
+type execer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// updateOne runs a statement that must change exactly one row.
+func updateOne(ctx context.Context, db execer, q string, args ...any) error {
+	res, err := db.ExecContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("update item: %w", err)
 	}

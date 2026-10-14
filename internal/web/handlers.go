@@ -23,15 +23,31 @@ func (s *server) index(w http.ResponseWriter, r *http.Request) {
 		s.render(w, r, http.StatusOK, part{"list", lv})
 		return
 	}
-	s.render(w, r, http.StatusOK, part{"page", pageView{Form: formView{Focus: true}, List: lv, Username: currentUser(r).Username}})
+	form, err := s.newForm(r, lv.Filter)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.render(w, r, http.StatusOK, part{"page", pageView{Form: form, List: lv, Username: currentUser(r).Username}})
 }
 
 func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
-	text, date, clock := r.FormValue("text"), r.FormValue("due_date"), r.FormValue("due_time")
-	item, err := s.svc.AddIn(r.Context(), userID(r), text, date, clock, s.zoneFor(r))
+	in := todo.Input{Text: r.FormValue("text"), DueDate: r.FormValue("due_date"), DueTime: r.FormValue("due_time"), Labels: r.FormValue("labels")}
+	item, err := s.svc.AddItem(r.Context(), userID(r), in, s.zoneFor(r))
 	var dueErr *todo.DueError
-	if errors.Is(err, todo.ErrEmptyText) || errors.As(err, &dueErr) {
-		view := formView{Text: text, DueDate: date, DueTime: clock, Focus: true, Error: errors.Is(err, todo.ErrEmptyText)}
+	if labelsMsg := labelsMessage(err); errors.Is(err, todo.ErrEmptyText) || errors.As(err, &dueErr) || labelsMsg != "" {
+		filter, ferr := s.labelFilter(r)
+		if ferr != nil {
+			s.serverError(w, r, ferr)
+			return
+		}
+		view, ferr := s.newForm(r, filter)
+		if ferr != nil {
+			s.serverError(w, r, ferr)
+			return
+		}
+		view.Text, view.DueDate, view.DueTime, view.Labels = in.Text, in.DueDate, in.DueTime, in.Labels
+		view.Error, view.LabelsError = errors.Is(err, todo.ErrEmptyText), labelsMsg
 		if dueErr != nil {
 			view.DueError = dueErr.Msg
 		}
@@ -55,8 +71,18 @@ func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 	}
 	lv.OOB = true
 	// The add form is not part of the answer: app.js clears the input, so
-	// text typed while this request ran is not lost.
-	s.render(w, r, http.StatusOK, part{"item", item}, part{"oob", lv})
+	// text typed while this request ran is not lost. The suggestions come
+	// along, because the item may have made a new label.
+	parts := []part{}
+	if lv.Filter == nil || item.HasLabel(lv.Filter.ID) {
+		parts = append(parts, part{"item", item}) // else the filter hides the new item
+	}
+	suggest, err := s.suggestions(r)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.render(w, r, http.StatusOK, append(parts, part{"oob", lv}, part{"suggest-oob", suggest})...)
 }
 
 func (s *server) toggleItem(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +156,13 @@ func (s *server) editItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	date, clock := dueInputs(item, s.zoneFor(r))
-	s.render(w, r, http.StatusOK, part{"item-edit", editView{Item: item, Text: item.Text, DueDate: date, DueTime: clock}})
+	suggest, err := s.suggestions(r)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.render(w, r, http.StatusOK, part{"item-edit", editView{Item: item, Text: item.Text, DueDate: date, DueTime: clock,
+		Labels: todo.LabelNames(item.Labels), Suggest: suggest}})
 }
 
 func (s *server) showItem(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +179,7 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 		s.oobOnly(w, r, http.StatusNotFound)
 		return
 	}
-	text, date, clock := r.FormValue("text"), r.FormValue("due_date"), r.FormValue("due_time")
+	in := todo.Input{Text: r.FormValue("text"), DueDate: r.FormValue("due_date"), DueTime: r.FormValue("due_time"), Labels: r.FormValue("labels")}
 	// Read the time in the zone the edit row was shown in, so an unchanged
 	// time stays the same moment even if the browser's zone changed since.
 	loc, ok := s.parseZone(r.FormValue("due_tz"))
@@ -155,10 +187,11 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 		loc = s.zoneFor(r)
 	}
 	old := s.oldItem(r, id)
-	item, err := s.svc.EditIn(r.Context(), userID(r), id, text, date, clock, loc)
+	item, err := s.svc.EditItem(r.Context(), userID(r), id, in, loc)
 	var dueErr *todo.DueError
+	labelsMsg := labelsMessage(err)
 	switch {
-	case errors.Is(err, todo.ErrEmptyText) || errors.As(err, &dueErr):
+	case errors.Is(err, todo.ErrEmptyText) || errors.As(err, &dueErr) || labelsMsg != "":
 		old, getErr := s.svc.Get(r.Context(), userID(r), id)
 		if errors.Is(getErr, todo.ErrNotFound) {
 			s.oobOnly(w, r, http.StatusNotFound)
@@ -168,7 +201,13 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 			s.serverError(w, r, getErr)
 			return
 		}
-		view := editView{Item: old, Text: text, DueDate: date, DueTime: clock, Error: errors.Is(err, todo.ErrEmptyText)}
+		suggest, serr := s.suggestions(r)
+		if serr != nil {
+			s.serverError(w, r, serr)
+			return
+		}
+		view := editView{Item: old, Text: in.Text, DueDate: in.DueDate, DueTime: in.DueTime, Labels: in.Labels,
+			Error: errors.Is(err, todo.ErrEmptyText), LabelsError: labelsMsg, Suggest: suggest}
 		if dueErr != nil {
 			view.DueError = dueErr.Msg
 		}
@@ -189,7 +228,16 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		lv.OOB = true
-		s.render(w, r, http.StatusOK, part{"item", item}, part{"oob", lv})
+		suggest, err := s.suggestions(r)
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		parts := []part{}
+		if lv.Filter == nil || item.HasLabel(lv.Filter.ID) {
+			parts = append(parts, part{"item", item}) // else the row leaves the filtered list
+		}
+		s.render(w, r, http.StatusOK, append(parts, part{"oob", lv}, part{"suggest-oob", suggest})...)
 	}
 }
 

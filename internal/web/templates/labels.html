@@ -1,0 +1,24 @@
+{{define "labels"}}{{template "auth-head" "Labels"}}
+<main class="account-wrap">
+<div class="account-top"><a href="/">← Back to my list</a> <form method="post" action="/logout" class="inline-form"><button type="submit" class="link-button">Log out</button></form></div>
+<h1>Labels</h1>
+<p class="page-hint">To make a new label, type its name in the Labels field when you add or edit an item. Deleting a label keeps its items.</p>
+{{if .Rows}}<ul class="label-list">
+{{range .Rows}}<li class="label-row" id="label-{{.ID}}">
+<div class="label-head"><span class="chip c-{{.Color}}">{{.Name}}</span><a class="count" href="/?label={{.ID}}">{{.Items}} {{if eq .Items 1}}item{{else}}items{{end}}</a></div>
+{{if .Confirm}}<form method="post" action="/labels/{{.ID}}/delete" class="confirm" role="alert">
+<p>Delete “{{.Name}}”? {{if .Items}}It comes off {{.Items}} {{if eq .Items 1}}item{{else}}items{{end}}. The items stay.{{else}}No items use it.{{end}}</p>
+<div class="confirm-buttons"><button type="submit" class="btn-small danger-solid" autofocus>Delete label</button><a class="btn-small" href="/labels#label-{{.ID}}">Cancel</a></div>
+</form>{{else}}<form method="post" action="/labels/{{.ID}}" class="label-form">
+<label class="visually-hidden" for="label-name-{{.ID}}">Name of “{{.Name}}”</label>
+<input type="text" id="label-name-{{.ID}}" name="name" value="{{.NameValue}}" maxlength="60" autocomplete="off" required{{if .Error}} aria-invalid="true" aria-describedby="label-msg-{{.ID}}" autofocus{{end}}>
+<fieldset class="swatches"><legend class="visually-hidden">Color of “{{.Name}}”</legend>{{$row := .}}{{range $.Colors}}<label class="c-{{.}}" title="{{.}}"><input type="radio" name="color" value="{{.}}" aria-label="{{.}}"{{if eq . $row.ColorValue}} checked{{end}}><span class="dot"></span></label>{{end}}</fieldset>
+<div class="label-buttons"><button type="submit" class="btn-small primary">Save</button><a class="btn-small danger" href="/labels?delete={{.ID}}#label-{{.ID}}">Delete</a></div>
+</form>{{end}}
+{{if .Error}}<p class="row-error" id="label-msg-{{.ID}}" role="alert">{{.Error}}</p>{{else if .Saved}}<p class="row-ok" role="status">Saved.</p>{{end}}
+</li>
+{{end}}</ul>{{else}}<div id="empty-state"><p class="empty-title">No labels yet</p><p class="empty-hint">Type a label in the Labels field when you add an item.</p></div>{{end}}
+</main>
+</body>
+</html>
+{{end}}

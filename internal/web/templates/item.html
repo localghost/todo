@@ -11,7 +11,7 @@
 <div class="text-col">
 <button class="text" type="button" title="Click to edit"
   hx-get="/items/{{.ID}}/edit" hx-target="closest li" hx-swap="outerHTML">{{.Text}}</button>
-{{if $d.Text}}<span class="meta"><span class="due{{if $d.Overdue}} overdue{{end}}">{{$d.Text}}</span></span>{{end}}
+{{if or $d.Text .Labels}}<span class="meta">{{if $d.Text}}<span class="due{{if $d.Overdue}} overdue{{end}}">{{$d.Text}}</span>{{end}}{{range .Labels}}<a class="chip c-{{.Color}}" href="/?label={{.ID}}" title="Show only “{{.Name}}”">{{.Name}}</a>{{end}}</span>{{end}}
 {{if $d.Overdue}}<span class="postpone" role="group" aria-label="Postpone">{{range postponeMinutes}}<button type="button" class="postpone-btn" aria-label="Postpone {{$.Text}} by {{.}} minutes" hx-post="/items/{{$.ID}}/postpone?minutes={{.}}" hx-target="closest li" hx-swap="outerHTML">+{{.}} min</button>{{end}}</span>{{end}}
 </div>
 <button class="delete" type="button" aria-label="Delete: {{.Text}}"
@@ -24,7 +24,7 @@
 <button class="check" type="button" disabled aria-label="Mark done (finish editing first)"><span class="box">{{if .Item.Done}}{{template "check-icon"}}{{end}}</span></button>
 <div class="edit" hx-put="/items/{{.Item.ID}}" hx-trigger="save-edit" hx-include="closest li" hx-validate="true"
   hx-target="closest li" hx-swap="outerHTML" hx-sync="closest li:drop">
-<input name="text" value="{{.Text}}" aria-label="Edit item" autocomplete="off"{{if not .DueError}} autofocus{{end}}{{if .Error}} aria-invalid="true" aria-describedby="edit-error-{{.Item.ID}}"{{end}}>
+<input name="text" value="{{.Text}}" aria-label="Edit item" autocomplete="off"{{if not (or .DueError .LabelsError)}} autofocus{{end}}{{if .Error}} aria-invalid="true" aria-describedby="edit-error-{{.Item.ID}}"{{end}}>
 <input type="hidden" name="due_tz" value="{{zone}}">
 <div class="due-line">
 <label for="due-date-{{.Item.ID}}">Due</label>
@@ -32,7 +32,12 @@
 <input type="text" name="due_time" value="{{.DueTime}}" class="due-time" placeholder="HH:MM" inputmode="numeric" maxlength="5" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" title="24-hour time, for example 14:00" aria-label="Due time (optional, 24-hour HH:MM)">
 <button type="button" class="clear-due">Clear</button>
 </div>
-{{if .Error}}<p class="hint error" id="edit-error-{{.Item.ID}}">Text cannot be empty.</p>{{else if .DueError}}<p class="hint error" id="due-error-{{.Item.ID}}">{{.DueError}}</p>{{else}}<p class="hint">Enter to save · Esc to cancel · Leave the time empty for “all day”</p>{{end}}
+<div class="labels-line">
+<label for="labels-{{.Item.ID}}">Labels</label>
+<input id="labels-{{.Item.ID}}" name="labels" value="{{.Labels}}" placeholder="work, home" autocomplete="off"{{if .LabelsError}} aria-invalid="true" aria-describedby="labels-error-{{.Item.ID}}" autofocus{{end}}>
+{{template "suggest" .Suggest}}
+</div>
+{{if .Error}}<p class="hint error" id="edit-error-{{.Item.ID}}">Text cannot be empty.</p>{{else if .DueError}}<p class="hint error" id="due-error-{{.Item.ID}}">{{.DueError}}</p>{{else if .LabelsError}}<p class="hint error" id="labels-error-{{.Item.ID}}">{{.LabelsError}}</p>{{else}}<p class="hint">Enter to save · Esc to cancel · Leave the time empty for “all day”</p>{{end}}
 </div>
 <button class="delete" type="button" disabled aria-label="Delete (finish editing first)">{{template "x-icon"}}</button>
 </li>{{end}}

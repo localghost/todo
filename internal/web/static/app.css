@@ -243,3 +243,104 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .btn-primary:disabled { opacity: 0.75; cursor: progress; }
 
 #signup-check-error:empty { display: none; }
+
+/* Labels (spec 2026-10-14). Eight colors: soft fill, dark text, thin border. */
+.c-gray   { --l-bg: #EFEEEA; --l-fg: #4A4843; --l-bd: #D9D7D0; }
+.c-red    { --l-bg: #FCEDEC; --l-fg: #9C2A22; --l-bd: #F2C4C0; }
+.c-orange { --l-bg: #FDF0E3; --l-fg: #8A4410; --l-bd: #F3D2B0; }
+.c-yellow { --l-bg: #FBF4D9; --l-fg: #6A560A; --l-bd: #EADC9F; }
+.c-green  { --l-bg: #E8F4EA; --l-fg: #1E6B32; --l-bd: #BFE0C7; }
+.c-teal   { --l-bg: #E3F3F2; --l-fg: #145C58; --l-bd: #B3DEDA; }
+.c-blue   { --l-bg: #EEF2FC; --l-fg: #1A3C99; --l-bd: #C9D6F5; }
+.c-purple { --l-bg: #F1EDFB; --l-fg: #5B3A9E; --l-bd: #D6CBF2; }
+.meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; }
+.chip {
+  display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px; font-weight: 600; line-height: 1; padding: 4px 8px; border-radius: 999px;
+  background: var(--l-bg); color: var(--l-fg); border: 1px solid var(--l-bd); text-decoration: none;
+}
+a.chip:hover { text-decoration: underline; }
+a.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.done .chip { opacity: 0.7; }
+.sw { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--l-fg); }
+
+.labels-line { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 8px; row-gap: 6px; }
+.add .labels-line { margin-top: 8px; }
+.labels-line label { font-size: 14px; font-weight: 600; color: var(--muted); }
+.labels-line input {
+  font: inherit; font-size: 15px; color: var(--ink); width: 100%; max-width: 360px;
+  padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--card);
+}
+.labels-line input[aria-invalid="true"] { border-color: var(--error); }
+.suggest { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; }
+.suggest:empty { display: none; }
+.suggest-btn {
+  font: inherit; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 0 9px;
+  background: var(--card); border: 1px dashed var(--line); border-radius: 999px;
+}
+.suggest-btn:hover { color: var(--ink); border-style: solid; }
+.suggest-btn[hidden] { display: none; }
+
+.toolbar { flex-wrap: wrap; }
+.toolbar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.active-filter {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted);
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 2px 2px 2px 12px;
+}
+.clear-filter {
+  width: 30px; height: 30px; border-radius: 50%; color: var(--muted);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.clear-filter:hover { background: var(--ground); color: var(--ink); }
+
+/* Labels page */
+.label-list { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.label-row { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.label-row + .label-row { border-top: 1px solid var(--line); }
+.label-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.label-head .count { font-size: 13px; color: var(--muted); }
+.label-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
+.label-form input[type="text"] {
+  font: inherit; font-size: 15px; color: var(--ink); flex: 1 1 10ch; min-width: 0; max-width: 18ch;
+  padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--card);
+}
+.label-form input[aria-invalid="true"] { border-color: var(--error); }
+.swatches { display: flex; gap: 4px; border: none; margin: 0; padding: 0; }
+.swatches label { position: relative; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.swatches input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.swatches .dot { width: 26px; height: 26px; border-radius: 50%; background: var(--l-fg); }
+.swatches input:checked + .dot { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); }
+.swatches input:focus-visible + .dot { outline: 2px solid var(--accent); outline-offset: 4px; }
+.btn-small {
+  font: inherit; font-size: 14px; font-weight: 600; min-height: 34px; padding: 0 12px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink);
+  display: inline-flex; align-items: center; justify-content: center; text-decoration: none;
+}
+.btn-small.primary { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
+.btn-small.danger { color: var(--error); }
+.btn-small.danger-solid { background: var(--error); border-color: var(--error); color: #FFFFFF; }
+.confirm {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0;
+  background: #FCEDEC; border: 1px solid #F2C4C0; border-radius: 8px; padding: 8px 10px; font-size: 14px;
+}
+.confirm p { margin: 0; flex: 1 1 220px; }
+.row-error { margin: 0; font-size: 13px; color: var(--error); }
+.row-ok { margin: 0; font-size: 13px; color: #1E6B32; }
+.page-hint { margin: 0; font-size: 14px; color: var(--muted); }
+
+/* On a phone a label row stacks: name, colors, then Save and Delete. */
+@media (max-width: 480px) {
+  .label-row { padding: 14px; }
+  .label-form { flex-direction: column; align-items: stretch; gap: 10px; }
+  .label-form input[type="text"] { flex: none; max-width: none; font-size: 16px; padding: 8px 10px; }
+  .swatches { justify-content: space-between; }
+  .swatches label { width: 36px; height: 36px; }
+  .swatches .dot { width: 28px; height: 28px; }
+  .label-buttons { display: flex; gap: 8px; }
+  .label-buttons .btn-small, .confirm .btn-small { flex: 1 1 0; min-height: 44px; font-size: 15px; }
+  .confirm { flex-direction: column; align-items: stretch; }
+  .confirm p { flex: none; }
+  .confirm-buttons { display: flex; gap: 8px; }
+}
+.label-buttons, .confirm-buttons { display: flex; gap: 8px; }

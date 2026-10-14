@@ -18,7 +18,7 @@
 <main>
 <header class="top">
 <h1>Todo</h1>
-<nav class="user-nav" aria-label="Account">Signed in as <strong>{{.Username}}</strong> · <a href="/account">Account</a> · <form method="post" action="/logout" class="inline-form"><button type="submit" class="link-button">Log out</button></form></nav>
+<nav class="user-nav" aria-label="Account">Signed in as <strong>{{.Username}}</strong> · <a href="/labels">Labels</a> · <a href="/account">Account</a> · <form method="post" action="/logout" class="inline-form"><button type="submit" class="link-button">Log out</button></form></nav>
 </header>
 <p id="error" class="error" role="alert"></p>
 {{template "add-form" .Form}}

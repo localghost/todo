@@ -69,9 +69,9 @@ document.addEventListener("mousedown", (e) => {
   }
 });
 
-// Enter on "Clear" clears the fields; it must not also save the row.
+// Enter on "Clear" or a label button does its own job; it must not also save the row.
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && e.target.matches && e.target.matches(".clear-due")) {
+  if (e.key === "Enter" && e.target.matches && e.target.matches(".clear-due, .suggest-btn")) {
     e.stopPropagation();
   }
 }, true);
@@ -102,7 +102,8 @@ document.addEventListener("htmx:validation:halted", (e) => {
 
 // 3. After an item is added, clear each add-form field only if it still
 // holds the value that was sent. Text typed while the request ran stays.
-const ADD_FIELDS = ["text", "due_date", "due_time"];
+// The Labels field goes back to its start value (the filter's label), not to empty.
+const ADD_FIELDS = ["text", "due_date", "due_time", "labels"];
 
 document.addEventListener("htmx:beforeRequest", (e) => {
   const form = e.detail.elt;
@@ -119,7 +120,7 @@ document.addEventListener("htmx:afterRequest", (e) => {
   for (const name of ADD_FIELDS) {
     const input = form.elements[name];
     if (input.value === form._sent[name]) {
-      input.value = "";
+      input.value = input.dataset.start || "";
     }
     input.removeAttribute("aria-invalid");
     input.removeAttribute("aria-describedby");
@@ -381,3 +382,46 @@ document.addEventListener("htmx:oobAfterSwap", () => {
     htmx.ajax("GET", "/", { target: "#list-section", swap: "outerHTML" });
   }
 });
+
+// 13. Labels: a click on a label button under a Labels field adds that name
+// to the field. Buttons for names already in the field are hidden.
+function labelNames(input) {
+  return input.value.split(",").map((n) => n.trim().replace(/\s+/g, " ").toLowerCase()).filter(Boolean);
+}
+function syncSuggestions(line) {
+  const input = line && line.querySelector("input");
+  if (!input) {
+    return;
+  }
+  const have = labelNames(input);
+  line.querySelectorAll(".suggest-btn").forEach((btn) => {
+    btn.hidden = have.includes(btn.dataset.label.toLowerCase());
+  });
+}
+function syncAllSuggestions() {
+  document.querySelectorAll(".labels-line").forEach(syncSuggestions);
+}
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest && e.target.closest(".suggest-btn");
+  if (!btn) {
+    return;
+  }
+  const line = btn.closest(".labels-line");
+  const input = line.querySelector("input");
+  const kept = input.value.split(",").map((n) => n.trim()).filter(Boolean);
+  kept.push(btn.dataset.label);
+  input.value = kept.join(", ");
+  syncSuggestions(line);
+  input.focus();
+});
+// In an edit row the mousedown handler keeps focus in the row; the button
+// still gets its click.
+document.addEventListener("input", (e) => {
+  if (e.target.closest && e.target.closest(".labels-line")) {
+    syncSuggestions(e.target.closest(".labels-line"));
+  }
+});
+document.addEventListener("htmx:afterSettle", syncAllSuggestions);
+document.addEventListener("htmx:oobAfterSwap", syncAllSuggestions);
+document.addEventListener("htmx:afterRequest", syncAllSuggestions);
+document.addEventListener("DOMContentLoaded", syncAllSuggestions);

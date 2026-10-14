@@ -104,7 +104,7 @@ const document = {
   addEventListener: (name, fn) => (handlers[name] = handlers[name] || []).push(fn),
   getElementById: (id) => id === "toolbar" ? { dataset: { hideDone: toolbarState } }
     : id === "list-section" ? { dataset: { hideDone: sectionState } } : null,
-  querySelector: () => null, activeElement: null, body: {},
+  querySelector: () => null, querySelectorAll: () => [], activeElement: null, body: {},
 };
 const fire = (name) => (handlers[name] || []).forEach((fn) => fn({ detail: {} }));
 new Function("document", "window", "navigator", "fetch", "setInterval", "setTimeout", "clearTimeout", "htmx",

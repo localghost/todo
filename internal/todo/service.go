@@ -27,6 +27,11 @@ func (s *Service) Get(ctx context.Context, userID, id int64) (Item, error) {
 	return s.store.Get(ctx, userID, id)
 }
 
+// ListLabel returns the user's items with label labelID (0: all items).
+func (s *Service) ListLabel(ctx context.Context, userID int64, hideDone bool, labelID int64) ([]Item, error) {
+	return s.store.ListLabel(ctx, userID, hideDone, labelID)
+}
+
 func (s *Service) Add(ctx context.Context, userID int64, text, dueDate, dueTime string) (Item, error) {
 	return s.AddIn(ctx, userID, text, dueDate, dueTime, nil)
 }
@@ -42,6 +47,24 @@ func (s *Service) AddIn(ctx context.Context, userID int64, text, dueDate, dueTim
 		return Item{}, err
 	}
 	return s.store.Create(ctx, userID, Change{Text: text, DueAt: dueAt, DueAllDay: allDay}, s.now())
+}
+
+// AddItem adds an item with its labels, reading the due date in loc (nil:
+// the service's zone). Missing labels are created.
+func (s *Service) AddItem(ctx context.Context, userID int64, in Input, loc *time.Location) (Item, error) {
+	text, err := cleanText(in.Text)
+	if err != nil {
+		return Item{}, err
+	}
+	dueAt, allDay, err := parseDue(in.DueDate, in.DueTime, s.zone(loc))
+	if err != nil {
+		return Item{}, err
+	}
+	labels, err := ParseLabels(in.Labels)
+	if err != nil {
+		return Item{}, err
+	}
+	return s.store.Create(ctx, userID, Change{Text: text, DueAt: dueAt, DueAllDay: allDay, Labels: labels}, s.now())
 }
 
 // Edit changes the text and the due date. A changed due date can notify again.
@@ -68,7 +91,48 @@ func (s *Service) EditIn(ctx context.Context, userID, id int64, text, dueDate, d
 		return it, nil
 	}
 	return s.store.UpdateItem(ctx, userID, id,
-		Change{Text: text, DueAt: dueAt, DueAllDay: allDay, ResetNotified: !dueSame}, s.now())
+		Change{Text: text, DueAt: dueAt, DueAllDay: allDay, ResetNotified: !dueSame, KeepLabels: true}, s.now())
+}
+
+// EditItem changes the text, the due date and the labels, reading the due
+// date in loc (nil: the service's zone). A changed due date can notify again.
+func (s *Service) EditItem(ctx context.Context, userID, id int64, in Input, loc *time.Location) (Item, error) {
+	text, err := cleanText(in.Text)
+	if err != nil {
+		return Item{}, err
+	}
+	dueAt, allDay, err := parseDue(in.DueDate, in.DueTime, s.zone(loc))
+	if err != nil {
+		return Item{}, err
+	}
+	labels, err := ParseLabels(in.Labels)
+	if err != nil {
+		return Item{}, err
+	}
+	it, err := s.store.Get(ctx, userID, id)
+	if err != nil {
+		return Item{}, err
+	}
+	dueSame := sameDue(it.DueAt, it.DueAllDay, dueAt, allDay)
+	if it.Text == text && dueSame && sameLabels(it.Labels, labels) {
+		return it, nil
+	}
+	return s.store.UpdateItem(ctx, userID, id,
+		Change{Text: text, DueAt: dueAt, DueAllDay: allDay, ResetNotified: !dueSame, Labels: labels}, s.now())
+}
+
+// sameLabels reports whether the item's labels have exactly the names, in
+// any order, ignoring case (the store reuses a label of another case).
+func sameLabels(have []Label, names []string) bool {
+	if len(have) != len(names) {
+		return false
+	}
+	for _, n := range names {
+		if !slices.ContainsFunc(have, func(l Label) bool { return strings.EqualFold(l.Name, n) }) {
+			return false
+		}
+	}
+	return true
 }
 
 // Postpone moves the due time by minutes, counted from the later of the
@@ -91,7 +155,7 @@ func (s *Service) Postpone(ctx context.Context, userID, id int64, minutes int) (
 	}
 	due := base.Add(time.Duration(minutes) * time.Minute)
 	return s.store.UpdateItem(ctx, userID, id,
-		Change{Text: it.Text, DueAt: &due, DueAllDay: false, ResetNotified: true}, now)
+		Change{Text: it.Text, DueAt: &due, DueAllDay: false, ResetNotified: true, KeepLabels: true}, now)
 }
 
 // ClaimDue returns the items that should notify now. Each item comes only once.
@@ -126,6 +190,11 @@ func (s *Service) Move(ctx context.Context, userID, id, afterID int64, now time.
 
 func (s *Service) Counts(ctx context.Context, userID int64) (open, done int, err error) {
 	return s.store.Counts(ctx, userID)
+}
+
+// CountsLabel counts the open and done items with label labelID (0: all items).
+func (s *Service) CountsLabel(ctx context.Context, userID, labelID int64) (open, done int, err error) {
+	return s.store.CountsLabel(ctx, userID, labelID)
 }
 
 // cleanText collapses each run of whitespace to one space and trims the ends.

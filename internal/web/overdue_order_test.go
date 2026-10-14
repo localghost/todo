@@ -162,7 +162,7 @@ const handlers = {};
 const document = {
   addEventListener: (name, fn) => (handlers[name] = handlers[name] || []).push(fn),
   getElementById: (id) => (id === "toolbar" && next ? { dataset: { nextOverdue: String(next) } } : null),
-  querySelector: (sel) => (sel === ".item.editing" && editing ? {} : null),
+  querySelector: (sel) => (sel === ".item.editing" && editing ? {} : null), querySelectorAll: () => [],
   activeElement: null, body: { classList: { contains: (c) => c === "dragging" && dragging } },
 };
 const fire = (name, detail) => (handlers[name] || []).forEach((fn) => fn({ detail: detail || {} }));
