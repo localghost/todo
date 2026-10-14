@@ -211,6 +211,7 @@ async function run(name, answers, steps) {
   await run("not logged in", [401], [{ move: "A", dir: 1 }]);
   await run("old state on the page", [422, 204], [{ move: "A", dir: 1 }, { move: "A", dir: 1 }]);
   await run("drag and drop", [204], [{ drag: "A", to: 1 }, { drop: true }]);
+  await run("request hangs", ["hang"], [{ move: "A", dir: 1 }]);
 })();
 `
 
@@ -255,6 +256,8 @@ func TestOrderScriptQueue(t *testing.T) {
 		"old state on the page": {Order: "BCAD", Sent: 1, Gets: 1},
 		// A drop at a new place saves the move.
 		"drag and drop": {Order: "BACD", Sent: 1},
+		// A request that never answers times out like a network error.
+		"request hangs": {Order: "ABCD", Sent: 1, Error: network},
 	}
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	if len(lines) != len(want) {

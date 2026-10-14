@@ -37,6 +37,10 @@ function stepTarget(row, dir) {
 let moveQueue = Promise.resolve();
 let moveRound = 0;
 
+// A move request that gets no answer in this time fails like a network error,
+// so it cannot stop the moves after it.
+const MOVE_TIMEOUT_MS = 10000;
+
 // rowIds returns the ids of the rows in list, in page order.
 function rowIds(list) {
   return Array.from(list.children, (row) => row.id);
@@ -76,7 +80,12 @@ async function postMove(id, body, before) {
   const errorLine = document.getElementById("error");
   let res;
   try {
-    res = await fetch(`/items/${id}/move`, { method: "POST", headers: { "HX-Request": "true" }, body });
+    res = await fetch(`/items/${id}/move`, {
+      method: "POST",
+      headers: { "HX-Request": "true" },
+      body,
+      signal: AbortSignal.timeout(MOVE_TIMEOUT_MS),
+    });
   } catch (err) {
     moveRound++;
     restoreOrder(before);
