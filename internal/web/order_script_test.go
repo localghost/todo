@@ -115,8 +115,9 @@ func TestHTMXDoesNotSettleStyle(t *testing.T) {
 	assertContains(t, body, `"attributesToSettle":["class","width","height"]`)
 }
 
-// queueHarness runs order.js with a small fake DOM (rows A B C D) and a
-// fake fetch that answers from a script. It prints one JSON line per case.
+// queueHarness runs order.js with a small fake DOM (rows A B C D), a fake
+// fetch that answers from a script, and a fake SortableJS. It prints one JSON
+// line per case.
 const queueHarness = `
 const src = require("fs").readFileSync(process.argv[2], "utf8");
 class El {
@@ -143,34 +144,73 @@ class El {
 async function run(name, answers, steps) {
   const list = new El("items"), error = new El("error"), status = new El("move-status");
   for (const t of "ABCD") list.appendChild(new El("item-" + t));
+  const on = {};
   const document = {
-    addEventListener() {}, body: new El("body"),
+    addEventListener(type, fn) { on[type] = fn; }, body: new El("body"),
     getElementById: (id) => [list, error, status, ...list.kids].find((e) => e.id === id) || null,
   };
-  let sent = 0;
-  const fetch = async () => {
+  let sent = 0, reloads = 0, gets = 0;
+  const fetch = async (url, opts) => {
     const a = answers[sent++];
     if (a === "offline") throw new TypeError("Failed to fetch");
+    if (a === "hang") {
+      // A request that never answers. Only a timeout signal ends it.
+      if (opts && opts.signal && opts.signal.ms) throw Object.assign(new Error("signal timed out"), { name: "TimeoutError" });
+      return new Promise(() => {});
+    }
     return { status: a };
   };
-  const htmx = { ajax() {} }, location = { reload() {} };
-  const fns = new Function("document", "fetch", "htmx", "location", "console",
+  const AbortSignal = { timeout: (ms) => ({ ms }) };
+  // The fake Sortable keeps one instance per list. Like the real one, destroy
+  // ends a running drag and calls onEnd.
+  const made = new Map();
+  const Sortable = {
+    get: (el) => made.get(el),
+    create(el, opts) {
+      const s = { opts, destroyed: 0, drag: null,
+        destroy() { this.destroyed++; if (this.drag) { const e = this.drag; this.drag = null; this.opts.onEnd(e); } } };
+      made.set(el, s);
+      return s;
+    },
+  };
+  const htmx = { ajax() { gets++; } }, location = { reload() { reloads++; } };
+  const fns = new Function("document", "fetch", "htmx", "location", "console", "AbortSignal", "Sortable",
     'const NETWORK_ERROR = "Cannot reach the server. Please try again.";\n' + src +
-    "\nreturn { moveByKey, idle: () => moveQueue };")(document, fetch, htmx, location, { warn() {} });
+    "\nreturn { moveByKey, idle: () => moveQueue };")(document, fetch, htmx, location, { warn() {} }, AbortSignal, Sortable);
   const row = (t) => document.getElementById("item-" + t);
+  const sortable = () => { if (!made.has(list)) on.DOMContentLoaded(); return made.get(list); };
   for (const step of steps) {
     if (step.replace) row(step.replace).replaceWith(new El("item-" + step.replace));
-    else fns.moveByKey(row(step.move), step.dir);
+    else if (step.drag) {
+      // Drag a row to index step.to, but do not drop it yet.
+      const s = sortable(), item = row(step.drag), oldIndex = list.kids.indexOf(item);
+      s.opts.onStart();
+      item.remove();
+      list.kids.splice(step.to, 0, item);
+      item.parentElement = list;
+      s.drag = { item, oldIndex, newIndex: step.to };
+    } else if (step.drop) {
+      const s = sortable(), e = s.drag;
+      s.drag = null;
+      s.opts.onEnd(e);
+    } else if (step.cleanup) {
+      // htmx removes the list, for example to load it again.
+      if (on["htmx:beforeCleanupElement"]) on["htmx:beforeCleanupElement"]({ detail: { elt: list } });
+    } else fns.moveByKey(row(step.move), step.dir);
     if (step.wait) await fns.idle();
   }
   await fns.idle();
-  console.log(JSON.stringify({ name, order: list.kids.map((r) => r.id.slice(5)).join(""), sent, error: error.textContent }));
+  console.log(JSON.stringify({ name, order: list.kids.map((r) => r.id.slice(5)).join(""), sent, error: error.textContent,
+    reloads, gets, dragging: document.body.classList.contains("dragging"), destroyed: made.has(list) ? made.get(list).destroyed : 0 }));
 }
 (async () => {
   await run("two moves, both fail", ["offline", "offline"], [{ move: "A", dir: 1 }, { move: "A", dir: 1 }]);
   await run("first works, second fails", [204, 500], [{ move: "A", dir: 1 }, { move: "A", dir: 1 }]);
   await run("next move after a failure", [500, 204], [{ move: "A", dir: 1, wait: true }, { move: "D", dir: -1 }]);
   await run("failure after a row was replaced", [500, 204], [{ move: "A", dir: 1 }, { replace: "C", wait: true }, { move: "D", dir: -1 }]);
+  await run("not logged in", [401], [{ move: "A", dir: 1 }]);
+  await run("old state on the page", [422, 204], [{ move: "A", dir: 1 }, { move: "A", dir: 1 }]);
+  await run("drag and drop", [204], [{ drag: "A", to: 1 }, { drop: true }]);
 })();
 `
 
@@ -191,20 +231,30 @@ func TestOrderScriptQueue(t *testing.T) {
 		t.Fatalf("node: %v\n%s%s", err, out, stderr.String())
 	}
 	type result struct {
-		Order string
-		Sent  int
-		Error string
+		Order     string
+		Sent      int
+		Error     string
+		Reloads   int
+		Gets      int
+		Dragging  bool
+		Destroyed int
 	}
 	const network, server = "Cannot reach the server. Please try again.", "Something went wrong. Please try again."
 	want := map[string]result{
 		// Both moves fail: the page is back at the order the server has.
-		"two moves, both fail": {"ABCD", 1, network},
+		"two moves, both fail": {Order: "ABCD", Sent: 1, Error: network},
 		// The server has the first move only, so the page shows that order.
-		"first works, second fails": {"BACD", 2, server},
+		"first works, second fails": {Order: "BACD", Sent: 2, Error: server},
 		// A failure must not stop the moves after it.
-		"next move after a failure": {"ABDC", 2, ""},
+		"next move after a failure": {Order: "ABDC", Sent: 2},
 		// A put-back must not break when htmx replaced a row in the meantime.
-		"failure after a row was replaced": {"ABDC", 2, ""},
+		"failure after a row was replaced": {Order: "ABDC", Sent: 2},
+		// 401: the reload shows the log-in page.
+		"not logged in": {Order: "BACD", Sent: 1, Reloads: 1},
+		// 422: the page loads the true list, and the next move is dropped.
+		"old state on the page": {Order: "BCAD", Sent: 1, Gets: 1},
+		// A drop at a new place saves the move.
+		"drag and drop": {Order: "BACD", Sent: 1},
 	}
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	if len(lines) != len(want) {
