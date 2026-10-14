@@ -20,7 +20,12 @@ document.addEventListener("htmx:beforeSwap", (e) => {
     focusAfterSwap = "check-" + row.id.slice("item-".length);
     return;
   }
-  if (!active.matches(".check, .delete")) {
+  if (active.matches(".chip-x") && e.detail.serverResponse.includes('id="' + row.id + '"')) {
+    // The row stays: go on at its +.
+    focusAfterSwap = "label-add-" + row.id.slice("item-".length);
+    return;
+  }
+  if (!active.matches(".check, .delete, .chip-x")) {
     return;
   }
   // Keep the id, not the node: a whole-list answer replaces the node.
@@ -69,9 +74,9 @@ document.addEventListener("mousedown", (e) => {
   }
 });
 
-// Enter on "Clear" or a label button does its own job; it must not also save the row.
+// Enter on "Clear" does its own job; it must not also save the row.
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && e.target.matches && e.target.matches(".clear-due, .suggest-btn")) {
+  if (e.key === "Enter" && e.target.matches && e.target.matches(".clear-due")) {
     e.stopPropagation();
   }
 }, true);
@@ -102,8 +107,7 @@ document.addEventListener("htmx:validation:halted", (e) => {
 
 // 3. After an item is added, clear each add-form field only if it still
 // holds the value that was sent. Text typed while the request ran stays.
-// The Labels field goes back to its start value (the filter's label), not to empty.
-const ADD_FIELDS = ["text", "due_date", "due_time", "labels"];
+const ADD_FIELDS = ["text", "due_date", "due_time"];
 
 document.addEventListener("htmx:beforeRequest", (e) => {
   const form = e.detail.elt;
@@ -120,7 +124,7 @@ document.addEventListener("htmx:afterRequest", (e) => {
   for (const name of ADD_FIELDS) {
     const input = form.elements[name];
     if (input.value === form._sent[name]) {
-      input.value = input.dataset.start || "";
+      input.value = "";
     }
     input.removeAttribute("aria-invalid");
     input.removeAttribute("aria-describedby");
@@ -383,45 +387,200 @@ document.addEventListener("htmx:oobAfterSwap", () => {
   }
 });
 
-// 13. Labels: a click on a label button under a Labels field adds that name
-// to the field. Buttons for names already in the field are hidden.
-function labelNames(input) {
-  return input.value.split(",").map((n) => n.trim().replace(/\s+/g, " ").toLowerCase()).filter(Boolean);
+// 13. Labels (canvas page "16 · Labels"). The + on a row opens a small list
+// of the user's labels under it, with a search field. Typing narrows the
+// list; a name that matches no label offers "Create …". Choosing one adds
+// that one label and closes the list. Esc, Tab or a click outside closes it.
+let picker = null; // the open list
+let pickerButton = null; // its +
+
+function closePicker(refocus) {
+  if (!picker) {
+    return;
+  }
+  picker.remove();
+  pickerButton.setAttribute("aria-expanded", "false");
+  if (refocus && pickerButton.isConnected) {
+    pickerButton.focus();
+  }
+  picker = null;
+  pickerButton = null;
 }
-function syncSuggestions(line) {
-  const input = line && line.querySelector("input");
+
+function openPicker(button) {
+  closePicker(false);
+  pickerButton = button;
+  button.setAttribute("aria-expanded", "true");
+  const wrap = button.parentElement;
+  htmx.ajax("GET", button.dataset.picker, { target: wrap, swap: "beforeend" }).then(() => {
+    const box = wrap.querySelector(".picker");
+    if (!box || pickerButton !== button) {
+      if (box) box.remove();
+      return;
+    }
+    picker = box;
+    placePicker();
+    const input = box.querySelector(".picker-search");
+    filterPicker();
+    if (input) {
+      input.focus();
+    }
+  });
+}
+
+// Open to the left of the + when the list does not fit on the right.
+// If it fits neither way (a narrow screen), move it in from the left edge.
+function placePicker() {
+  const width = document.documentElement.clientWidth;
+  picker.classList.remove("flip");
+  picker.style.left = "";
+  picker.style.removeProperty("--caret");
+  if (picker.getBoundingClientRect().right <= width - 8) {
+    return;
+  }
+  picker.classList.add("flip");
+  if (picker.getBoundingClientRect().left >= 8) {
+    return;
+  }
+  // The pointer at the top still points at the +.
+  const plus = picker.parentElement.getBoundingClientRect();
+  picker.classList.remove("flip");
+  picker.style.left = (8 - plus.left) + "px";
+  picker.style.setProperty("--caret", (plus.left + plus.width / 2 - 8 - 6) + "px");
+}
+
+function pickerOptions() {
+  return Array.from(picker.querySelectorAll(".picker-opt")).filter((o) => !o.hidden);
+}
+
+function setActive(option) {
+  const input = picker.querySelector(".picker-search");
+  picker.querySelectorAll(".picker-opt").forEach((o) => o.setAttribute("aria-selected", o === option ? "true" : "false"));
+  if (option) {
+    input.setAttribute("aria-activedescendant", option.id);
+    option.scrollIntoView({ block: "nearest" });
+  } else {
+    input.removeAttribute("aria-activedescendant");
+  }
+}
+
+function cleanName(v) {
+  return v.trim().replace(/\s+/g, " ");
+}
+
+function filterPicker() {
+  const input = picker && picker.querySelector(".picker-search");
   if (!input) {
     return;
   }
-  const have = labelNames(input);
-  line.querySelectorAll(".suggest-btn").forEach((btn) => {
-    btn.hidden = have.includes(btn.dataset.label.toLowerCase());
+  const typed = cleanName(input.value);
+  const q = typed.toLowerCase();
+  const taken = (picker.dataset.taken || "").split(",").map((n) => n.trim().toLowerCase()).filter(Boolean);
+  let exact = false;
+  picker.querySelectorAll(".picker-opt:not(.picker-create)").forEach((o) => {
+    const name = o.dataset.name.toLowerCase();
+    o.hidden = q !== "" && !name.includes(q);
+    exact = exact || name === q;
   });
+  const create = picker.querySelector(".picker-create");
+  create.hidden = q === "" || exact || taken.includes(q);
+  create.dataset.name = typed;
+  create.querySelector(".picker-create-text").textContent = "Create “" + typed + "”";
+  const shown = pickerOptions();
+  const empty = picker.querySelector(".picker-empty");
+  empty.hidden = shown.length > 0;
+  empty.textContent = taken.includes(q) ? "“" + typed + "” is already on this item." : "Type a name to create a label.";
+  setActive(shown[0] || null);
 }
-function syncAllSuggestions() {
-  document.querySelectorAll(".labels-line").forEach(syncSuggestions);
+
+function choose(option) {
+  const id = picker.dataset.item;
+  const name = option.dataset.name;
+  // The row comes back without the list; focus goes on at its + (section 1).
+  focusAfterSwap = "label-add-" + id;
+  htmx.ajax("POST", "/items/" + id + "/labels", { target: "#item-" + id, swap: "outerHTML", values: { name: name } });
 }
+
 document.addEventListener("click", (e) => {
-  const btn = e.target.closest && e.target.closest(".suggest-btn");
-  if (!btn) {
+  const button = e.target.closest && e.target.closest(".label-add");
+  if (button) {
+    if (pickerButton === button) {
+      closePicker(true);
+    } else {
+      openPicker(button);
+    }
     return;
   }
-  const line = btn.closest(".labels-line");
-  const input = line.querySelector("input");
-  const kept = input.value.split(",").map((n) => n.trim()).filter(Boolean);
-  kept.push(btn.dataset.label);
-  input.value = kept.join(", ");
-  syncSuggestions(line);
-  input.focus();
-});
-// In an edit row the mousedown handler keeps focus in the row; the button
-// still gets its click.
-document.addEventListener("input", (e) => {
-  if (e.target.closest && e.target.closest(".labels-line")) {
-    syncSuggestions(e.target.closest(".labels-line"));
+  const option = e.target.closest && e.target.closest(".picker-opt");
+  if (option && picker && picker.contains(option)) {
+    choose(option);
   }
 });
-document.addEventListener("htmx:afterSettle", syncAllSuggestions);
-document.addEventListener("htmx:oobAfterSwap", syncAllSuggestions);
-document.addEventListener("htmx:afterRequest", syncAllSuggestions);
-document.addEventListener("DOMContentLoaded", syncAllSuggestions);
+
+// A press in the list must not take the focus out of the search field.
+document.addEventListener("mousedown", (e) => {
+  if (picker && picker.contains(e.target)) {
+    if (!e.target.closest(".picker-search")) {
+      e.preventDefault();
+    }
+  } else if (picker && !(e.target.closest && e.target.closest(".label-add") === pickerButton)) {
+    closePicker(false);
+  }
+});
+
+document.addEventListener("input", (e) => {
+  if (picker && e.target.matches(".picker-search")) {
+    filterPicker();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (!picker || !picker.contains(e.target)) {
+    return;
+  }
+  const shown = pickerOptions();
+  const active = shown.find((o) => o.getAttribute("aria-selected") === "true");
+  const at = shown.indexOf(active);
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    if (shown.length) {
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      setActive(shown[(at + step + shown.length) % shown.length]);
+    }
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    if (active && !e.isComposing) {
+      choose(active);
+    }
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    closePicker(true);
+  } else if (e.key === "Tab") {
+    closePicker(false);
+  }
+});
+
+// The list belongs to the row: a swap of the row or the list closes it. An
+// error answer replaces only the list (HX-Retarget): go on in the new one.
+document.addEventListener("htmx:afterSwap", () => {
+  if (!picker || picker.isConnected) {
+    return;
+  }
+  const fresh = pickerButton.isConnected && pickerButton.parentElement.querySelector(".picker");
+  if (fresh) {
+    picker = fresh;
+    placePicker();
+    filterPicker();
+    const input = picker.querySelector(".picker-search");
+    if (input) {
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+    return;
+  }
+  if (pickerButton.isConnected) {
+    pickerButton.setAttribute("aria-expanded", "false");
+  }
+  picker = null;
+  pickerButton = null;
+});

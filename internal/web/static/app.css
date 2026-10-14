@@ -255,32 +255,83 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .c-purple { --l-bg: #F1EDFB; --l-fg: #5B3A9E; --l-bd: #D6CBF2; }
 .meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; }
 .chip {
-  display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: inline-flex; align-items: center; max-width: 100%; white-space: nowrap;
   font-size: 12px; font-weight: 600; line-height: 1; padding: 4px 8px; border-radius: 999px;
-  background: var(--l-bg); color: var(--l-fg); border: 1px solid var(--l-bd); text-decoration: none;
+  background: var(--l-bg); color: var(--l-fg); border: 1px solid var(--l-bd);
 }
-a.chip:hover { text-decoration: underline; }
-a.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chip a { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: inherit; text-decoration: none; }
+.chip a:hover { text-decoration: underline; }
+.chip a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .done .chip { opacity: 0.7; }
 .sw { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--l-fg); }
 
-.labels-line { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 8px; row-gap: 6px; }
-.add .labels-line { margin-top: 8px; }
-.labels-line label { font-size: 14px; font-weight: 600; color: var(--muted); }
-.labels-line input {
-  font: inherit; font-size: 15px; color: var(--ink); width: 100%; max-width: 360px;
-  padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--card);
+/* Labels on a row (canvas page 16, the + boards). The × on a chip and the +
+   show when the pointer is on the row or focus is in it; the + always shows
+   on a row without labels. Touch screens have no hover: both always show. */
+.chip-x {
+  flex: none; width: 0; height: 16px; margin: -2px 0; padding: 0; overflow: hidden; opacity: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: 50%; background: none; color: inherit; cursor: pointer;
 }
-.labels-line input[aria-invalid="true"] { border-color: var(--error); }
-.suggest { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; }
-.suggest:empty { display: none; }
-.suggest-btn {
-  font: inherit; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer;
-  display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 0 9px;
-  background: var(--card); border: 1px dashed var(--line); border-radius: 999px;
+.chip:hover .chip-x, .chip:focus-within .chip-x { width: 16px; margin: -2px -4px -2px 3px; opacity: 1; }
+.chip-x:hover { background: var(--l-bd); }
+.chip-x:focus-visible { outline: 2px solid var(--accent); }
+.label-add-wrap { position: relative; display: inline-flex; }
+.label-add {
+  width: 24px; height: 24px; padding: 0; border-radius: 50%; opacity: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--accent); background: var(--card); border: 1px dashed #B9B6AD;
 }
-.suggest-btn:hover { color: var(--ink); border-style: solid; }
-.suggest-btn[hidden] { display: none; }
+.item:hover .label-add, .item:focus-within .label-add, .label-add.bare, .label-add[aria-expanded="true"] { opacity: 1; }
+.label-add:hover { border: 1px solid var(--accent); }
+.label-add[aria-expanded="true"] { background: #EEF2FC; border: 1px solid var(--accent); }
+.label-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (hover: none) {
+  .label-add { opacity: 1; width: 28px; height: 28px; }
+  .chip-x { width: 22px; height: 22px; margin: -6px -7px -6px 1px; opacity: 1; }
+}
+
+/* The label list under a +. The list of items clips its corners; not while
+   a label list hangs out of it. */
+#items:has(.picker) { overflow: visible; }
+.picker {
+  position: absolute; z-index: 20; top: calc(100% + 8px); left: -6px;
+  width: 15rem; max-width: calc(100vw - 32px);
+  display: flex; flex-direction: column; gap: 4px; padding: 6px;
+  font-size: 14px; line-height: 1.3; color: var(--ink); white-space: normal;
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(31, 30, 27, 0.14);
+}
+.picker::before {
+  content: ""; position: absolute; top: -6px; left: var(--caret, 12px); width: 10px; height: 10px;
+  background: var(--card); border-left: 1px solid var(--line); border-top: 1px solid var(--line);
+  transform: rotate(45deg);
+}
+.picker.flip { left: auto; right: -6px; }
+.picker.flip::before { left: auto; right: 12px; }
+.picker-search {
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--card);
+  padding: 5px 8px; border: 1px solid var(--accent); border-radius: 6px; outline: none;
+}
+.picker-search[aria-invalid="true"] { border-color: var(--error); }
+.picker-list { list-style: none; margin: 0; padding: 0; max-height: 196px; overflow-y: auto; }
+.picker-opt {
+  display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 8px;
+  border-radius: 5px; cursor: pointer; overflow-wrap: anywhere;
+}
+.picker-opt[hidden], .picker-empty[hidden] { display: none; }
+.picker-opt:hover { background: var(--ground); }
+.picker-opt[aria-selected="true"] { background: #EEF2FC; color: var(--accent-dark); }
+.picker-opt .sw { flex: none; width: 10px; height: 10px; }
+.sw-new { border: 1px dashed var(--muted); background: none; }
+.picker-msg { margin: 4px; font-size: 13px; color: var(--muted); }
+.picker-msg.error { color: var(--error); }
+.picker-empty { margin: 4px 8px; font-size: 13px; color: var(--done); }
+@media (hover: none) {
+  .picker-search { font-size: 16px; padding: 8px; }
+  .picker-opt { min-height: 44px; font-size: 16px; }
+}
+.filter-hint { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
 
 .toolbar { flex-wrap: wrap; }
 .toolbar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

@@ -94,47 +94,6 @@ func (s *Service) EditIn(ctx context.Context, userID, id int64, text, dueDate, d
 		Change{Text: text, DueAt: dueAt, DueAllDay: allDay, ResetNotified: !dueSame, KeepLabels: true}, s.now())
 }
 
-// EditItem changes the text, the due date and the labels, reading the due
-// date in loc (nil: the service's zone). A changed due date can notify again.
-func (s *Service) EditItem(ctx context.Context, userID, id int64, in Input, loc *time.Location) (Item, error) {
-	text, err := cleanText(in.Text)
-	if err != nil {
-		return Item{}, err
-	}
-	dueAt, allDay, err := parseDue(in.DueDate, in.DueTime, s.zone(loc))
-	if err != nil {
-		return Item{}, err
-	}
-	labels, err := ParseLabels(in.Labels)
-	if err != nil {
-		return Item{}, err
-	}
-	it, err := s.store.Get(ctx, userID, id)
-	if err != nil {
-		return Item{}, err
-	}
-	dueSame := sameDue(it.DueAt, it.DueAllDay, dueAt, allDay)
-	if it.Text == text && dueSame && sameLabels(it.Labels, labels) {
-		return it, nil
-	}
-	return s.store.UpdateItem(ctx, userID, id,
-		Change{Text: text, DueAt: dueAt, DueAllDay: allDay, ResetNotified: !dueSame, Labels: labels}, s.now())
-}
-
-// sameLabels reports whether the item's labels have exactly the names, in
-// any order, ignoring case (the store reuses a label of another case).
-func sameLabels(have []Label, names []string) bool {
-	if len(have) != len(names) {
-		return false
-	}
-	for _, n := range names {
-		if !slices.ContainsFunc(have, func(l Label) bool { return strings.EqualFold(l.Name, n) }) {
-			return false
-		}
-	}
-	return true
-}
-
 // Postpone moves the due time by minutes, counted from the later of the
 // due time and now. The item becomes a timed item and can notify again.
 func (s *Service) Postpone(ctx context.Context, userID, id int64, minutes int) (Item, error) {

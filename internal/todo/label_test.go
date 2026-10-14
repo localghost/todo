@@ -45,36 +45,48 @@ func TestParseLabelsLimits(t *testing.T) {
 	}
 }
 
-func TestAddItemAndEditItemLabels(t *testing.T) {
+func TestAddLabelAndRemoveLabel(t *testing.T) {
 	svc := newService(t)
 	ctx := context.Background()
-	it, err := svc.AddItem(ctx, 1, todo.Input{Text: "Invoice", Labels: "work, money"}, nil)
-	if err != nil || todo.LabelNames(it.Labels) != "money, work" {
-		t.Fatalf("AddItem = %q, %v", todo.LabelNames(it.Labels), err)
+	it, err := svc.AddItem(ctx, 1, todo.Input{Text: "Invoice", DueDate: "2099-01-01", DueTime: "10:00"}, nil)
+	if err != nil {
+		t.Fatal(err)
 	}
-	it, err = svc.EditItem(ctx, 1, it.ID, todo.Input{Text: "Invoice", Labels: "work"}, nil)
-	if err != nil || todo.LabelNames(it.Labels) != "work" {
-		t.Fatalf("EditItem = %q, %v", todo.LabelNames(it.Labels), err)
+	if it, err = svc.AddLabel(ctx, 1, it.ID, " work "); err != nil || todo.LabelNames(it.Labels) != "work" {
+		t.Fatalf("AddLabel = %q, %v", todo.LabelNames(it.Labels), err)
 	}
-	// Edit (without labels) and Postpone keep the labels.
+	// The same name in another case changes nothing.
+	before := it.UpdatedAt
+	if it, err = svc.AddLabel(ctx, 1, it.ID, "WORK"); err != nil || len(it.Labels) != 1 || !it.UpdatedAt.Equal(before) {
+		t.Fatalf("AddLabel again = %+v, %v", it.Labels, err)
+	}
+	it, _ = svc.AddLabel(ctx, 1, it.ID, "money")
+	if it.Text != "Invoice" || it.DueAt == nil {
+		t.Fatalf("AddLabel lost text or due date: %+v", it)
+	}
+	if it, err = svc.RemoveLabel(ctx, 1, it.ID, it.Labels[0].ID); err != nil || todo.LabelNames(it.Labels) != "work" {
+		t.Fatalf("RemoveLabel = %q, %v", todo.LabelNames(it.Labels), err)
+	}
+	// Edit and Postpone keep the labels.
 	if it, err = svc.Edit(ctx, 1, it.ID, "Invoice 2", "2099-01-01", "10:00"); err != nil || todo.LabelNames(it.Labels) != "work" {
 		t.Fatalf("Edit = %q, %v", todo.LabelNames(it.Labels), err)
 	}
 	if it, err = svc.Postpone(ctx, 1, it.ID, 5); err != nil || todo.LabelNames(it.Labels) != "work" {
 		t.Fatalf("Postpone = %q, %v", todo.LabelNames(it.Labels), err)
 	}
-	if it, err = svc.EditItem(ctx, 1, it.ID, todo.Input{Text: "Invoice 2", Labels: ""}, nil); err != nil || len(it.Labels) != 0 {
-		t.Fatalf("EditItem to no labels = %+v, %v", it.Labels, err)
-	}
 }
 
-func TestEditItemSameLabelsOtherCaseIsNoChange(t *testing.T) {
+func TestAddLabelChecksTheName(t *testing.T) {
 	svc := newService(t)
 	ctx := context.Background()
-	it, _ := svc.AddItem(ctx, 1, todo.Input{Text: "A", Labels: "work"}, nil)
-	got, err := svc.EditItem(ctx, 1, it.ID, todo.Input{Text: "A", Labels: "WORK"}, nil)
-	if err != nil || !got.UpdatedAt.Equal(it.UpdatedAt) {
-		t.Fatalf("EditItem with the same labels changed the item: %+v, %v", got, err)
+	it, _ := svc.AddItem(ctx, 1, todo.Input{Text: "A", Labels: "a, b, c, d, e"}, nil)
+	for _, name := range []string{"", "x, y", strings.Repeat("x", 31), "f"} {
+		if _, err := svc.AddLabel(ctx, 1, it.ID, name); !errors.Is(err, todo.ErrBadLabel) {
+			t.Errorf("AddLabel(%q) err = %v, want ErrBadLabel", name, err)
+		}
+	}
+	if _, err := svc.AddLabel(ctx, 1, 999, "x"); !errors.Is(err, todo.ErrNotFound) {
+		t.Errorf("AddLabel on a missing item: %v", err)
 	}
 }
 

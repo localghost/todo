@@ -118,7 +118,7 @@ func TestContentColumnWidth(t *testing.T) {
 }
 
 // The rows do not show when an item was added (canvas page 15, option A); a
-// row without a due date has no grey line at all.
+// row without a due date shows no date on its grey line (only the label +).
 func TestItemHidesAddedDate(t *testing.T) {
 	h, svc := newTestApp(t)
 	mustAdd(t, svc, "Buy milk")
@@ -126,7 +126,7 @@ func TestItemHidesAddedDate(t *testing.T) {
 	svc.Toggle(context.Background(), 1, b.ID)
 
 	body := do(t, h, "GET", "/", nil, nil).Body.String()
-	assertNotContains(t, body, "Added ", `class="added"`, `class="meta"`)
+	assertNotContains(t, body, "Added ", `class="added"`, `<span class="due`)
 	edit := do(t, h, "GET", "/items/1/edit", nil, htmxHeaders).Body.String()
 	assertNotContains(t, edit, "Added ", `class="added"`)
 }
@@ -143,9 +143,9 @@ func TestItemShowsDueLabel(t *testing.T) {
 
 	body := do(t, h, "GET", "/", nil, nil).Body.String()
 	assertContains(t, body,
-		`<span class="meta"><span class="due">Due tomorrow, 14:00</span></span>`,
-		`<span class="meta"><span class="due overdue">Overdue since 1 Jan 2020, 08:00</span></span>`,
-		`<span class="meta"><span class="due">Due 1 Jan 2020</span></span>`)
+		`<span class="meta"><span class="due">Due tomorrow, 14:00</span><span class="label-add-wrap">`,
+		`<span class="meta"><span class="due overdue">Overdue since 1 Jan 2020, 08:00</span><span class="label-add-wrap">`,
+		`<span class="meta"><span class="due">Due 1 Jan 2020</span><span class="label-add-wrap">`)
 	assertNotContains(t, body, `· <span class="due`)
 }
 

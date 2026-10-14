@@ -2,7 +2,7 @@
 <main class="account-wrap">
 <div class="account-top"><a href="/">← Back to my list</a> <form method="post" action="/logout" class="inline-form"><button type="submit" class="link-button">Log out</button></form></div>
 <h1>Labels</h1>
-<p class="page-hint">To make a new label, type its name in the Labels field when you add or edit an item. Deleting a label keeps its items.</p>
+<p class="page-hint">To make a new label, click + on an item and type its name. Deleting a label keeps its items.</p>
 {{if .Rows}}<ul class="label-list">
 {{range .Rows}}<li class="label-row" id="label-{{.ID}}">
 <div class="label-head"><span class="chip c-{{.Color}}">{{.Name}}</span><a class="count" href="/?label={{.ID}}">{{.Items}} {{if eq .Items 1}}item{{else}}items{{end}}</a></div>
@@ -17,7 +17,7 @@
 </form>{{end}}
 {{if .Error}}<p class="row-error" id="label-msg-{{.ID}}" role="alert">{{.Error}}</p>{{else if .Saved}}<p class="row-ok" role="status">Saved.</p>{{end}}
 </li>
-{{end}}</ul>{{else}}<div id="empty-state"><p class="empty-title">No labels yet</p><p class="empty-hint">Type a label in the Labels field when you add an item.</p></div>{{end}}
+{{end}}</ul>{{else}}<div id="empty-state"><p class="empty-title">No labels yet</p><p class="empty-hint">Click + on an item to give it a label.</p></div>{{end}}
 </main>
 </body>
 </html>

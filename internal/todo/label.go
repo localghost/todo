@@ -43,12 +43,12 @@ type Label struct {
 	Items  int    // number of items with the label (only from Store.Labels)
 }
 
-// Input is what the user typed in the add form or in an edit row.
+// Input is what the user typed in the add form.
 type Input struct {
 	Text    string
 	DueDate string // YYYY-MM-DD or empty
 	DueTime string // HH:MM or empty
-	Labels  string // label names separated by commas
+	Labels  string // label names separated by commas (the add form sends the filter's label)
 }
 
 // ParseLabels splits a comma list into clean label names: whitespace
@@ -78,7 +78,7 @@ func ParseLabels(field string) ([]string, error) {
 	return names, nil
 }
 
-// cleanLabelName checks a single label name, for a rename.
+// cleanLabelName checks a single label name, for a rename or the label list.
 func cleanLabelName(name string) (string, error) {
 	name = strings.Join(strings.Fields(name), " ")
 	switch {
@@ -132,4 +132,53 @@ func (s *Service) UpdateLabel(ctx context.Context, userID, id int64, name, color
 // DeleteLabel removes a label from all its items and deletes it. The items stay.
 func (s *Service) DeleteLabel(ctx context.Context, userID, id int64) error {
 	return s.store.DeleteLabel(ctx, userID, id)
+}
+
+// AddLabel puts one label on an item. A name the user has no label for
+// makes a new label. A label the item already has (ignoring case) changes
+// nothing.
+func (s *Service) AddLabel(ctx context.Context, userID, itemID int64, name string) (Item, error) {
+	name, err := cleanLabelName(name)
+	if err != nil {
+		return Item{}, err
+	}
+	it, err := s.store.Get(ctx, userID, itemID)
+	if err != nil {
+		return Item{}, err
+	}
+	names := make([]string, 0, len(it.Labels)+1)
+	for _, l := range it.Labels {
+		if strings.EqualFold(l.Name, name) {
+			return it, nil
+		}
+		names = append(names, l.Name)
+	}
+	if len(names) >= MaxLabelsPerItem {
+		return Item{}, &LabelError{Msg: "An item can have at most 5 labels."}
+	}
+	return s.setLabels(ctx, userID, it, append(names, name))
+}
+
+// RemoveLabel takes label labelID off an item. The label itself stays.
+func (s *Service) RemoveLabel(ctx context.Context, userID, itemID, labelID int64) (Item, error) {
+	it, err := s.store.Get(ctx, userID, itemID)
+	if err != nil {
+		return Item{}, err
+	}
+	if !it.HasLabel(labelID) {
+		return it, nil
+	}
+	names := []string{}
+	for _, l := range it.Labels {
+		if l.ID != labelID {
+			names = append(names, l.Name)
+		}
+	}
+	return s.setLabels(ctx, userID, it, names)
+}
+
+// setLabels replaces the item's labels, keeping its text and due date.
+func (s *Service) setLabels(ctx context.Context, userID int64, it Item, names []string) (Item, error) {
+	return s.store.UpdateItem(ctx, userID, it.ID,
+		Change{Text: it.Text, DueAt: it.DueAt, DueAllDay: it.DueAllDay, Labels: names}, s.now())
 }

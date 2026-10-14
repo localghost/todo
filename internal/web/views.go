@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"slices"
 	"strconv"
 
 	"todo/internal/todo"
@@ -27,29 +26,33 @@ type listView struct {
 
 // formView is the data for the add form.
 type formView struct {
-	Text        string
-	DueDate     string
-	DueTime     string
-	Labels      string
-	LabelsStart string // the Labels field's value after an add: the filter's label
-	Error       bool   // empty text
-	DueError    string // message for a bad due date
-	LabelsError string // message for bad labels
-	Focus       bool
-	Suggest     []todo.Label
+	Text     string
+	DueDate  string
+	DueTime  string
+	Error    bool   // empty text
+	DueError string // message for a bad due date
+	Focus    bool
+	Filter   *todo.Label // new items get this label (the list's filter)
 }
 
 // editView is the data for a row in edit mode.
 type editView struct {
-	Item        todo.Item
-	Text        string
-	DueDate     string
-	DueTime     string
-	Labels      string
-	Error       bool   // empty text
-	DueError    string // message for a bad due date
-	LabelsError string // message for bad labels
-	Suggest     []todo.Label
+	Item     todo.Item
+	Text     string
+	DueDate  string
+	DueTime  string
+	Error    bool   // empty text
+	DueError string // message for a bad due date
+}
+
+// pickerView is the data for the label list that + opens on an item.
+type pickerView struct {
+	Item    todo.Item
+	Options []todo.Label // the user's labels that the item does not have
+	Taken   string       // the item's label names, joined by commas
+	Full    bool         // the item has the most labels it can have
+	Value   string       // the search field (what the user typed, after an error)
+	Error   string
 }
 
 // pageView is the data for the full page.
@@ -115,37 +118,6 @@ func (s *server) labelFilter(r *http.Request) (*todo.Label, error) {
 		return nil, err
 	}
 	return &l, nil
-}
-
-// maxSuggest is the number of label buttons under a Labels field.
-const maxSuggest = 8
-
-// suggestions returns the user's most used labels, for the buttons under a
-// Labels field.
-func (s *server) suggestions(r *http.Request) ([]todo.Label, error) {
-	labels, err := s.svc.Labels(r.Context(), userID(r))
-	if err != nil {
-		return nil, err
-	}
-	slices.SortStableFunc(labels, func(a, b todo.Label) int { return b.Items - a.Items })
-	if len(labels) > maxSuggest {
-		labels = labels[:maxSuggest]
-	}
-	return labels, nil
-}
-
-// newForm returns the add form for the request: the Labels field starts with
-// the filter's label, so a new item shows in the filtered list.
-func (s *server) newForm(r *http.Request, filter *todo.Label) (formView, error) {
-	suggest, err := s.suggestions(r)
-	if err != nil {
-		return formView{}, err
-	}
-	f := formView{Focus: true, Suggest: suggest}
-	if filter != nil {
-		f.Labels, f.LabelsStart = filter.Name, filter.Name
-	}
-	return f, nil
 }
 
 // labelsMessage returns the message for a label error from the service, or "".
