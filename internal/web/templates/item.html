@@ -5,7 +5,7 @@
 {{define "grip-icon"}}<svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="3" r="1.5"/><circle cx="9" cy="3" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="9" cy="8" r="1.5"/><circle cx="3" cy="13" r="1.5"/><circle cx="9" cy="13" r="1.5"/></svg>{{end}}
 
 {{define "item"}}{{$d := due .}}<li id="item-{{.ID}}" class="item{{if .Done}} done{{end}}{{if $d.Overdue}} overdue-row{{end}}">
-{{if $d.Overdue}}<span class="grip-space" aria-hidden="true"></span>{{else}}<button class="grip" type="button" aria-label="Move: {{.Text}}" title="Drag to move, or use the arrow keys">{{template "grip-icon"}}</button>{{end}}
+{{if $d.Overdue}}<span class="grip-space" aria-hidden="true"></span>{{else}}<button class="grip" type="button" aria-label="Move: {{.Text}}" aria-describedby="move-help" title="Drag to move, or use the arrow keys">{{template "grip-icon"}}</button>{{end}}
 <button id="check-{{.ID}}" class="check" type="button" aria-label="{{if .Done}}Mark not done{{else}}Mark done{{end}}: {{.Text}}"
   hx-post="/items/{{.ID}}/toggle" hx-target="closest li" hx-swap="outerHTML"><span class="box">{{if .Done}}{{template "check-icon"}}{{end}}</span></button>
 <div class="text-col">

@@ -147,6 +147,16 @@ func TestGripOnNormalRowsOnly(t *testing.T) {
 	assertContains(t, edit, `class="grip-space"`)
 }
 
+// A screen reader does not always read title, so the grip points to a hidden
+// help text about the arrow keys.
+func TestGripHasKeyHelp(t *testing.T) {
+	env, _ := overdueEnv(t)
+	body := do(t, env.H, "GET", "/", nil, map[string]string{"Cookie": "todo_tz=Europe/Warsaw"}).Body.String()
+	assertContains(t, body,
+		`<button class="grip" type="button" aria-label="Move: Water the plants" aria-describedby="move-help"`,
+		`<p id="move-help" class="visually-hidden">Use the Arrow Up and Arrow Down keys to move the item.</p>`)
+}
+
 // The edit row of an overdue item stays in the overdue group: the page must
 // not treat it as a normal row (no drop next to it, not counted in "N of M").
 func TestOverdueEditRowIsMarked(t *testing.T) {
