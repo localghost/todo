@@ -37,6 +37,19 @@ func filtered(id int64) map[string]string {
 	return map[string]string{"HX-Request": "true", "HX-Current-URL": "http://example.com/?label=" + strconv.FormatInt(id, 10)}
 }
 
+// The + is small and gray, with no circle (canvas page 16, option C). It shows
+// only when the pointer is on the row or focus is in it, also on a row
+// without labels; an invisible area keeps it easy to click.
+func TestLabelPlusIsSmallAndGray(t *testing.T) {
+	env := newTestEnv(t)
+	addLabeled(t, env.Svc, env.User.ID, "Invoice", "")
+	css := do(t, env.H, "GET", "/static/app.css", nil, nil).Body.String()
+	assertContains(t, css, "color: #8C8A84", ".label-add::after", "left: var(--caret, 8px)")
+	assertNotContains(t, css, ".label-add.bare", "border: 1px dashed #B9B6AD")
+	body := do(t, env.H, "GET", "/", nil, nil).Body.String()
+	assertContains(t, body, `<svg width="9" height="9" viewBox="0 0 12 12"`)
+}
+
 func TestPlusAddsOneLabel(t *testing.T) {
 	env := newTestEnv(t)
 	a := addLabeled(t, env.Svc, env.User.ID, "Invoice", "")
@@ -44,7 +57,7 @@ func TestPlusAddsOneLabel(t *testing.T) {
 	path := fmt.Sprintf("/items/%d/labels", a.ID)
 
 	body := do(t, env.H, "GET", "/", nil, nil).Body.String()
-	assertContains(t, body, fmt.Sprintf(`id="label-add-%d" class="label-add bare"`, a.ID), fmt.Sprintf(`data-picker="%s"`, path))
+	assertContains(t, body, fmt.Sprintf(`id="label-add-%d" class="label-add"`, a.ID), fmt.Sprintf(`data-picker="%s"`, path))
 	assertNotContains(t, body, `name="labels"`, "suggest-btn")
 
 	// The list offers the user's labels, by name.

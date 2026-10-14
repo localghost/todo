@@ -4,7 +4,7 @@
 
 {{define "x-small-icon"}}<svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>{{end}}
 
-{{define "plus-icon"}}<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>{{end}}
+{{define "plus-icon"}}<svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>{{end}}
 
 {{define "grip-icon"}}<svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="3" r="1.5"/><circle cx="9" cy="3" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="9" cy="8" r="1.5"/><circle cx="3" cy="13" r="1.5"/><circle cx="9" cy="13" r="1.5"/></svg>{{end}}
 
@@ -16,7 +16,7 @@
 <button class="text" type="button" title="Click to edit"
   hx-get="/items/{{.ID}}/edit" hx-target="closest li" hx-swap="outerHTML">{{.Text}}</button>
 <span class="meta">{{if $d.Text}}<span class="due{{if $d.Overdue}} overdue{{end}}">{{$d.Text}}</span>{{end}}{{range .Labels}}<span class="chip c-{{.Color}}"><a href="/?label={{.ID}}" title="Show only “{{.Name}}”">{{.Name}}</a><button type="button" class="chip-x" aria-label="Remove label “{{.Name}}” from “{{$.Text}}”" title="Remove label"
-  hx-delete="/items/{{$.ID}}/labels/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">{{template "x-small-icon"}}</button></span>{{end}}<span class="label-add-wrap"><button type="button" id="label-add-{{.ID}}" class="label-add{{if not .Labels}} bare{{end}}" aria-label="Add a label to “{{.Text}}”" title="Add a label" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/labels">{{template "plus-icon"}}</button></span></span>
+  hx-delete="/items/{{$.ID}}/labels/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">{{template "x-small-icon"}}</button></span>{{end}}<span class="label-add-wrap"><button type="button" id="label-add-{{.ID}}" class="label-add" aria-label="Add a label to “{{.Text}}”" title="Add a label" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/labels">{{template "plus-icon"}}</button></span></span>
 {{if $d.Overdue}}<span class="postpone" role="group" aria-label="Postpone">{{range postponeMinutes}}<button type="button" class="postpone-btn" aria-label="Postpone {{$.Text}} by {{.}} minutes" hx-post="/items/{{$.ID}}/postpone?minutes={{.}}" hx-target="closest li" hx-swap="outerHTML">+{{.}} min</button>{{end}}</span>{{end}}
 </div>
 <button class="delete" type="button" aria-label="Delete: {{.Text}}"
