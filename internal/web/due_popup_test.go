@@ -121,6 +121,16 @@ func TestCalendarIconCSS(t *testing.T) {
 		"button.due {", ".due-picker {", ".due-actions {", ".due-save {", ".due-remove {")
 }
 
+// On hover only the lines of the calendar icon and the + get darker; there
+// is no circle behind them, also while the pop-up is open.
+func TestRowIconHoverHasNoBackground(t *testing.T) {
+	h, _ := newTestApp(t)
+	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
+	assertContains(t, css,
+		".label-add:hover, .due-add:hover { color: var(--muted); }",
+		".label-add[aria-expanded=\"true\"], .due-add[aria-expanded=\"true\"] { color: var(--accent); }")
+}
+
 // One pop-up code serves the label list and the due date pop-up.
 func TestAppJSOpensTheDuePopup(t *testing.T) {
 	h, _ := newTestApp(t)

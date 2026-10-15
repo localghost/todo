@@ -278,7 +278,8 @@ button.due:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
    with no circle; ::after keeps a larger click area. Touch screens have no
    hover: both always show. The calendar icon of the due date (canvas page
    10, option A) looks and shows the same way; while hidden it keeps its
-   place, so nothing moves on hover. */
+   place, so nothing moves on hover. On hover only the icon gets darker;
+   it has no background. */
 .chip-x {
   flex: none; width: 0; height: 16px; margin: -2px 0; padding: 0; overflow: hidden; opacity: 0;
   display: inline-flex; align-items: center; justify-content: center;
@@ -296,8 +297,8 @@ button.due:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 .label-add::after, .due-add::after { content: ""; position: absolute; inset: -4px; }
 .item:hover .label-add, .item:focus-within .label-add, .label-add[aria-expanded="true"],
 .item:hover .due-add, .item:focus-within .due-add, .due-add[aria-expanded="true"] { opacity: 1; }
-.label-add:hover, .due-add:hover { background: var(--line); color: var(--muted); }
-.label-add[aria-expanded="true"], .due-add[aria-expanded="true"] { background: #EEF2FC; color: var(--accent); }
+.label-add:hover, .due-add:hover { color: var(--muted); }
+.label-add[aria-expanded="true"], .due-add[aria-expanded="true"] { color: var(--accent); }
 .label-add:focus-visible, .due-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (hover: none) {
   .label-add, .due-add { opacity: 1; width: 20px; height: 20px; }
