@@ -25,6 +25,11 @@ document.addEventListener("htmx:beforeSwap", (e) => {
     focusAfterSwap = "label-add-" + row.id.slice("item-".length);
     return;
   }
+  if (active.closest(".due-picker")) {
+    // The row comes back without the pop-up: go on at its calendar icon.
+    focusAfterSwap = "due-add-" + row.id.slice("item-".length);
+    return;
+  }
   if (!active.matches(".check, .delete, .chip-x")) {
     return;
   }
@@ -356,12 +361,41 @@ document.addEventListener("htmx:oobAfterSwap", () => {
   }
 });
 
-// 13. Labels (canvas page "16 · Labels"). The + on a row opens a small list
-// of the user's labels under it, with a search field. Typing narrows the
-// list; a name that matches no label offers "Create …". Choosing one adds
-// that one label and closes the list. Esc, Tab or a click outside closes it.
-let picker = null; // the open list
-let pickerButton = null; // its +
+// 13. Pop-ups on a row: the label list under the + (canvas page "16 ·
+// Labels") and the due date pop-up under the calendar icon (canvas page
+// "10 · Due date"). Only one is open at a time. Esc or a click outside
+// closes it.
+// The label list has a search field. Typing narrows the list; a name that
+// matches no label offers "Create …". Choosing one adds that one label and
+// closes the list. Tab closes it.
+// The due date pop-up is a form: Enter saves, Tab moves inside it, and focus
+// that leaves it closes it without saving. The due text opens it too.
+let picker = null; // the open pop-up
+let pickerButton = null; // its + or calendar icon
+
+function isDuePicker() {
+  return picker !== null && picker.classList.contains("due-picker");
+}
+
+// focusPicker puts the cursor in the first field of the pop-up: the search
+// of the label list, or the date of the due date pop-up.
+function focusPicker() {
+  const input = picker.querySelector('input:not([type="hidden"])');
+  if (input) {
+    input.focus();
+  }
+  return input;
+}
+
+// popupButton is the + or calendar icon that a press on target belongs to.
+// A due text belongs to the calendar icon of its row.
+function popupButton(target) {
+  if (!target.closest) {
+    return null;
+  }
+  const due = target.closest("button.due");
+  return due ? due.parentElement.querySelector(".due-add") : target.closest(".label-add, .due-add");
+}
 
 function closePicker(refocus) {
   if (!picker) {
@@ -389,11 +423,8 @@ function openPicker(button) {
     }
     picker = box;
     placePicker();
-    const input = box.querySelector(".picker-search");
     filterPicker();
-    if (input) {
-      input.focus();
-    }
+    focusPicker();
   });
 }
 
@@ -471,7 +502,7 @@ function choose(option) {
 }
 
 document.addEventListener("click", (e) => {
-  const button = e.target.closest && e.target.closest(".label-add");
+  const button = popupButton(e.target);
   if (button) {
     if (pickerButton === button) {
       closePicker(true);
@@ -486,13 +517,20 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// A press in the list must not take the focus out of the search field.
+// A press in a pop-up must not take the focus out of its field; the fields
+// and buttons of the due date pop-up still take focus. A press on the
+// pop-up's own button keeps the focus, so its click can close the pop-up.
 document.addEventListener("mousedown", (e) => {
-  if (picker && picker.contains(e.target)) {
-    if (!e.target.closest(".picker-search")) {
+  if (!picker) {
+    return;
+  }
+  if (picker.contains(e.target)) {
+    if (!e.target.closest(isDuePicker() ? "input, button" : ".picker-search")) {
       e.preventDefault();
     }
-  } else if (picker && !(e.target.closest && e.target.closest(".label-add") === pickerButton)) {
+  } else if (popupButton(e.target) === pickerButton) {
+    e.preventDefault();
+  } else {
     closePicker(false);
   }
 });
@@ -504,7 +542,7 @@ document.addEventListener("input", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
-  if (!picker || !picker.contains(e.target)) {
+  if (!picker || isDuePicker() || !picker.contains(e.target)) {
     return;
   }
   const shown = pickerOptions();
@@ -529,8 +567,30 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// The list belongs to the row: a swap of the row or the list closes it. An
-// error answer replaces only the list (HX-Retarget): go on in the new one.
+// Esc closes the due date pop-up without saving. Enter submits its form.
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && isDuePicker() && picker.contains(e.target)) {
+    e.preventDefault();
+    closePicker(true);
+  }
+});
+
+// Focus that leaves the due date pop-up closes it without saving. The
+// decision waits one tick, as for an edit row (section 2).
+document.addEventListener("focusout", (e) => {
+  if (!isDuePicker() || !picker.contains(e.target)) {
+    return;
+  }
+  const box = picker;
+  setTimeout(() => {
+    if (picker === box && !box.contains(document.activeElement)) {
+      closePicker(false);
+    }
+  }, 0);
+});
+
+// The pop-up belongs to the row: a swap of the row closes it. An error
+// answer replaces only the pop-up (HX-Retarget): go on in the new one.
 document.addEventListener("htmx:afterSwap", () => {
   if (!picker || picker.isConnected) {
     return;
@@ -540,9 +600,8 @@ document.addEventListener("htmx:afterSwap", () => {
     picker = fresh;
     placePicker();
     filterPicker();
-    const input = picker.querySelector(".picker-search");
-    if (input) {
-      input.focus();
+    const input = focusPicker();
+    if (input && input.matches(".picker-search")) {
       input.setSelectionRange(input.value.length, input.value.length);
     }
     return;

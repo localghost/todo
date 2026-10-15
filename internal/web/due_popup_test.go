@@ -120,3 +120,12 @@ func TestCalendarIconCSS(t *testing.T) {
 		".item:hover .due-add, .item:focus-within .due-add, .due-add[aria-expanded=\"true\"]",
 		"button.due {", ".due-picker {", ".due-actions {", ".due-save {", ".due-remove {")
 }
+
+// One pop-up code serves the label list and the due date pop-up.
+func TestAppJSOpensTheDuePopup(t *testing.T) {
+	h, _ := newTestApp(t)
+	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
+	assertContains(t, js,
+		`closest(".label-add, .due-add")`, `closest("button.due")`, `classList.contains("due-picker")`,
+		`focusAfterSwap = "due-add-"`, `input:not([type="hidden"])`)
+}
