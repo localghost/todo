@@ -517,15 +517,18 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// A press in a pop-up must not take the focus out of its field; the fields
-// and buttons of the due date pop-up still take focus. A press on the
-// pop-up's own button keeps the focus, so its click can close the pop-up.
+// A press in a pop-up must not take the focus out of its field; a press on
+// another field of the due date pop-up still moves the focus there. Its
+// buttons must not take the focus first: Safari and Firefox on macOS do not
+// focus a pressed button, so the field would blur and focusout would close
+// the pop-up before the click. A press on the pop-up's own button keeps the
+// focus, so its click can close the pop-up.
 document.addEventListener("mousedown", (e) => {
   if (!picker) {
     return;
   }
   if (picker.contains(e.target)) {
-    if (!e.target.closest(isDuePicker() ? "input, button" : ".picker-search")) {
+    if (!e.target.closest(isDuePicker() ? "input" : ".picker-search")) {
       e.preventDefault();
     }
   } else if (popupButton(e.target) === pickerButton) {

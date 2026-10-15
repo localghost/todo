@@ -129,3 +129,13 @@ func TestAppJSOpensTheDuePopup(t *testing.T) {
 		`closest(".label-add, .due-add")`, `closest("button.due")`, `classList.contains("due-picker")`,
 		`focusAfterSwap = "due-add-"`, `input:not([type="hidden"])`)
 }
+
+// Safari and Firefox on macOS do not focus a button on click: a press on
+// Save or Remove date must not take the focus out of the pop-up first, or
+// focusout closes it before the click.
+func TestAppJSDuePopupButtonsKeepFocus(t *testing.T) {
+	h, _ := newTestApp(t)
+	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
+	assertContains(t, js, `e.target.closest(isDuePicker() ? "input" : ".picker-search")`)
+	assertNotContains(t, js, `isDuePicker() ? "input, button"`)
+}
