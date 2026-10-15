@@ -94,3 +94,29 @@ func TestDuePopupUnknownItem(t *testing.T) {
 		}
 	}
 }
+
+// The gray line is: due text, calendar icon, labels, + (canvas page 10, option A).
+func TestRowHasDueButtonAndCalendarIcon(t *testing.T) {
+	h, svc := newTestApp(t)
+	ctx := context.Background()
+	tomorrow := time.Now().AddDate(0, 0, 1).Format("2006-01-02")
+	svc.Add(ctx, 1, "Call the dentist", tomorrow, "14:00")
+	svc.AddLabel(ctx, 1, 1, "work")
+	mustAdd(t, svc, "No date")
+	body := do(t, h, "GET", "/", nil, nil).Body.String()
+	assertContains(t, body,
+		`<span class="meta"><button type="button" class="due" title="Change the due date" aria-haspopup="dialog" data-due-for="1">Due tomorrow, 14:00</button><span class="due-add-wrap"><button type="button" id="due-add-1" class="due-add" aria-label="Set the due date of “Call the dentist”" title="Set the due date" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/1/due"><svg width="12" height="12"`,
+		`<span class="meta"><span class="due-add-wrap"><button type="button" id="due-add-2" class="due-add"`)
+	if i, j := strings.Index(body, `id="due-add-1"`), strings.Index(body, `class="chip c-`); i < 0 || j < i {
+		t.Fatalf("the calendar icon must come before the labels (icon at %d, chip at %d)", i, j)
+	}
+}
+
+func TestCalendarIconCSS(t *testing.T) {
+	h, _ := newTestApp(t)
+	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
+	assertContains(t, css,
+		".label-add, .due-add {", ".label-add::after, .due-add::after {",
+		".item:hover .due-add, .item:focus-within .due-add, .due-add[aria-expanded=\"true\"]",
+		"button.due {", ".due-picker {", ".due-actions {", ".due-save {", ".due-remove {")
+}
