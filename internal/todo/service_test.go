@@ -63,14 +63,14 @@ func TestUpdateTextRejectsEmptyAndKeepsOld(t *testing.T) {
 	svc := newService(t)
 	ctx := context.Background()
 	it, _ := svc.Add(ctx, 1, "Buy milk", "", "")
-	if _, err := svc.Edit(ctx, 1, it.ID, "  ", "", ""); !errors.Is(err, todo.ErrEmptyText) {
+	if _, err := svc.EditText(ctx, 1, it.ID, "  "); !errors.Is(err, todo.ErrEmptyText) {
 		t.Fatalf("UpdateText(empty) err = %v, want ErrEmptyText", err)
 	}
 	got, _ := svc.Get(ctx, 1, it.ID)
 	if got.Text != "Buy milk" {
 		t.Fatalf("Text = %q, want unchanged %q", got.Text, "Buy milk")
 	}
-	up, err := svc.Edit(ctx, 1, it.ID, " Buy  oat milk ", "", "")
+	up, err := svc.EditText(ctx, 1, it.ID, " Buy  oat milk ")
 	if err != nil || up.Text != "Buy oat milk" {
 		t.Fatalf("UpdateText = %+v, %v", up, err)
 	}
@@ -97,8 +97,11 @@ func TestOtherUserGetsNotFound(t *testing.T) {
 	if _, err := svc.Toggle(ctx, 2, it.ID); !errors.Is(err, todo.ErrNotFound) {
 		t.Errorf("Toggle err = %v, want ErrNotFound", err)
 	}
-	if _, err := svc.Edit(ctx, 2, it.ID, "x", "", ""); !errors.Is(err, todo.ErrNotFound) {
-		t.Errorf("UpdateText err = %v, want ErrNotFound", err)
+	if _, err := svc.EditText(ctx, 2, it.ID, "x"); !errors.Is(err, todo.ErrNotFound) {
+		t.Errorf("EditText err = %v, want ErrNotFound", err)
+	}
+	if _, err := svc.SetDue(ctx, 2, it.ID, "2026-10-03", "", nil); !errors.Is(err, todo.ErrNotFound) {
+		t.Errorf("SetDue err = %v, want ErrNotFound", err)
 	}
 	if err := svc.Delete(ctx, 2, it.ID); !errors.Is(err, todo.ErrNotFound) {
 		t.Errorf("Delete err = %v, want ErrNotFound", err)
@@ -121,7 +124,7 @@ func TestUpdateTextUnchangedKeepsUpdatedAt(t *testing.T) {
 	svc := newService(t)
 	ctx := context.Background()
 	it, _ := svc.Add(ctx, 1, "Buy milk", "", "")
-	got, err := svc.Edit(ctx, 1, it.ID, "  Buy   milk ", "", "")
+	got, err := svc.EditText(ctx, 1, it.ID, "  Buy   milk ")
 	if err != nil {
 		t.Fatalf("UpdateText: %v", err)
 	}

@@ -67,12 +67,8 @@ func (s *Service) AddItem(ctx context.Context, userID int64, in Input, loc *time
 	return s.store.Create(ctx, userID, Change{Text: text, DueAt: dueAt, DueAllDay: allDay, Labels: labels}, s.now())
 }
 
-// Edit changes the text and the due date. A changed due date can notify again.
-func (s *Service) Edit(ctx context.Context, userID, id int64, text, dueDate, dueTime string) (Item, error) {
-	return s.EditIn(ctx, userID, id, text, dueDate, dueTime, nil)
-}
-
-// EditIn is Edit with the due date and time read in loc (nil: the service's zone).
+// EditIn changes the text and the due date, read in loc (nil: the
+// service's zone). A changed due date can notify again.
 func (s *Service) EditIn(ctx context.Context, userID, id int64, text, dueDate, dueTime string, loc *time.Location) (Item, error) {
 	text, err := cleanText(text)
 	if err != nil {
@@ -92,6 +88,43 @@ func (s *Service) EditIn(ctx context.Context, userID, id int64, text, dueDate, d
 	}
 	return s.store.UpdateItem(ctx, userID, id,
 		Change{Text: text, DueAt: dueAt, DueAllDay: allDay, ResetNotified: !dueSame, KeepLabels: true}, s.now())
+}
+
+// EditText changes only the text of an item. The due date, its notified
+// state, and the labels stay.
+func (s *Service) EditText(ctx context.Context, userID, id int64, text string) (Item, error) {
+	text, err := cleanText(text)
+	if err != nil {
+		return Item{}, err
+	}
+	it, err := s.store.Get(ctx, userID, id)
+	if err != nil {
+		return Item{}, err
+	}
+	if it.Text == text {
+		return it, nil
+	}
+	return s.store.UpdateItem(ctx, userID, id,
+		Change{Text: text, DueAt: it.DueAt, DueAllDay: it.DueAllDay, KeepLabels: true}, s.now())
+}
+
+// SetDue changes only the due date of an item, read in loc (nil: the
+// service's zone). An empty date and time removes the due date. A new due
+// date resets the notified state, so the item can notify again.
+func (s *Service) SetDue(ctx context.Context, userID, id int64, date, clock string, loc *time.Location) (Item, error) {
+	dueAt, allDay, err := parseDue(date, clock, s.zone(loc))
+	if err != nil {
+		return Item{}, err
+	}
+	it, err := s.store.Get(ctx, userID, id)
+	if err != nil {
+		return Item{}, err
+	}
+	if sameDue(it.DueAt, it.DueAllDay, dueAt, allDay) {
+		return it, nil
+	}
+	return s.store.UpdateItem(ctx, userID, id,
+		Change{Text: it.Text, DueAt: dueAt, DueAllDay: allDay, ResetNotified: true, KeepLabels: true}, s.now())
 }
 
 // Postpone moves the due time by minutes, counted from the later of the

@@ -67,9 +67,12 @@ func TestAddLabelAndRemoveLabel(t *testing.T) {
 	if it, err = svc.RemoveLabel(ctx, 1, it.ID, it.Labels[0].ID); err != nil || todo.LabelNames(it.Labels) != "work" {
 		t.Fatalf("RemoveLabel = %q, %v", todo.LabelNames(it.Labels), err)
 	}
-	// Edit and Postpone keep the labels.
-	if it, err = svc.Edit(ctx, 1, it.ID, "Invoice 2", "2099-01-01", "10:00"); err != nil || todo.LabelNames(it.Labels) != "work" {
-		t.Fatalf("Edit = %q, %v", todo.LabelNames(it.Labels), err)
+	// EditText, SetDue and Postpone keep the labels.
+	if it, err = svc.EditText(ctx, 1, it.ID, "Invoice 2"); err != nil || todo.LabelNames(it.Labels) != "work" {
+		t.Fatalf("EditText = %q, %v", todo.LabelNames(it.Labels), err)
+	}
+	if it, err = svc.SetDue(ctx, 1, it.ID, "2099-01-01", "10:00", nil); err != nil || todo.LabelNames(it.Labels) != "work" {
+		t.Fatalf("SetDue = %q, %v", todo.LabelNames(it.Labels), err)
 	}
 	if it, err = svc.Postpone(ctx, 1, it.ID, 5); err != nil || todo.LabelNames(it.Labels) != "work" {
 		t.Fatalf("Postpone = %q, %v", todo.LabelNames(it.Labels), err)

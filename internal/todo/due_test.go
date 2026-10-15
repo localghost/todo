@@ -54,61 +54,66 @@ func TestAddEmptyTextIsCheckedFirst(t *testing.T) {
 	}
 }
 
-func TestEditKeepsNotifiedUnlessDueChanges(t *testing.T) {
+func TestEditTextKeepsDueAndNotified(t *testing.T) {
 	svc := newService(t)
 	ctx := context.Background()
 	it, _ := svc.Add(ctx, 1, "a", "2020-01-01", "08:00")
 	if got, _ := svc.ClaimDue(ctx, 1, time.Now()); len(got) != 1 {
 		t.Fatalf("first claim = %d items, want 1", len(got))
 	}
-
-	textOnly, err := svc.Edit(ctx, 1, it.ID, "b", "2020-01-01", "08:00")
-	if err != nil || textOnly.Text != "b" || textOnly.NotifiedAt == nil {
-		t.Fatalf("Edit text only = %+v, %v; want NotifiedAt kept", textOnly, err)
+	got, err := svc.EditText(ctx, 1, it.ID, "b")
+	if err != nil || got.Text != "b" || got.NotifiedAt == nil || got.DueAt == nil || !got.DueAt.Equal(*it.DueAt) {
+		t.Fatalf("EditText = %+v, %v; want text b, the same due date, NotifiedAt kept", got, err)
 	}
 	if got, _ := svc.ClaimDue(ctx, 1, time.Now()); len(got) != 0 {
 		t.Fatalf("claim after text edit = %d items, want 0", len(got))
 	}
+}
 
-	moved, err := svc.Edit(ctx, 1, it.ID, "b", "2020-01-02", "08:00")
-	if err != nil || moved.NotifiedAt != nil {
-		t.Fatalf("Edit due = %+v, %v; want NotifiedAt reset", moved, err)
+func TestSetDueResetsNotified(t *testing.T) {
+	svc := newService(t)
+	ctx := context.Background()
+	it, _ := svc.Add(ctx, 1, "a", "2020-01-01", "08:00")
+	svc.ClaimDue(ctx, 1, time.Now())
+	moved, err := svc.SetDue(ctx, 1, it.ID, "2020-01-02", "08:00", nil)
+	if err != nil || moved.NotifiedAt != nil || moved.Text != "a" {
+		t.Fatalf("SetDue = %+v, %v; want NotifiedAt reset, text kept", moved, err)
 	}
 	if got, _ := svc.ClaimDue(ctx, 1, time.Now()); len(got) != 1 {
 		t.Fatalf("claim after due change = %d items, want 1", len(got))
 	}
 }
 
-func TestEditClearsDue(t *testing.T) {
+func TestSetDueEmptyRemovesDue(t *testing.T) {
 	svc := newService(t)
 	ctx := context.Background()
 	it, _ := svc.Add(ctx, 1, "a", "2026-10-03", "14:00")
-	got, err := svc.Edit(ctx, 1, it.ID, "a", "", "")
+	got, err := svc.SetDue(ctx, 1, it.ID, "", "", nil)
 	if err != nil || got.DueAt != nil || got.DueAllDay {
-		t.Fatalf("Edit clear = %+v, %v; want no due", got, err)
+		t.Fatalf("SetDue empty = %+v, %v; want no due", got, err)
 	}
 }
 
-func TestEditUnchangedWithDueDoesNotWrite(t *testing.T) {
+func TestSetDueUnchangedDoesNotWrite(t *testing.T) {
 	svc := newService(t)
 	ctx := context.Background()
 	it, _ := svc.Add(ctx, 1, "a", "2026-10-03", "")
-	got, err := svc.Edit(ctx, 1, it.ID, " a ", "2026-10-03", "")
+	got, err := svc.SetDue(ctx, 1, it.ID, " 2026-10-03 ", "", nil)
 	if err != nil || !got.UpdatedAt.Equal(it.UpdatedAt) {
-		t.Fatalf("Edit unchanged = %+v, %v; want no write", got, err)
+		t.Fatalf("SetDue unchanged = %+v, %v; want no write", got, err)
 	}
 }
 
-func TestEditBadDueKeepsItem(t *testing.T) {
+func TestSetDueBadKeepsItem(t *testing.T) {
 	svc := newService(t)
 	ctx := context.Background()
 	it, _ := svc.Add(ctx, 1, "a", "2026-10-03", "14:00")
-	if _, err := svc.Edit(ctx, 1, it.ID, "b", "", "10:00"); !errors.Is(err, todo.ErrBadDue) {
+	if _, err := svc.SetDue(ctx, 1, it.ID, "", "10:00", nil); !errors.Is(err, todo.ErrBadDue) {
 		t.Fatalf("err = %v, want ErrBadDue", err)
 	}
 	got, _ := svc.Get(ctx, 1, it.ID)
-	if got.Text != "a" || got.DueAt == nil || !got.DueAt.Equal(*it.DueAt) {
-		t.Fatalf("item changed after bad edit: %+v", got)
+	if got.DueAt == nil || !got.DueAt.Equal(*it.DueAt) {
+		t.Fatalf("item changed after bad SetDue: %+v", got)
 	}
 }
 
@@ -123,7 +128,7 @@ func TestAddRejectsOutOfRangeTime(t *testing.T) {
 	}
 }
 
-func TestAddInAndEditInReadTheGivenZone(t *testing.T) {
+func TestAddInAndSetDueReadTheGivenZone(t *testing.T) {
 	tokyo, err := time.LoadLocation("Asia/Tokyo")
 	if err != nil {
 		t.Fatal(err)
@@ -135,10 +140,10 @@ func TestAddInAndEditInReadTheGivenZone(t *testing.T) {
 	if err != nil || it.DueAt == nil || !it.DueAt.Equal(want) {
 		t.Fatalf("AddIn = %+v, %v; want due %v", it, err, want)
 	}
-	it, err = svc.EditIn(ctx, 1, it.ID, "a", "2026-10-03", "", tokyo) // all-day: 09:00 Tokyo
+	it, err = svc.SetDue(ctx, 1, it.ID, "2026-10-03", "", tokyo) // all-day: 09:00 Tokyo
 	want = time.Date(2026, 10, 3, 0, 0, 0, 0, time.UTC)
 	if err != nil || it.DueAt == nil || !it.DueAt.Equal(want) || !it.DueAllDay {
-		t.Fatalf("EditIn = %+v, %v; want all-day due %v", it, err, want)
+		t.Fatalf("SetDue = %+v, %v; want all-day due %v", it, err, want)
 	}
 	it, err = svc.AddIn(ctx, 1, "b", "2026-10-03", "14:00", nil) // nil: the service default
 	want = time.Date(2026, 10, 3, 14, 0, 0, 0, time.Local)
