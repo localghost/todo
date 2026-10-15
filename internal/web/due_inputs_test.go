@@ -97,7 +97,18 @@ func TestDueTimeIs24HourText(t *testing.T) {
 			t.Errorf("%s still has a native time field", name)
 		}
 		assertContains(t, body, `type="text" name="due_time"`, `placeholder="HH:MM"`, `inputmode="numeric"`,
-			`pattern="([01][0-9]|2[0-3]):[0-5][0-9]"`)
+			`pattern="([01]?[0-9]|2[0-3]):?([0-5][0-9])?"`)
 	}
 	assertContains(t, edit, `name="due_time" value="14:00"`)
+}
+
+// The due time field adds the ":" while typing and completes a short time
+// before a send (canvas page 12, "type digits only").
+func TestAppJSFormatsDueTime(t *testing.T) {
+	h, _ := newTestApp(t)
+	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
+	assertContains(t, js,
+		"function formatTyping(", "function completeTime(",
+		`e.target.matches(".due-time")`, `e.inputType.startsWith("insert")`,
+		`addEventListener("change"`, `addEventListener("submit"`)
 }

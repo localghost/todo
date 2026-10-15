@@ -119,11 +119,27 @@ func TestSetDueBadKeepsItem(t *testing.T) {
 
 func TestAddRejectsOutOfRangeTime(t *testing.T) {
 	svc := newService(t)
-	for _, clock := range []string{"25:00", "14:60"} {
+	for _, clock := range []string{"25:00", "14:60", "2400", "1460", "12345", "1:3", "ab", ":30", "14:300", "1 4"} {
 		_, err := svc.Add(context.Background(), 1, "a", "2026-10-03", clock)
 		var dueErr *todo.DueError
 		if !errors.As(err, &dueErr) || dueErr.Msg != "Please choose a valid date and time." {
 			t.Errorf("Add with time %q: err = %v, want the invalid date/time message", clock, err)
+		}
+	}
+}
+
+// A phone's number keyboard has no ":", so the time can be digits only
+// (canvas page 12, "type digits only").
+func TestAddAcceptsShortTimes(t *testing.T) {
+	svc := newService(t)
+	for clock, want := range map[string][2]int{
+		"14": {14, 0}, "14:": {14, 0}, "930": {9, 30}, "1430": {14, 30},
+		"9:30": {9, 30}, "09:30": {9, 30}, "0": {0, 0}, "23:59": {23, 59},
+	} {
+		it, err := svc.Add(context.Background(), 1, "a", "2026-10-03", clock)
+		at := time.Date(2026, 10, 3, want[0], want[1], 0, 0, time.Local)
+		if err != nil || it.DueAt == nil || !it.DueAt.Equal(at) || it.DueAllDay {
+			t.Errorf("Add with time %q = %+v, %v; want due %v", clock, it.DueAt, err, at)
 		}
 	}
 }

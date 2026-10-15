@@ -615,3 +615,78 @@ document.addEventListener("htmx:afterSwap", () => {
   picker = null;
   pickerButton = null;
 });
+
+// 14. The due time field (canvas page "12 · 24-hour time", "type digits
+// only"). A phone's number keyboard has no ":", so the field adds it after
+// the hour: 1 4 3 0 gives 14:30, and 9 gives 09:. Only typed or pasted text
+// at the end of the field is changed, so Backspace and edits in the middle
+// work as usual. When the field loses focus, and before a send, a short time
+// gets its full form: 14 and 14: give 14:00, 930 gives 09:30. The server
+// reads the same short forms (normalizeClock in internal/todo/due.go).
+function formatTyping(value) {
+  const clean = value.replace(/[^0-9:]/g, "");
+  const at = clean.indexOf(":");
+  if (at >= 0) {
+    let h = clean.slice(0, at);
+    const m = clean.slice(at + 1).replace(/:/g, "").slice(0, 2);
+    if (h.length === 1) {
+      h = "0" + h;
+    }
+    return h + ":" + m;
+  }
+  if (clean.length === 1) {
+    return clean >= "3" ? "0" + clean + ":" : clean;
+  }
+  if (clean.length === 2) {
+    return clean <= "23" ? clean + ":" : clean;
+  }
+  if (clean.length === 3 && clean[0] >= "3") {
+    return "0" + clean[0] + ":" + clean.slice(1);
+  }
+  if (clean.length <= 4 && clean.slice(0, 2) <= "23") {
+    return clean.slice(0, 2) + ":" + clean.slice(2);
+  }
+  return clean;
+}
+
+function completeTime(value) {
+  const s = value.trim();
+  let h = s, m = "";
+  if (s.includes(":")) {
+    [h, m] = [s.slice(0, s.indexOf(":")), s.slice(s.indexOf(":") + 1)];
+  } else if (s.length === 3 || s.length === 4) {
+    [h, m] = [s.slice(0, -2), s.slice(-2)];
+  } else if (s.length > 4) {
+    return value;
+  }
+  m = m || "00";
+  if (!/^[0-9]{1,2}$/.test(h) || !/^[0-9]{2}$/.test(m)) {
+    return value;
+  }
+  h = h.padStart(2, "0");
+  return h <= "23" && m <= "59" ? h + ":" + m : value;
+}
+
+document.addEventListener("input", (e) => {
+  if (!e.target.matches(".due-time") || !e.inputType || !e.inputType.startsWith("insert")) {
+    return;
+  }
+  const field = e.target;
+  if (field.selectionStart === field.value.length) {
+    field.value = formatTyping(field.value);
+  }
+});
+
+document.addEventListener("change", (e) => {
+  if (e.target.matches(".due-time")) {
+    e.target.value = completeTime(e.target.value);
+  }
+});
+
+// Capture runs before htmx reads the form, so Enter right after 14: sends
+// 14:00.
+document.addEventListener("submit", (e) => {
+  e.target.querySelectorAll(".due-time").forEach((field) => {
+    field.value = completeTime(field.value);
+  });
+}, true);

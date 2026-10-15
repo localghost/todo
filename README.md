@@ -8,8 +8,8 @@ A small todo list for the browser. Everyone has their own account and their own 
 
 - Add, edit, check off and delete items. Hide the done ones.
 - Give an item a due date and time when you add it, or later with the calendar icon on each
-  item (or a click on its due date). The browser can remind you, and you can postpone by
-  5, 10, 15 or 30 minutes.
+  item (or a click on its due date). Type the time as digits: 1430 becomes 14:30. The
+  browser can remind you, and you can postpone by 5, 10, 15 or 30 minutes.
 - Overdue items move to the top of the list.
 - Drag items by the grip (⋮⋮) to change their order, or use the arrow keys. Overdue items
   stay at the top.
