@@ -266,6 +266,6 @@ func TestDueChangeInsideOverdueGroupResorts(t *testing.T) {
 	assertOrder(t, rec.Body.String(), "Call Bob", "Call Anna")
 
 	// A text edit keeps the place, so only the row comes back.
-	text := url.Values{"text": {"Call Bob today"}, "due_date": {"2026-10-02"}, "due_time": {"08:00"}, "due_tz": {"Europe/Warsaw"}}
+	text := url.Values{"text": {"Call Bob today"}}
 	assertRetarget(t, do(t, env.H, "PUT", "/items/"+strconv.FormatInt(b.ID, 10), text, warsawHTMX()), false)
 }

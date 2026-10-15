@@ -5,22 +5,12 @@ import (
 )
 
 // Focus leaving the row is decided after one tick, and clicks inside the
-// row (labels, gaps, "Clear") must not move focus out of it.
+// row (gaps, the hint) must not move focus out of it.
 func TestAppJSDefersRowSave(t *testing.T) {
 	h, _ := newTestApp(t)
 	body := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
 	assertContains(t, body, "setTimeout(", "row.contains(document.activeElement)",
 		`"mousedown"`, `e.target.closest("input, label")`)
-}
-
-// A half-typed date must not save as "no due date".
-func TestEditRowValidatesDueInputs(t *testing.T) {
-	h, svc := newTestApp(t)
-	mustAdd(t, svc, "Call the dentist")
-	body := do(t, h, "GET", "/items/1/edit", nil, htmxHeaders).Body.String()
-	assertContains(t, body, `hx-validate="true"`)
-	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
-	assertContains(t, js, `"htmx:validation:halted"`, "Please choose a valid date and time.")
 }
 
 // A failing Notification constructor must not show a false network error.

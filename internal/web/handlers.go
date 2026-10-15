@@ -139,8 +139,7 @@ func (s *server) editItem(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	date, clock := dueInputs(item, s.zoneFor(r))
-	s.render(w, r, http.StatusOK, part{"item-edit", editView{Item: item, Text: item.Text, DueDate: date, DueTime: clock}})
+	s.render(w, r, http.StatusOK, part{"item-edit", editView{Item: item, Text: item.Text}})
 }
 
 func (s *server) showItem(w http.ResponseWriter, r *http.Request) {
@@ -157,18 +156,10 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 		s.oobOnly(w, r, http.StatusNotFound)
 		return
 	}
-	text, dueDate, dueTime := r.FormValue("text"), r.FormValue("due_date"), r.FormValue("due_time")
-	// Read the time in the zone the edit row was shown in, so an unchanged
-	// time stays the same moment even if the browser's zone changed since.
-	loc, ok := s.parseZone(r.FormValue("due_tz"))
-	if !ok {
-		loc = s.zoneFor(r)
-	}
-	old := s.oldItem(r, id)
-	item, err := s.svc.EditIn(r.Context(), userID(r), id, text, dueDate, dueTime, loc)
-	var dueErr *todo.DueError
+	text := r.FormValue("text")
+	item, err := s.svc.EditText(r.Context(), userID(r), id, text)
 	switch {
-	case errors.Is(err, todo.ErrEmptyText) || errors.As(err, &dueErr):
+	case errors.Is(err, todo.ErrEmptyText):
 		old, getErr := s.svc.Get(r.Context(), userID(r), id)
 		if errors.Is(getErr, todo.ErrNotFound) {
 			s.oobOnly(w, r, http.StatusNotFound)
@@ -178,28 +169,14 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 			s.serverError(w, r, getErr)
 			return
 		}
-		view := editView{Item: old, Text: text, DueDate: dueDate, DueTime: dueTime, Error: errors.Is(err, todo.ErrEmptyText)}
-		if dueErr != nil {
-			view.DueError = dueErr.Msg
-		}
-		s.render(w, r, http.StatusUnprocessableEntity, part{"item-edit", view})
+		s.render(w, r, http.StatusUnprocessableEntity, part{"item-edit", editView{Item: old, Text: text, Error: true}})
 	case errors.Is(err, todo.ErrNotFound):
 		s.oobOnly(w, r, http.StatusNotFound)
 	case err != nil:
 		s.serverError(w, r, err)
 	default:
-		if placeChanged(old, item, s.nowFor(r)) {
-			s.renderList(w, r, currentUser(r).HideDone)
-			return
-		}
-		// The due date may have changed, so the permission bar comes along.
-		lv, err := s.listView(r, currentUser(r).HideDone)
-		if err != nil {
-			s.serverError(w, r, err)
-			return
-		}
-		lv.OOB = true
-		s.render(w, r, http.StatusOK, part{"item", item}, part{"oob", lv})
+		// The text does not change the place, the counts, or the permission bar.
+		s.render(w, r, http.StatusOK, part{"item", item})
 	}
 }
 

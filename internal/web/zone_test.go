@@ -64,8 +64,8 @@ func TestAddReadsDueInBrowserZone(t *testing.T) {
 		t.Fatalf("stored %+v, want due %v", items, want)
 	}
 	assertContains(t, do(t, env.H, "GET", "/", nil, tz("Europe/Warsaw")).Body.String(), "Due 3 Oct, 07:00")
-	edit := do(t, env.H, "GET", "/items/"+strconv.FormatInt(items[0].ID, 10)+"/edit", nil, tz("Asia/Tokyo")).Body.String()
-	assertContains(t, edit, `value="14:00"`)
+	popup := do(t, env.H, "GET", "/items/"+strconv.FormatInt(items[0].ID, 10)+"/due", nil, tz("Asia/Tokyo")).Body.String()
+	assertContains(t, popup, `value="14:00"`)
 }
 
 func TestBodyNamesTheZoneUsed(t *testing.T) {

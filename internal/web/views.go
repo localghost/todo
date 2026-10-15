@@ -37,12 +37,9 @@ type formView struct {
 
 // editView is the data for a row in edit mode.
 type editView struct {
-	Item     todo.Item
-	Text     string
-	DueDate  string
-	DueTime  string
-	Error    bool   // empty text
-	DueError string // message for a bad due date
+	Item  todo.Item
+	Text  string
+	Error bool // empty text
 }
 
 // duePickerView is the data for the due date pop-up of an item.

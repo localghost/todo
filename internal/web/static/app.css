@@ -162,7 +162,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .due-line input[aria-invalid="true"] { border-color: var(--error); }
 .due-line input:user-invalid { border-color: var(--error); }
 .due-line input.due-time { width: 7ch; }
-.clear-due {
+.due-remove {
   font: inherit; font-size: 14px; color: var(--accent);
   background: none; border: none; padding: 6px 4px; cursor: pointer;
 }

@@ -65,44 +65,13 @@ document.addEventListener("focusout", (e) => {
   }, 0);
 });
 
-// A click inside an edit row (a gap, the hint, "Clear") must not take the
-// focus out of the row. Inputs and labels still get focus as usual.
+// A click inside an edit row (a gap, the hint) must not take the focus out
+// of the row. Inputs and labels still get focus as usual.
 document.addEventListener("mousedown", (e) => {
   const row = e.target.closest && e.target.closest("li.editing");
   if (row && !e.target.closest("input, label")) {
     e.preventDefault();
   }
-});
-
-// Enter on "Clear" does its own job; it must not also save the row.
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && e.target.matches && e.target.matches(".clear-due")) {
-    e.stopPropagation();
-  }
-}, true);
-
-// "Clear" in an edit row empties both due fields.
-document.addEventListener("click", (e) => {
-  if (!e.target.matches(".clear-due")) {
-    return;
-  }
-  e.target.closest(".due-line").querySelectorAll("input").forEach((input) => {
-    input.value = "";
-  });
-});
-
-// A half-typed date or time stops the save (hx-validate). Say why.
-document.addEventListener("htmx:validation:halted", (e) => {
-  const edit = e.detail.elt;
-  if (!edit.matches(".edit")) {
-    return;
-  }
-  const hint = edit.querySelector(".hint");
-  hint.textContent = "Please choose a valid date and time.";
-  hint.classList.add("error");
-  edit.querySelectorAll('.due-line input').forEach((input) => {
-    input.setAttribute("aria-invalid", input.validity.valid ? "false" : "true");
-  });
 });
 
 // 3. After an item is added, clear each add-form field only if it still

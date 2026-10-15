@@ -67,29 +67,6 @@ func (s *Service) AddItem(ctx context.Context, userID int64, in Input, loc *time
 	return s.store.Create(ctx, userID, Change{Text: text, DueAt: dueAt, DueAllDay: allDay, Labels: labels}, s.now())
 }
 
-// EditIn changes the text and the due date, read in loc (nil: the
-// service's zone). A changed due date can notify again.
-func (s *Service) EditIn(ctx context.Context, userID, id int64, text, dueDate, dueTime string, loc *time.Location) (Item, error) {
-	text, err := cleanText(text)
-	if err != nil {
-		return Item{}, err
-	}
-	dueAt, allDay, err := parseDue(dueDate, dueTime, s.zone(loc))
-	if err != nil {
-		return Item{}, err
-	}
-	it, err := s.store.Get(ctx, userID, id)
-	if err != nil {
-		return Item{}, err
-	}
-	dueSame := sameDue(it.DueAt, it.DueAllDay, dueAt, allDay)
-	if it.Text == text && dueSame {
-		return it, nil
-	}
-	return s.store.UpdateItem(ctx, userID, id,
-		Change{Text: text, DueAt: dueAt, DueAllDay: allDay, ResetNotified: !dueSame, KeepLabels: true}, s.now())
-}
-
 // EditText changes only the text of an item. The due date, its notified
 // state, and the labels stay.
 func (s *Service) EditText(ctx context.Context, userID, id int64, text string) (Item, error) {
