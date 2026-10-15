@@ -45,6 +45,14 @@ type editView struct {
 	DueError string // message for a bad due date
 }
 
+// duePickerView is the data for the due date pop-up of an item.
+type duePickerView struct {
+	Item    todo.Item
+	DueDate string // the date field (what the user typed, after an error)
+	DueTime string
+	Error   string // why the last save failed
+}
+
 // pickerView is the data for the label list that + opens on an item.
 type pickerView struct {
 	Item    todo.Item

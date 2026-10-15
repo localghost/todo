@@ -118,6 +118,8 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Op
 	mux.Handle("GET /items/{id}/labels", s.protect(s.labelPicker))
 	mux.Handle("POST /items/{id}/labels", s.protect(s.addItemLabel))
 	mux.Handle("DELETE /items/{id}/labels/{label}", s.protect(s.removeItemLabel))
+	mux.Handle("GET /items/{id}/due", s.protect(s.duePicker))
+	mux.Handle("PUT /items/{id}/due", s.protect(s.setItemDue))
 	mux.Handle("POST /notifications/claim", s.protect(s.claimNotifications))
 	mux.Handle("POST /settings/hide-done", s.protect(s.setHideDone))
 	mux.Handle("GET /labels", s.protect(s.labelsPage))

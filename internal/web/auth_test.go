@@ -152,6 +152,8 @@ func TestItemsAreIsolatedPerUser(t *testing.T) {
 		{"GET", "/items/" + id, nil},
 		{"GET", "/items/" + id + "/edit", nil},
 		{"PUT", "/items/" + id, url.Values{"text": {"hacked"}}},
+		{"GET", "/items/" + id + "/due", nil},
+		{"PUT", "/items/" + id + "/due", url.Values{"due_date": {""}}},
 		{"POST", "/items/" + id + "/toggle", url.Values{}},
 		{"POST", "/items/" + id + "/postpone?minutes=5", url.Values{}},
 		{"DELETE", "/items/" + id, nil},

@@ -1,23 +1,8 @@
 package web_test
 
 import (
-	"net/http"
-	"net/url"
 	"testing"
 )
-
-// Setting a due date in edit mode must update the permission bar.
-func TestEditUpdatesNotifyBar(t *testing.T) {
-	h, svc := newTestApp(t)
-	mustAdd(t, svc, "Call the dentist")
-	rec := do(t, h, "PUT", "/items/1",
-		url.Values{"text": {"Call the dentist"}, "due_date": {"2099-10-03"}, "due_time": {""}}, htmxHeaders)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
-	}
-	assertContains(t, rec.Body.String(),
-		`<div id="notify-bar" class="notify-bar" data-has-due="true" hx-swap-oob="true"></div>`)
-}
 
 // Focus leaving the row is decided after one tick, and clicks inside the
 // row (labels, gaps, "Clear") must not move focus out of it.

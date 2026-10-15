@@ -100,10 +100,10 @@ func TestPostponedItemMovesBack(t *testing.T) {
 	assertOrder(t, rec.Body.String(), "Pay the rent", "Return library books", "Call the dentist", "Water the plants")
 }
 
-func TestEditedItemMoves(t *testing.T) {
+func TestDueChangeMovesItem(t *testing.T) {
 	env, ids := overdueEnv(t)
-	form := url.Values{"text": {"Call the dentist"}, "due_date": {"2026-10-04"}, "due_time": {"10:00"}, "due_tz": {"Europe/Warsaw"}}
-	rec := do(t, env.H, "PUT", "/items/"+strconv.FormatInt(ids["Call the dentist"], 10), form, warsawHTMX())
+	form := url.Values{"due_date": {"2026-10-04"}, "due_time": {"10:00"}, "due_tz": {"Europe/Warsaw"}}
+	rec := do(t, env.H, "PUT", "/items/"+strconv.FormatInt(ids["Call the dentist"], 10)+"/due", form, warsawHTMX())
 	assertRetarget(t, rec, true)
 	assertOrder(t, rec.Body.String(), "Pay the rent", "Return library books", "Call the dentist", "Water the plants")
 }
@@ -253,18 +253,19 @@ func TestOverdueOrderUsesBrowserZone(t *testing.T) {
 	assertNotContains(t, body, `class="due overdue"`)
 }
 
-// An edit that keeps the item overdue but moves its due time re-sorts the group.
-func TestEditInsideOverdueGroupResorts(t *testing.T) {
+// A due change that keeps the item overdue but moves its due time re-sorts the group.
+func TestDueChangeInsideOverdueGroupResorts(t *testing.T) {
 	env := newTestEnv(t)
 	warsaw := mustZone(t, "Europe/Warsaw")
 	env.Clock.t = time.Date(2026, 10, 2, 16, 0, 0, 0, warsaw)
 	env.Svc.AddIn(context.Background(), env.User.ID, "Call Anna", "2026-10-02", "10:00", warsaw)
 	b, _ := env.Svc.AddIn(context.Background(), env.User.ID, "Call Bob", "2026-10-02", "14:00", warsaw)
-	form := url.Values{"text": {"Call Bob"}, "due_date": {"2026-10-02"}, "due_time": {"08:00"}, "due_tz": {"Europe/Warsaw"}}
-	rec := do(t, env.H, "PUT", "/items/"+strconv.FormatInt(b.ID, 10), form, warsawHTMX())
+	form := url.Values{"due_date": {"2026-10-02"}, "due_time": {"08:00"}, "due_tz": {"Europe/Warsaw"}}
+	rec := do(t, env.H, "PUT", "/items/"+strconv.FormatInt(b.ID, 10)+"/due", form, warsawHTMX())
 	assertRetarget(t, rec, true)
 	assertOrder(t, rec.Body.String(), "Call Bob", "Call Anna")
 
-	form.Set("text", "Call Bob today") // text only: the place stays, so only the row comes back
-	assertRetarget(t, do(t, env.H, "PUT", "/items/"+strconv.FormatInt(b.ID, 10), form, warsawHTMX()), false)
+	// A text edit keeps the place, so only the row comes back.
+	text := url.Values{"text": {"Call Bob today"}, "due_date": {"2026-10-02"}, "due_time": {"08:00"}, "due_tz": {"Europe/Warsaw"}}
+	assertRetarget(t, do(t, env.H, "PUT", "/items/"+strconv.FormatInt(b.ID, 10), text, warsawHTMX()), false)
 }
