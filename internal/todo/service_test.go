@@ -132,3 +132,18 @@ func TestUpdateTextUnchangedKeepsUpdatedAt(t *testing.T) {
 		t.Fatalf("UpdatedAt changed from %v to %v for unchanged text", it.UpdatedAt, got.UpdatedAt)
 	}
 }
+
+func TestClearDoneDeletesOnlyDoneItems(t *testing.T) {
+	svc := newService(t)
+	ctx := context.Background()
+	a, _ := svc.Add(ctx, 1, "a", "", "")
+	svc.Add(ctx, 1, "b", "", "")
+	svc.Toggle(ctx, 1, a.ID)
+	n, err := svc.ClearDone(ctx, 1, 0)
+	if err != nil || n != 1 {
+		t.Fatalf("ClearDone = %d, %v; want 1", n, err)
+	}
+	if open, done, _ := svc.Counts(ctx, 1); open != 1 || done != 0 {
+		t.Fatalf("Counts = %d, %d; want 1, 0", open, done)
+	}
+}

@@ -690,3 +690,48 @@ document.addEventListener("submit", (e) => {
     field.value = completeTime(field.value);
   });
 }, true);
+
+// 15. "Clear done" asks first (canvas page "3 · Done hidden"). The question
+// comes from the server into #clear-confirm, with the focus on Delete.
+// Cancel, Esc, or a second click on the button closes it and gives the
+// focus back to the button.
+function closeClearConfirm() {
+  const slot = document.getElementById("clear-confirm");
+  if (slot) {
+    slot.replaceChildren();
+  }
+  const button = document.querySelector(".clear-done");
+  if (button) {
+    button.setAttribute("aria-expanded", "false");
+    button.focus();
+  }
+}
+
+// Capture runs before htmx: a click on the open button only closes.
+document.addEventListener("click", (e) => {
+  const button = e.target.closest(".clear-done");
+  if (button && button.getAttribute("aria-expanded") === "true") {
+    e.preventDefault();
+    e.stopPropagation();
+    closeClearConfirm();
+  } else if (e.target.closest(".clear-cancel")) {
+    closeClearConfirm();
+  }
+}, true);
+
+document.addEventListener("htmx:afterSwap", (e) => {
+  if (e.detail.target.id === "clear-confirm") {
+    const button = document.querySelector(".clear-done");
+    if (button) {
+      button.setAttribute("aria-expanded", e.detail.target.childElementCount ? "true" : "false");
+    }
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  const open = document.querySelector("#clear-confirm .clear-confirm");
+  if (e.key === "Escape" && open && (open.contains(e.target) || e.target.closest(".clear-done"))) {
+    e.preventDefault();
+    closeClearConfirm();
+  }
+});

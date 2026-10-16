@@ -144,6 +144,12 @@ func (s *Service) Delete(ctx context.Context, userID, id int64) error {
 	return s.store.Delete(ctx, userID, id)
 }
 
+// ClearDone deletes the user's done items, or with labelID != 0 only the
+// done items with that label, and returns how many.
+func (s *Service) ClearDone(ctx context.Context, userID, labelID int64) (int, error) {
+	return s.store.DeleteDone(ctx, userID, labelID)
+}
+
 // Move puts item id after item afterID (0: first). now carries the browser's
 // zone, because the overdue rule uses it for all-day items.
 func (s *Service) Move(ctx context.Context, userID, id, afterID int64, now time.Time) error {

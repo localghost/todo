@@ -123,6 +123,46 @@ func (s *server) deleteItem(w http.ResponseWriter, r *http.Request) {
 	s.oobOnly(w, r, http.StatusOK)
 }
 
+// clearDoneConfirm answers with the question of "Clear done": how many done
+// items go, and the label when the page is filtered. No done items: an
+// empty answer.
+func (s *server) clearDoneConfirm(w http.ResponseWriter, r *http.Request) {
+	lv, err := s.listView(r, currentUser(r).HideDone)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.render(w, r, http.StatusOK, part{"clear-confirm", lv})
+}
+
+// clearDone deletes the done items (with a label filter only the ones with
+// that label) and answers with the whole list.
+func (s *server) clearDone(w http.ResponseWriter, r *http.Request) {
+	filter, err := s.labelFilter(r)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	var labelID int64
+	if filter != nil {
+		labelID = filter.ID
+	}
+	if _, err := s.svc.ClearDone(r.Context(), userID(r), labelID); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	if !isHTMX(r) {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	lv, err := s.listView(r, currentUser(r).HideDone)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.render(w, r, http.StatusOK, part{"list", lv})
+}
+
 // oobOnly answers with an empty main body (htmx removes the target row)
 // plus the out-of-band toolbar and empty state.
 func (s *server) oobOnly(w http.ResponseWriter, r *http.Request, status int) {

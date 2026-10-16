@@ -543,6 +543,27 @@ func (s *Store) Delete(ctx context.Context, userID, id int64) error {
 	return s.update(ctx, `DELETE FROM items WHERE id = ? AND user_id = ?`, id, userID)
 }
 
+// DeleteDone deletes the user's done items, or with labelID != 0 only the
+// done items with that label, and returns how many it deleted. Their label
+// links go with them (ON DELETE CASCADE).
+func (s *Store) DeleteDone(ctx context.Context, userID, labelID int64) (int, error) {
+	q := `DELETE FROM items WHERE user_id = ? AND done = 1`
+	args := []any{userID}
+	if labelID != 0 {
+		q += ` AND id IN (SELECT item_id FROM item_labels WHERE label_id = ?)`
+		args = append(args, labelID)
+	}
+	res, err := s.db.ExecContext(ctx, q, args...)
+	if err != nil {
+		return 0, fmt.Errorf("delete done items: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("delete done items: %w", err)
+	}
+	return int(n), nil
+}
+
 func (s *Store) Counts(ctx context.Context, userID int64) (open, done int, err error) {
 	return s.CountsLabel(ctx, userID, 0)
 }

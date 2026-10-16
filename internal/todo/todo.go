@@ -54,6 +54,9 @@ type Store interface {
 	UpdateItem(ctx context.Context, userID, id int64, c Change, now time.Time) (Item, error)
 	SetDone(ctx context.Context, userID, id int64, done bool, now time.Time) (Item, error)
 	Delete(ctx context.Context, userID, id int64) error
+	// DeleteDone deletes the done items (with labelID != 0 only the ones with
+	// that label) and returns how many.
+	DeleteDone(ctx context.Context, userID, labelID int64) (int, error)
 	// Move puts item id right after item afterID in the user's list, or
 	// first if afterID is 0.
 	Move(ctx context.Context, userID, id, afterID int64) error
