@@ -23,6 +23,7 @@ Mockup: canvas "Todo app UI proposal", page "16 · Labels", board "NEW: color wh
 - **Done** closes the pop-up and keeps the new color in the form; **Save** on the row stores it,
   together with the name, as today. **Cancel**, Esc, or a click outside closes the pop-up and puts
   the color back. Focus goes back to the color button.
+- On a wide screen Save and Delete sit at the right edge of the row (asked 2026-10-20).
 - On a phone the button stays on the same line as the name field, and the pop-up opens to the left
   of it so it fits on the screen. The wheel is a bit larger there (200 px).
 
