@@ -241,41 +241,15 @@ func TestLabelsPage(t *testing.T) {
 	assertContains(t, do(t, env.H, "GET", "/", nil, nil).Body.String(), `<a href="/labels">Labels</a>`)
 	assertContains(t, body, "click + on an item")
 
-	// Rename and recolor.
-	rec := do(t, env.H, "POST", fmt.Sprintf("/labels/%d", work), url.Values{"name": {"deep work"}, "color": {"#6b44bb"}}, nil)
-	if rec.Code != http.StatusSeeOther || !strings.HasPrefix(rec.Header().Get("Location"), fmt.Sprintf("/labels?saved=%d", work)) {
-		t.Fatalf("save: %d %q", rec.Code, rec.Header().Get("Location"))
-	}
-	l, _ := env.Svc.Label(context.Background(), env.User.ID, work)
-	if l.Name != "deep work" || l.Color != "#6b44bb" {
-		t.Fatalf("label = %+v", l)
-	}
-	assertContains(t, do(t, env.H, "GET", fmt.Sprintf("/labels?saved=%d", work), nil, nil).Body.String(), "Saved.")
-
-	// A name that is taken.
-	rec = do(t, env.H, "POST", fmt.Sprintf("/labels/%d", work), url.Values{"name": {"HOME"}, "color": {"#d1382e"}}, nil)
-	if rec.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("clash: %d, want 422", rec.Code)
-	}
-	assertContains(t, rec.Body.String(), "You already have a label “HOME”.", `value="HOME"`,
-		`<input type="hidden" name="color" value="#d1382e">`)
-
-	// A color that is not #rrggbb.
-	rec = do(t, env.H, "POST", fmt.Sprintf("/labels/%d", work), url.Values{"name": {"deep work"}, "color": {"red"}}, nil)
-	if rec.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("bad color: %d, want 422", rec.Code)
-	}
-	assertContains(t, rec.Body.String(), "Pick a color.", `<input type="hidden" name="color" value="#6b44bb">`)
-
 	// Delete asks first, then removes the label but keeps the item.
 	body = do(t, env.H, "GET", fmt.Sprintf("/labels?delete=%d", home), nil, nil).Body.String()
 	assertContains(t, body, "Delete “home”? It comes off 1 item. The items stay.", fmt.Sprintf(`action="/labels/%d/delete"`, home))
-	rec = do(t, env.H, "POST", fmt.Sprintf("/labels/%d/delete", home), url.Values{}, nil)
+	rec := do(t, env.H, "POST", fmt.Sprintf("/labels/%d/delete", home), url.Values{}, nil)
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("delete: %d", rec.Code)
 	}
 	got, err := env.Svc.Get(context.Background(), env.User.ID, a.ID)
-	if err != nil || todo.LabelNames(got.Labels) != "deep work" {
+	if err != nil || todo.LabelNames(got.Labels) != "work" {
 		t.Fatalf("item after delete = %q, %v", todo.LabelNames(got.Labels), err)
 	}
 }
@@ -290,7 +264,6 @@ func TestLabelsOfAnotherUserCannotBeChanged(t *testing.T) {
 	b := addLabeled(t, env.Svc, bob.ID, "Bob's", "secret")
 	id := labelID(t, b, "secret")
 
-	do(t, env.H, "POST", fmt.Sprintf("/labels/%d", id), url.Values{"name": {"mine"}, "color": {"#d1382e"}}, nil)
 	do(t, env.H, "POST", fmt.Sprintf("/labels/%d/delete", id), url.Values{}, nil)
 	l, err := env.Svc.Label(ctx, bob.ID, id)
 	if err != nil || l.Name != "secret" {

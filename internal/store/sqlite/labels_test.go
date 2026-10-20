@@ -115,8 +115,8 @@ func TestLabelsOfAnotherUserAreHidden(t *testing.T) {
 	if _, err := s.Label(ctx, 1, bobLabel); !errors.Is(err, todo.ErrNotFound) {
 		t.Fatalf("Label(bob's) for alice: %v, want ErrNotFound", err)
 	}
-	if _, err := s.UpdateLabel(ctx, 1, bobLabel, "mine", "red"); !errors.Is(err, todo.ErrNotFound) {
-		t.Fatalf("UpdateLabel(bob's) for alice: %v, want ErrNotFound", err)
+	if err := s.SetLabelColor(ctx, 1, bobLabel, "#d1382e"); !errors.Is(err, todo.ErrNotFound) {
+		t.Fatalf("SetLabelColor(bob's) for alice: %v, want ErrNotFound", err)
 	}
 	if err := s.DeleteLabel(ctx, 1, bobLabel); !errors.Is(err, todo.ErrNotFound) {
 		t.Fatalf("DeleteLabel(bob's) for alice: %v, want ErrNotFound", err)
@@ -126,22 +126,16 @@ func TestLabelsOfAnotherUserAreHidden(t *testing.T) {
 	}
 }
 
-func TestUpdateLabelRenameClash(t *testing.T) {
+func TestSetLabelColorKeepsName(t *testing.T) {
 	s := newStore(t)
 	ctx := context.Background()
-	it := mustLabeled(t, s, "A", "work", "home")
-	var work todo.Label
-	for _, l := range it.Labels {
-		if l.Name == "work" {
-			work = l
-		}
+	it := mustLabeled(t, s, "A", "work")
+	if err := s.SetLabelColor(ctx, 1, it.Labels[0].ID, "#6b44bb"); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := s.UpdateLabel(ctx, 1, work.ID, "HOME", "red"); !errors.Is(err, todo.ErrLabelExists) {
-		t.Fatalf("rename to HOME: %v, want ErrLabelExists", err)
-	}
-	l, err := s.UpdateLabel(ctx, 1, work.ID, "Work", "purple")
-	if err != nil || l.Name != "Work" || l.Color != "purple" || l.Items != 1 {
-		t.Fatalf("rename to Work = %+v, %v", l, err)
+	l, err := s.Label(ctx, 1, it.Labels[0].ID)
+	if err != nil || l.Name != "work" || l.Color != "#6b44bb" || l.Items != 1 {
+		t.Fatalf("label = %+v, %v", l, err)
 	}
 }
 

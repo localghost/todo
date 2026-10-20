@@ -52,48 +52,6 @@ func (s *server) labelsPage(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, http.StatusOK, part{"labels", v})
 }
 
-// saveLabel renames and recolors a label, then goes back to the labels page.
-func (s *server) saveLabel(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseID(r)
-	if !ok {
-		http.Redirect(w, r, "/labels", http.StatusSeeOther)
-		return
-	}
-	name, color := r.PostFormValue("name"), r.PostFormValue("color")
-	_, err := s.svc.UpdateLabel(r.Context(), userID(r), id, name, color)
-	var msg string
-	var le *todo.LabelError
-	switch {
-	case err == nil:
-		http.Redirect(w, r, "/labels?saved="+strconv.FormatInt(id, 10)+"#label-"+strconv.FormatInt(id, 10), http.StatusSeeOther)
-		return
-	case errors.Is(err, todo.ErrNotFound):
-		http.Redirect(w, r, "/labels", http.StatusSeeOther)
-		return
-	case errors.Is(err, todo.ErrLabelExists):
-		msg = "You already have a label “" + name + "”."
-	case errors.As(err, &le):
-		msg = le.Msg
-	default:
-		s.serverError(w, r, err)
-		return
-	}
-	v, err := s.labelsView(r, 0, 0)
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	for i := range v.Rows {
-		if v.Rows[i].ID == id {
-			v.Rows[i].NameValue, v.Rows[i].Error = name, msg
-			if c, ok := todo.CleanColor(color); ok {
-				v.Rows[i].ColorValue = c
-			}
-		}
-	}
-	s.render(w, r, http.StatusUnprocessableEntity, part{"labels", v})
-}
-
 // deleteLabel deletes a label (its items stay), then shows the labels page.
 func (s *server) deleteLabel(w http.ResponseWriter, r *http.Request) {
 	id, ok := parseID(r)
@@ -147,7 +105,7 @@ func (s *server) addItemLabel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := r.FormValue("name")
-	item, err := s.svc.AddLabel(r.Context(), userID(r), id, name)
+	item, err := s.svc.AddLabel(r.Context(), userID(r), id, name, r.FormValue("color"))
 	if msg := labelsMessage(err); msg != "" {
 		old, getErr := s.svc.Get(r.Context(), userID(r), id)
 		if errors.Is(getErr, todo.ErrNotFound) {

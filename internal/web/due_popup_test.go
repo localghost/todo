@@ -101,7 +101,7 @@ func TestRowHasDueButtonAndCalendarIcon(t *testing.T) {
 	ctx := context.Background()
 	tomorrow := time.Now().AddDate(0, 0, 1).Format("2006-01-02")
 	svc.Add(ctx, 1, "Call the dentist", tomorrow, "14:00")
-	svc.AddLabel(ctx, 1, 1, "work")
+	svc.AddLabel(ctx, 1, 1, "work", "")
 	mustAdd(t, svc, "No date")
 	body := do(t, h, "GET", "/", nil, nil).Body.String()
 	assertContains(t, body,

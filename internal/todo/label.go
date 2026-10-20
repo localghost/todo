@@ -132,18 +132,13 @@ func (s *Service) Label(ctx context.Context, userID, id int64) (Label, error) {
 	return s.store.Label(ctx, userID, id)
 }
 
-// UpdateLabel renames and recolors a label. A name the user already has
-// for another label gives ErrLabelExists.
-func (s *Service) UpdateLabel(ctx context.Context, userID, id int64, name, color string) (Label, error) {
-	name, err := cleanLabelName(name)
-	if err != nil {
-		return Label{}, err
-	}
+// SetLabelColor gives a label a new color, #rrggbb in any case.
+func (s *Service) SetLabelColor(ctx context.Context, userID, id int64, color string) error {
 	color, ok := CleanColor(color)
 	if !ok {
-		return Label{}, &LabelError{Msg: "Pick a color."}
+		return &LabelError{Msg: "Pick a color."}
 	}
-	return s.store.UpdateLabel(ctx, userID, id, name, color)
+	return s.store.SetLabelColor(ctx, userID, id, color)
 }
 
 // DeleteLabel removes a label from all its items and deletes it. The items stay.
@@ -152,9 +147,9 @@ func (s *Service) DeleteLabel(ctx context.Context, userID, id int64) error {
 }
 
 // AddLabel puts one label on an item. A name the user has no label for
-// makes a new label. A label the item already has (ignoring case) changes
-// nothing.
-func (s *Service) AddLabel(ctx context.Context, userID, itemID int64, name string) (Item, error) {
+// makes a new label, with color if it is #rrggbb, else with the next fixed
+// color. A label the item already has (ignoring case) changes nothing.
+func (s *Service) AddLabel(ctx context.Context, userID, itemID int64, name, color string) (Item, error) {
 	name, err := cleanLabelName(name)
 	if err != nil {
 		return Item{}, err
@@ -173,7 +168,25 @@ func (s *Service) AddLabel(ctx context.Context, userID, itemID int64, name strin
 	if len(names) >= MaxLabelsPerItem {
 		return Item{}, &LabelError{Msg: "An item can have at most 5 labels."}
 	}
-	return s.setLabels(ctx, userID, it, append(names, name))
+	labels, err := s.store.Labels(ctx, userID)
+	if err != nil {
+		return Item{}, err
+	}
+	isNew := !slices.ContainsFunc(labels, func(l Label) bool { return strings.EqualFold(l.Name, name) })
+	it, err = s.setLabels(ctx, userID, it, append(names, name))
+	color, ok := CleanColor(color)
+	if err != nil || !isNew || !ok {
+		return it, err
+	}
+	for _, l := range it.Labels {
+		if strings.EqualFold(l.Name, name) {
+			if err := s.store.SetLabelColor(ctx, userID, l.ID, color); err != nil {
+				return Item{}, err
+			}
+			return s.store.Get(ctx, userID, it.ID)
+		}
+	}
+	return it, nil
 }
 
 // RemoveLabel takes label labelID off an item. The label itself stays.

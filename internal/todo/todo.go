@@ -69,7 +69,7 @@ type Store interface {
 	// Labels returns the user's labels by name, with their item counts.
 	Labels(ctx context.Context, userID int64) ([]Label, error)
 	Label(ctx context.Context, userID, id int64) (Label, error)
-	// UpdateLabel returns ErrLabelExists if another label of the user has name.
-	UpdateLabel(ctx context.Context, userID, id int64, name, color string) (Label, error)
+	// SetLabelColor returns ErrNotFound if the user has no label id.
+	SetLabelColor(ctx context.Context, userID, id int64, color string) error
 	DeleteLabel(ctx context.Context, userID, id int64) error
 }

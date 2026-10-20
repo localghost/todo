@@ -52,15 +52,15 @@ func TestAddLabelAndRemoveLabel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if it, err = svc.AddLabel(ctx, 1, it.ID, " work "); err != nil || todo.LabelNames(it.Labels) != "work" {
+	if it, err = svc.AddLabel(ctx, 1, it.ID, " work ", ""); err != nil || todo.LabelNames(it.Labels) != "work" {
 		t.Fatalf("AddLabel = %q, %v", todo.LabelNames(it.Labels), err)
 	}
 	// The same name in another case changes nothing.
 	before := it.UpdatedAt
-	if it, err = svc.AddLabel(ctx, 1, it.ID, "WORK"); err != nil || len(it.Labels) != 1 || !it.UpdatedAt.Equal(before) {
+	if it, err = svc.AddLabel(ctx, 1, it.ID, "WORK", ""); err != nil || len(it.Labels) != 1 || !it.UpdatedAt.Equal(before) {
 		t.Fatalf("AddLabel again = %+v, %v", it.Labels, err)
 	}
-	it, _ = svc.AddLabel(ctx, 1, it.ID, "money")
+	it, _ = svc.AddLabel(ctx, 1, it.ID, "money", "")
 	if it.Text != "Invoice" || it.DueAt == nil {
 		t.Fatalf("AddLabel lost text or due date: %+v", it)
 	}
@@ -84,11 +84,11 @@ func TestAddLabelChecksTheName(t *testing.T) {
 	ctx := context.Background()
 	it, _ := svc.AddItem(ctx, 1, todo.Input{Text: "A", Labels: "a, b, c, d, e"}, nil)
 	for _, name := range []string{"", "x, y", strings.Repeat("x", 31), "f"} {
-		if _, err := svc.AddLabel(ctx, 1, it.ID, name); !errors.Is(err, todo.ErrBadLabel) {
+		if _, err := svc.AddLabel(ctx, 1, it.ID, name, ""); !errors.Is(err, todo.ErrBadLabel) {
 			t.Errorf("AddLabel(%q) err = %v, want ErrBadLabel", name, err)
 		}
 	}
-	if _, err := svc.AddLabel(ctx, 1, 999, "x"); !errors.Is(err, todo.ErrNotFound) {
+	if _, err := svc.AddLabel(ctx, 1, 999, "x", ""); !errors.Is(err, todo.ErrNotFound) {
 		t.Errorf("AddLabel on a missing item: %v", err)
 	}
 }
@@ -104,28 +104,52 @@ func TestAddItemBadLabelsSavesNothing(t *testing.T) {
 	}
 }
 
-func TestUpdateLabelChecksNameAndColor(t *testing.T) {
+func TestSetLabelColor(t *testing.T) {
 	svc := newService(t)
 	ctx := context.Background()
 	it, _ := svc.AddItem(ctx, 1, todo.Input{Text: "A", Labels: "work"}, nil)
 	id := it.Labels[0].ID
-	for _, c := range []struct{ name, color string }{
-		{"  ", "#d1382e"},
-		{"a, b", "#d1382e"},
-		{strings.Repeat("x", 31), "#d1382e"},
-		{"ok", "red"},
-		{"ok", "#d1382"},
-		{"ok", "#d1382e0"},
-		{"ok", "#g1382e"},
-		{"ok", "d1382e9"},
-		{"ok", ""},
-	} {
-		if _, err := svc.UpdateLabel(ctx, 1, id, c.name, c.color); !errors.Is(err, todo.ErrBadLabel) {
-			t.Errorf("UpdateLabel(%q, %q) err = %v, want ErrBadLabel", c.name, c.color, err)
+	for _, color := range []string{"red", "#d1382", "#d1382e0", "#g1382e", "d1382e9", ""} {
+		if err := svc.SetLabelColor(ctx, 1, id, color); !errors.Is(err, todo.ErrBadLabel) {
+			t.Errorf("SetLabelColor(%q) err = %v, want ErrBadLabel", color, err)
 		}
 	}
-	l, err := svc.UpdateLabel(ctx, 1, id, "  deep   work ", "#2ED1C8")
-	if err != nil || l.Name != "deep work" || l.Color != "#2ed1c8" {
-		t.Fatalf("UpdateLabel = %+v, %v", l, err)
+	if err := svc.SetLabelColor(ctx, 1, id, "#2ED1C8"); err != nil {
+		t.Fatal(err)
+	}
+	if l, _ := svc.Label(ctx, 1, id); l.Name != "work" || l.Color != "#2ed1c8" {
+		t.Fatalf("label = %+v", l)
+	}
+	if err := svc.SetLabelColor(ctx, 1, 999, "#2ed1c8"); !errors.Is(err, todo.ErrNotFound) {
+		t.Fatalf("unknown label: %v, want ErrNotFound", err)
+	}
+}
+
+func TestAddLabelWithColor(t *testing.T) {
+	svc := newService(t)
+	ctx := context.Background()
+	it, _ := svc.AddItem(ctx, 1, todo.Input{Text: "A", Labels: "work"}, nil)
+	old := it.Labels[0].Color
+	b, _ := svc.AddItem(ctx, 1, todo.Input{Text: "B"}, nil)
+
+	// A new label gets the chosen color.
+	b, err := svc.AddLabel(ctx, 1, b.ID, "gym", "#12AB34")
+	if err != nil || len(b.Labels) != 1 || b.Labels[0].Color != "#12ab34" {
+		t.Fatalf("new label = %+v, %v", b.Labels, err)
+	}
+	// A label that exists keeps its color.
+	b, err = svc.AddLabel(ctx, 1, b.ID, "WORK", "#000000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l, _ := svc.Label(ctx, 1, it.Labels[0].ID); l.Color != old {
+		t.Fatalf("work color = %q, want %q", l.Color, old)
+	}
+	// No color or a bad one: the next fixed color.
+	b, _ = svc.AddLabel(ctx, 1, b.ID, "home", "red")
+	for _, l := range b.Labels {
+		if l.Name == "home" && l.Color != todo.LabelColors[2] {
+			t.Fatalf("home color = %q, want %q", l.Color, todo.LabelColors[2])
+		}
 	}
 }

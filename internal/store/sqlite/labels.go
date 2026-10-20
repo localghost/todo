@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"todo/internal/todo"
@@ -127,15 +126,8 @@ func (s *Store) Label(ctx context.Context, userID, id int64) (todo.Label, error)
 	return l, nil
 }
 
-func (s *Store) UpdateLabel(ctx context.Context, userID, id int64, name, color string) (todo.Label, error) {
-	err := s.update(ctx, `UPDATE labels SET name = ?, color = ? WHERE id = ? AND user_id = ?`, name, color, id, userID)
-	if err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed") {
-		return todo.Label{}, todo.ErrLabelExists
-	}
-	if err != nil {
-		return todo.Label{}, err
-	}
-	return s.Label(ctx, userID, id)
+func (s *Store) SetLabelColor(ctx context.Context, userID, id int64, color string) error {
+	return s.update(ctx, `UPDATE labels SET color = ? WHERE id = ? AND user_id = ?`, color, id, userID)
 }
 
 func (s *Store) DeleteLabel(ctx context.Context, userID, id int64) error {
