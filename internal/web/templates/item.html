@@ -6,6 +6,10 @@
 
 {{define "plus-icon"}}<svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>{{end}}
 
+{{define "tick-icon"}}<svg width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2.5 6.2l2.3 2.3 4.7-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>{{end}}
+
+{{define "back-icon"}}<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M7.5 2.5L4 6l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>{{end}}
+
 {{define "grip-icon"}}<svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="3" r="1.5"/><circle cx="9" cy="3" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="9" cy="8" r="1.5"/><circle cx="3" cy="13" r="1.5"/><circle cx="9" cy="13" r="1.5"/></svg>{{end}}
 
 {{define "calendar-icon"}}<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><rect x="1.5" y="2.5" width="9" height="8" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M1.5 5.2h9M4 1.2v2.4M8 1.2v2.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>{{end}}
@@ -17,7 +21,7 @@
 <div class="text-col">
 <button class="text" type="button" title="Click to edit"
   hx-get="/items/{{.ID}}/edit" hx-target="closest li" hx-swap="outerHTML">{{.Text}}</button>
-<span class="meta">{{if $d.Text}}<button type="button" class="due{{if $d.Overdue}} overdue{{end}}" title="Change the due date" aria-haspopup="dialog" data-due-for="{{.ID}}">{{$d.Text}}</button>{{end}}<span class="due-add-wrap"><button type="button" id="due-add-{{.ID}}" class="due-add" aria-label="Set the due date of “{{.Text}}”" title="Set the due date" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/due">{{template "calendar-icon"}}</button></span>{{range .Labels}}<span class="chip" data-color="{{.Color}}"><a href="/?label={{.ID}}" title="Show only “{{.Name}}”">{{.Name}}</a><button type="button" class="chip-x" aria-label="Remove label “{{.Name}}” from “{{$.Text}}”" title="Remove label"
+<span class="meta">{{if $d.Text}}<button type="button" class="due{{if $d.Overdue}} overdue{{end}}" title="Change the due date" aria-haspopup="dialog" data-due-for="{{.ID}}">{{$d.Text}}</button>{{end}}<span class="due-add-wrap"><button type="button" id="due-add-{{.ID}}" class="due-add" aria-label="Set the due date of “{{.Text}}”" title="Set the due date" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/due">{{template "calendar-icon"}}</button></span>{{range .Labels}}<span class="chip" data-color="{{.Color}}" data-label="{{.ID}}"><a href="/?label={{.ID}}" title="Show only “{{.Name}}”">{{.Name}}</a><button type="button" class="chip-x" aria-label="Remove label “{{.Name}}” from “{{$.Text}}”" title="Remove label"
   hx-delete="/items/{{$.ID}}/labels/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">{{template "x-small-icon"}}</button></span>{{end}}<span class="label-add-wrap"><button type="button" id="label-add-{{.ID}}" class="label-add" aria-label="Add a label to “{{.Text}}”" title="Add a label" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/labels">{{template "plus-icon"}}</button></span></span>
 {{if $d.Overdue}}<span class="postpone" role="group" aria-label="Postpone">{{range postponeMinutes}}<button type="button" class="postpone-btn" aria-label="Postpone {{$.Text}} by {{.}} minutes" hx-post="/items/{{$.ID}}/postpone?minutes={{.}}" hx-target="closest li" hx-swap="outerHTML">+{{.}} min</button>{{end}}</span>{{end}}
 </div>
@@ -38,15 +42,23 @@
 </li>{{end}}
 
 
-{{define "label-picker"}}<div class="picker" id="picker-{{.Item.ID}}" role="dialog" aria-label="Add a label to “{{.Item.Text}}”" data-item="{{.Item.ID}}" data-taken="{{.Taken}}">
-{{if .Full}}<p class="picker-msg">An item can have at most 5 labels. Remove one first.</p>{{else}}<input type="text" class="picker-search" value="{{.Value}}" placeholder="Search or create…" aria-label="Search or create a label" autocomplete="off" maxlength="30"
-  role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls="picker-list-{{.Item.ID}}"{{if .Error}} aria-invalid="true" aria-describedby="picker-msg-{{.Item.ID}}"{{end}}>
+{{define "label-picker"}}<div class="picker label-picker" id="picker-{{.Item.ID}}" role="dialog" aria-label="Labels of “{{.Item.Text}}”" data-item="{{.Item.ID}}" data-full="{{.Full}}" data-new-color="{{.NewColor}}">
+<div class="picker-main">
+<input type="text" class="picker-search" value="{{.Value}}" placeholder="Search or create…" aria-label="Search or create a label" autocomplete="off" maxlength="30"{{if .Error}} aria-invalid="true" aria-describedby="picker-msg-{{.Item.ID}}"{{end}}>
 {{if .Error}}<p class="picker-msg error" id="picker-msg-{{.Item.ID}}" role="alert">{{.Error}}</p>{{end}}
-<ul class="picker-list" id="picker-list-{{.Item.ID}}" role="listbox" aria-label="Your labels">
-{{range .Options}}<li class="picker-opt" id="picker-opt-{{$.Item.ID}}-{{.ID}}" role="option" aria-selected="false" data-name="{{.Name}}"><span class="sw" data-color="{{.Color}}" aria-hidden="true"></span>{{.Name}}</li>
-{{end}}<li class="picker-opt picker-create" id="picker-create-{{$.Item.ID}}" role="option" aria-selected="false" hidden><span class="sw sw-new" aria-hidden="true"></span><span class="picker-create-text"></span></li>
+<ul class="picker-list" aria-label="Your labels">
+{{range .Options}}<li class="picker-opt" data-name="{{.Name}}" data-label="{{.ID}}" data-items="{{.Items}}"><button type="button" class="sw" data-color="{{.Color}}" data-label="{{.ID}}" aria-label="Color of “{{.Name}}”" title="Change the color"></button><button type="button" class="picker-name" aria-pressed="{{.On}}"{{if and $.Full (not .On)}} aria-disabled="true"{{end}}>{{.Name}}</button>{{if .On}}<span class="picker-check" title="The item has this label">{{template "tick-icon"}}</span>{{end}}<button type="button" class="picker-x" aria-label="Delete label “{{.Name}}”" title="Delete label">{{template "x-small-icon"}}</button></li>
+{{end}}<li class="picker-opt picker-create" hidden><button type="button" class="sw" data-color="{{.NewColor}}" aria-label="Color of the new label" title="Choose a color for the new label"></button><button type="button" class="picker-name"><span class="picker-create-text"></span></button></li>
 </ul>
-<p class="picker-empty" hidden></p>{{end}}
+<p class="picker-empty" hidden></p>
+{{if .Full}}<p class="picker-msg">An item can have at most 5 labels.</p>{{end}}
+</div>
+<div class="picker-color" role="group" aria-label="Color" hidden>
+<p class="picker-color-head"><button type="button" class="picker-back" data-color-cancel aria-label="Back to the labels">{{template "back-icon"}}</button><span class="picker-color-title"></span></p>
+<div class="wheel" role="slider" tabindex="0" aria-label="Hue and strength" aria-valuemin="0" aria-valuemax="359" aria-valuenow="0"><span class="wheel-ring"></span></div>
+<p class="color-preview">Preview <span class="chip"></span></p>
+<div class="due-actions"><button type="button" class="due-save" data-color-done>Done</button><button type="button" class="due-remove" data-color-cancel>Cancel</button></div>
+</div>
 </div>{{end}}
 
 {{define "due-picker"}}<form class="picker due-picker" id="due-picker-{{.Item.ID}}" role="dialog" aria-label="Due date of “{{.Item.Text}}”"

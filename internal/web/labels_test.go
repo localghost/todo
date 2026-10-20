@@ -2,6 +2,7 @@ package web_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -60,9 +61,13 @@ func TestPlusAddsOneLabel(t *testing.T) {
 	assertContains(t, body, fmt.Sprintf(`id="label-add-%d" class="label-add"`, a.ID), fmt.Sprintf(`data-picker="%s"`, path))
 	assertNotContains(t, body, `name="labels"`, "suggest-btn")
 
-	// The list offers the user's labels, by name.
+	// The list offers all the user's labels; the item's labels are pressed.
 	body = do(t, env.H, "GET", path, nil, htmxHeaders).Body.String()
-	assertContains(t, body, `role="listbox"`, `data-name="home"`, `data-name="work"`, `class="picker-search"`)
+	assertContains(t, body, `data-name="home"`, `data-name="work"`, `class="picker-search"`,
+		`aria-pressed="false">home</button>`, `class="picker-x" aria-label="Delete label “home”"`,
+		`class="wheel" role="slider"`, `data-full="false"`,
+		fmt.Sprintf(`data-new-color="%s"`, todo.LabelColors[2]))
+	assertNotContains(t, body, `role="listbox"`, `data-taken`)
 
 	rec := do(t, env.H, "POST", path, url.Values{"name": {"work"}}, htmxHeaders)
 	if rec.Code != http.StatusOK {
@@ -70,13 +75,12 @@ func TestPlusAddsOneLabel(t *testing.T) {
 	}
 	got, _ := env.Svc.Get(context.Background(), env.User.ID, a.ID)
 	work := labelID(t, got, "work")
-	assertContains(t, rec.Body.String(), fmt.Sprintf(`<span class="chip" data-color="%s"><a href="/?label=%d"`, got.Labels[0].Color, work),
+	assertContains(t, rec.Body.String(), fmt.Sprintf(`<span class="chip" data-color="%s" data-label="%d"><a href="/?label=%d"`, got.Labels[0].Color, work, work),
 		fmt.Sprintf(`hx-delete="/items/%d/labels/%d"`, a.ID, work), `id="toolbar"`)
 
-	// The list leaves out the item's labels; a new name makes a label.
+	// The item's label is pressed and checked; a new name makes a label.
 	body = do(t, env.H, "GET", path, nil, htmxHeaders).Body.String()
-	assertContains(t, body, `data-name="home"`, `data-taken="work"`)
-	assertNotContains(t, body, `data-name="work"`)
+	assertContains(t, body, `aria-pressed="true">work</button><span class="picker-check"`, `aria-pressed="false">home</button>`)
 	do(t, env.H, "POST", path, url.Values{"name": {"  Deep   work "}}, htmxHeaders)
 	got, _ = env.Svc.Get(context.Background(), env.User.ID, a.ID)
 	if todo.LabelNames(got.Labels) != "Deep work, work" {
@@ -103,7 +107,9 @@ func TestPlusShowsLabelErrorsInTheList(t *testing.T) {
 		t.Fatalf("sixth label: %d, want 422", rec.Code)
 	}
 	assertContains(t, rec.Body.String(), "An item can have at most 5 labels.")
-	assertContains(t, do(t, env.H, "GET", path, nil, htmxHeaders).Body.String(), "An item can have at most 5 labels. Remove one first.")
+	full := do(t, env.H, "GET", path, nil, htmxHeaders).Body.String()
+	assertContains(t, full, "An item can have at most 5 labels.", `data-full="true"`)
+	assertNotContains(t, full, "Remove one first.")
 }
 
 func TestRemoveLabelFromItem(t *testing.T) {
@@ -220,7 +226,7 @@ func TestLabelsOfOtherUsersItems(t *testing.T) {
 func TestLabelsPage(t *testing.T) {
 	env := newTestEnv(t)
 	a := addLabeled(t, env.Svc, env.User.ID, "Invoice", "work, home")
-	work, home := labelID(t, a, "work"), labelID(t, a, "home")
+	work := labelID(t, a, "work")
 
 	body := do(t, env.H, "GET", "/labels", nil, nil).Body.String()
 	assertContains(t, body, "<h1>Labels</h1>", ">work</span>", fmt.Sprintf(`href="/?label=%d">1 item</a>`, work),
@@ -240,18 +246,6 @@ func TestLabelsPage(t *testing.T) {
 	}
 	assertContains(t, do(t, env.H, "GET", "/", nil, nil).Body.String(), `<a href="/labels">Labels</a>`)
 	assertContains(t, body, "click + on an item")
-
-	// Delete asks first, then removes the label but keeps the item.
-	body = do(t, env.H, "GET", fmt.Sprintf("/labels?delete=%d", home), nil, nil).Body.String()
-	assertContains(t, body, "Delete “home”? It comes off 1 item. The items stay.", fmt.Sprintf(`action="/labels/%d/delete"`, home))
-	rec := do(t, env.H, "POST", fmt.Sprintf("/labels/%d/delete", home), url.Values{}, nil)
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("delete: %d", rec.Code)
-	}
-	got, err := env.Svc.Get(context.Background(), env.User.ID, a.ID)
-	if err != nil || todo.LabelNames(got.Labels) != "work" {
-		t.Fatalf("item after delete = %q, %v", todo.LabelNames(got.Labels), err)
-	}
 }
 
 func TestLabelsOfAnotherUserCannotBeChanged(t *testing.T) {
@@ -264,9 +258,10 @@ func TestLabelsOfAnotherUserCannotBeChanged(t *testing.T) {
 	b := addLabeled(t, env.Svc, bob.ID, "Bob's", "secret")
 	id := labelID(t, b, "secret")
 
-	do(t, env.H, "POST", fmt.Sprintf("/labels/%d/delete", id), url.Values{}, nil)
+	do(t, env.H, "PUT", fmt.Sprintf("/labels/%d/color", id), url.Values{"color": {"#d1382e"}}, htmxHeaders)
+	do(t, env.H, "DELETE", fmt.Sprintf("/labels/%d", id), nil, htmxHeaders)
 	l, err := env.Svc.Label(ctx, bob.ID, id)
-	if err != nil || l.Name != "secret" {
+	if err != nil || l.Color == "#d1382e" {
 		t.Fatalf("bob's label = %+v, %v", l, err)
 	}
 	body := do(t, env.H, "GET", fmt.Sprintf("/?label=%d", id), nil, nil).Body.String()
@@ -281,4 +276,75 @@ func TestLabelNamesAreEscaped(t *testing.T) {
 		assertContains(t, body, "&lt;b&gt;bold&lt;/b&gt;")
 		assertNotContains(t, body, "<b>bold</b>")
 	}
+}
+
+func TestCreateLabelWithColor(t *testing.T) {
+	env := newTestEnv(t)
+	a := addLabeled(t, env.Svc, env.User.ID, "Invoice", "")
+	path := fmt.Sprintf("/items/%d/labels", a.ID)
+	rec := do(t, env.H, "POST", path, url.Values{"name": {"gym"}, "color": {"#12ab34"}}, htmxHeaders)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("create: %d %s", rec.Code, rec.Body)
+	}
+	got, _ := env.Svc.Get(context.Background(), env.User.ID, a.ID)
+	if len(got.Labels) != 1 || got.Labels[0].Color != "#12ab34" {
+		t.Fatalf("labels = %+v", got.Labels)
+	}
+	// After an error the list keeps the chosen color of the new label.
+	rec = do(t, env.H, "POST", path, url.Values{"name": {strings.Repeat("x", 31)}, "color": {"#abcdef"}}, htmxHeaders)
+	assertContains(t, rec.Body.String(), `data-new-color="#abcdef"`)
+}
+
+func TestSetLabelColorRoute(t *testing.T) {
+	env := newTestEnv(t)
+	a := addLabeled(t, env.Svc, env.User.ID, "Invoice", "work")
+	work := labelID(t, a, "work")
+	path := fmt.Sprintf("/labels/%d/color", work)
+	if rec := do(t, env.H, "PUT", path, url.Values{"color": {"#6B44BB"}}, htmxHeaders); rec.Code != http.StatusNoContent {
+		t.Fatalf("set: %d %s", rec.Code, rec.Body)
+	}
+	if l, _ := env.Svc.Label(context.Background(), env.User.ID, work); l.Color != "#6b44bb" {
+		t.Fatalf("color = %q", l.Color)
+	}
+	if rec := do(t, env.H, "PUT", path, url.Values{"color": {"red"}}, htmxHeaders); rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("bad color: %d, want 422", rec.Code)
+	}
+	if rec := do(t, env.H, "PUT", "/labels/999/color", url.Values{"color": {"#000000"}}, htmxHeaders); rec.Code != http.StatusNotFound {
+		t.Fatalf("unknown: %d, want 404", rec.Code)
+	}
+}
+
+func TestDeleteLabelRoute(t *testing.T) {
+	env := newTestEnv(t)
+	a := addLabeled(t, env.Svc, env.User.ID, "Invoice", "work, home")
+	work := labelID(t, a, "work")
+	rec := do(t, env.H, "DELETE", fmt.Sprintf("/labels/%d", work), nil, htmxHeaders)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("delete: %d", rec.Code)
+	}
+	assertContains(t, rec.Body.String(), `id="list-section"`, ">home</a>")
+	assertNotContains(t, rec.Body.String(), ">work</a>")
+	if _, err := env.Svc.Label(context.Background(), env.User.ID, work); !errors.Is(err, todo.ErrNotFound) {
+		t.Fatalf("label still there: %v", err)
+	}
+	// Deleting the label of the filter goes to the full list.
+	home := labelID(t, a, "home")
+	rec = do(t, env.H, "DELETE", fmt.Sprintf("/labels/%d", home), nil, filtered(home))
+	if rec.Header().Get("HX-Redirect") != "/" {
+		t.Fatalf("filter label: HX-Redirect = %q", rec.Header().Get("HX-Redirect"))
+	}
+}
+
+func TestFiftyLabelsMessageNamesTheX(t *testing.T) {
+	env := newTestEnv(t)
+	for i := 0; i < todo.MaxLabelsPerUser; i += 5 {
+		addLabeled(t, env.Svc, env.User.ID, "Item", fmt.Sprintf("l%d, l%d, l%d, l%d, l%d", i, i+1, i+2, i+3, i+4))
+	}
+	a := addLabeled(t, env.Svc, env.User.ID, "One more", "")
+	rec := do(t, env.H, "POST", fmt.Sprintf("/items/%d/labels", a.ID), url.Values{"name": {"new"}}, htmxHeaders)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("51st label: %d, want 422", rec.Code)
+	}
+	assertContains(t, rec.Body.String(), "You have 50 labels. Delete one first (× on its line).")
+	assertNotContains(t, rec.Body.String(), "Labels page")
 }

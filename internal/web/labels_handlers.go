@@ -52,31 +52,71 @@ func (s *server) labelsPage(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, http.StatusOK, part{"labels", v})
 }
 
-// deleteLabel deletes a label (its items stay), then shows the labels page.
-func (s *server) deleteLabel(w http.ResponseWriter, r *http.Request) {
+// setLabelColor saves a label's color. The page changes its chips itself.
+func (s *server) setLabelColor(w http.ResponseWriter, r *http.Request) {
 	id, ok := parseID(r)
-	if ok {
-		err := s.svc.DeleteLabel(r.Context(), userID(r), id)
-		if err != nil && !errors.Is(err, todo.ErrNotFound) {
-			s.serverError(w, r, err)
-			return
-		}
+	if !ok {
+		http.NotFound(w, r)
+		return
 	}
-	http.Redirect(w, r, "/labels", http.StatusSeeOther)
+	err := s.svc.SetLabelColor(r.Context(), userID(r), id, r.FormValue("color"))
+	switch {
+	case err == nil:
+		w.WriteHeader(http.StatusNoContent)
+	case errors.Is(err, todo.ErrNotFound):
+		http.NotFound(w, r)
+	case errors.Is(err, todo.ErrBadLabel):
+		http.Error(w, "Pick a color.", http.StatusUnprocessableEntity)
+	default:
+		s.serverError(w, r, err)
+	}
 }
 
-// pickerView loads the label list for item: the user's labels that the
-// item does not have yet.
+// deleteLabel deletes a label: it comes off all items, the items stay. The
+// answer is the list section. If the list is filtered by that label, the
+// page goes to the full list instead.
+func (s *server) deleteLabel(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(r)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	filter, err := s.labelFilter(r)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	if err := s.svc.DeleteLabel(r.Context(), userID(r), id); errors.Is(err, todo.ErrNotFound) {
+		http.NotFound(w, r)
+		return
+	} else if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	if filter != nil && filter.ID == id {
+		w.Header().Set("HX-Redirect", "/")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	lv, err := s.listView(r, currentUser(r).HideDone)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.render(w, r, http.StatusOK, part{"list", lv})
+}
+
+// pickerView loads the label list for item: all the user's labels, and the
+// color the next new label gets (as the store gives it).
 func (s *server) pickerView(r *http.Request, item todo.Item) (pickerView, error) {
 	labels, err := s.svc.Labels(r.Context(), userID(r))
 	if err != nil {
 		return pickerView{}, err
 	}
-	v := pickerView{Item: item, Taken: todo.LabelNames(item.Labels), Full: len(item.Labels) >= todo.MaxLabelsPerItem}
+	v := pickerView{Item: item, Full: len(item.Labels) >= todo.MaxLabelsPerItem,
+		NewColor: todo.LabelColors[len(labels)%len(todo.LabelColors)]}
 	for _, l := range labels {
-		if !item.HasLabel(l.ID) {
-			v.Options = append(v.Options, l)
-		}
+		v.Options = append(v.Options, pickerOption{Label: l, On: item.HasLabel(l.ID)})
 	}
 	return v, nil
 }
@@ -104,8 +144,8 @@ func (s *server) addItemLabel(w http.ResponseWriter, r *http.Request) {
 		s.oobOnly(w, r, http.StatusNotFound)
 		return
 	}
-	name := r.FormValue("name")
-	item, err := s.svc.AddLabel(r.Context(), userID(r), id, name, r.FormValue("color"))
+	name, color := r.FormValue("name"), r.FormValue("color")
+	item, err := s.svc.AddLabel(r.Context(), userID(r), id, name, color)
 	if msg := labelsMessage(err); msg != "" {
 		old, getErr := s.svc.Get(r.Context(), userID(r), id)
 		if errors.Is(getErr, todo.ErrNotFound) {
@@ -122,6 +162,9 @@ func (s *server) addItemLabel(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		v.Value, v.Error = name, msg
+		if c, ok := todo.CleanColor(color); ok {
+			v.NewColor = c
+		}
 		w.Header().Set("HX-Retarget", "#picker-"+strconv.FormatInt(id, 10))
 		w.Header().Set("HX-Reswap", "outerHTML")
 		s.render(w, r, http.StatusUnprocessableEntity, part{"label-picker", v})

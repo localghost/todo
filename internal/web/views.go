@@ -50,14 +50,20 @@ type duePickerView struct {
 	Error   string // why the last save failed
 }
 
+// pickerOption is one line of the label list.
+type pickerOption struct {
+	todo.Label
+	On bool // the item has the label
+}
+
 // pickerView is the data for the label list that + opens on an item.
 type pickerView struct {
-	Item    todo.Item
-	Options []todo.Label // the user's labels that the item does not have
-	Taken   string       // the item's label names, joined by commas
-	Full    bool         // the item has the most labels it can have
-	Value   string       // the search field (what the user typed, after an error)
-	Error   string
+	Item     todo.Item
+	Options  []pickerOption // all the user's labels, by name
+	Full     bool           // the item has the most labels it can have
+	NewColor string         // the color of a new label
+	Value    string         // the search field (what the user typed, after an error)
+	Error    string
 }
 
 // pageView is the data for the full page.
@@ -132,7 +138,7 @@ func labelsMessage(err error) string {
 	case errors.As(err, &le):
 		return le.Msg
 	case errors.Is(err, todo.ErrTooManyLabels):
-		return "You have 50 labels. Delete one on the Labels page first."
+		return "You have 50 labels. Delete one first (× on its line)."
 	}
 	return ""
 }

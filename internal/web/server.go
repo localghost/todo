@@ -125,7 +125,8 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Op
 	mux.Handle("POST /notifications/claim", s.protect(s.claimNotifications))
 	mux.Handle("POST /settings/hide-done", s.protect(s.setHideDone))
 	mux.Handle("GET /labels", s.protect(s.labelsPage))
-	mux.Handle("POST /labels/{id}/delete", s.protect(s.deleteLabel))
+	mux.Handle("PUT /labels/{id}/color", s.protect(s.setLabelColor))
+	mux.Handle("DELETE /labels/{id}", s.protect(s.deleteLabel))
 	// Rejects changing requests that a browser marks as coming from another site.
 	return securityHeaders(http.NewCrossOriginProtection().Handler(limitBody(mux))), nil
 }
