@@ -53,8 +53,8 @@
 <p class="picker-empty" hidden></p>
 {{if .Full}}<p class="picker-msg">An item can have at most 5 labels.</p>{{end}}
 </div>
-<div class="picker-color" role="group" aria-label="Color" hidden>
-<p class="picker-color-head"><button type="button" class="picker-back" data-color-cancel aria-label="Back to the labels">{{template "back-icon"}}</button><span class="picker-color-title"></span></p>
+<div class="picker-color" role="group" aria-labelledby="picker-color-title-{{.Item.ID}}" hidden>
+<p class="picker-color-head"><button type="button" class="picker-back" data-color-cancel aria-label="Back to the labels">{{template "back-icon"}}</button><span class="picker-color-title" id="picker-color-title-{{.Item.ID}}"></span></p>
 <div class="wheel" role="slider" tabindex="0" aria-label="Hue and strength" aria-valuemin="0" aria-valuemax="359" aria-valuenow="0"><span class="wheel-ring"></span></div>
 <p class="color-preview">Preview <span class="chip"></span></p>
 <div class="due-actions"><button type="button" class="due-save" data-color-done>Done</button><button type="button" class="due-remove" data-color-cancel>Cancel</button></div>

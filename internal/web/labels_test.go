@@ -245,8 +245,12 @@ func TestLabelsOfAnotherUserCannotBeChanged(t *testing.T) {
 	b := addLabeled(t, env.Svc, bob.ID, "Bob's", "secret")
 	id := labelID(t, b, "secret")
 
-	do(t, env.H, "PUT", fmt.Sprintf("/labels/%d/color", id), url.Values{"color": {"#d1382e"}}, htmxHeaders)
-	do(t, env.H, "DELETE", fmt.Sprintf("/labels/%d", id), nil, htmxHeaders)
+	if rec := do(t, env.H, "PUT", fmt.Sprintf("/labels/%d/color", id), url.Values{"color": {"#d1382e"}}, htmxHeaders); rec.Code != http.StatusNotFound {
+		t.Fatalf("color of bob's label: %d, want 404", rec.Code)
+	}
+	if rec := do(t, env.H, "DELETE", fmt.Sprintf("/labels/%d", id), nil, htmxHeaders); rec.Code != http.StatusNotFound {
+		t.Fatalf("delete bob's label: %d, want 404", rec.Code)
+	}
 	l, err := env.Svc.Label(ctx, bob.ID, id)
 	if err != nil || l.Color == "#d1382e" {
 		t.Fatalf("bob's label = %+v, %v", l, err)
@@ -355,4 +359,14 @@ func TestDeleteGoneLabelAnswersTheList(t *testing.T) {
 		t.Fatalf("status = %d, want 404", rec.Code)
 	}
 	assertContains(t, rec.Body.String(), `id="list-section"`, ">work</a>")
+}
+
+// The wheel view is a group named by its title ("Color of “work”").
+func TestWheelViewIsLabelledByItsTitle(t *testing.T) {
+	env := newTestEnv(t)
+	a := addLabeled(t, env.Svc, env.User.ID, "Invoice", "work")
+	body := do(t, env.H, "GET", fmt.Sprintf("/items/%d/labels", a.ID), nil, htmxHeaders).Body.String()
+	assertContains(t, body,
+		fmt.Sprintf(`class="picker-color" role="group" aria-labelledby="picker-color-title-%d"`, a.ID),
+		fmt.Sprintf(`<span class="picker-color-title" id="picker-color-title-%d">`, a.ID))
 }

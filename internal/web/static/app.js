@@ -378,6 +378,8 @@ let pickerButton = null; // its + or calendar icon
 let reopenFor = null; // the item whose label list stays open after the next swap
 let pickerBusy = false; // a label request is on its way; focus can leave for a moment
 let carrySearch = null; // the search field of a list that loads again
+let carryColor = null; // the new label's color that a list keeps when it loads again
+let focusIfGone = null; // the id to focus if the row of the open list goes away
 let wheel = null; // the wheel of the open label list (wheel.js)
 let colorEdit = null; // { swatch, label, old } while the wheel view is open
 
@@ -409,25 +411,33 @@ function popupButton(target) {
   return due ? due.parentElement.querySelector(".due-add") : target.closest(".label-add, .due-add");
 }
 
-function closePicker(refocus) {
-  if (!picker) {
-    return;
-  }
+// resetPicker forgets the open pop-up. A color that the wheel shows but did
+// not save goes back.
+function resetPicker() {
   if (colorEdit) {
     paintLabel(colorEdit, colorEdit.old);
     colorEdit = null;
-  }
-  picker.remove();
-  pickerButton.setAttribute("aria-expanded", "false");
-  if (refocus && pickerButton.isConnected) {
-    pickerButton.focus();
   }
   picker = null;
   pickerButton = null;
   reopenFor = null;
   pickerBusy = false;
   carrySearch = null;
+  carryColor = null;
+  focusIfGone = null;
   wheel = null;
+}
+
+function closePicker(refocus) {
+  if (!picker) {
+    return;
+  }
+  picker.remove();
+  pickerButton.setAttribute("aria-expanded", "false");
+  if (refocus && pickerButton.isConnected) {
+    pickerButton.focus();
+  }
+  resetPicker();
 }
 
 // installPicker gets a pop-up that just came from the server ready.
@@ -512,11 +522,19 @@ function filterPicker() {
 // sendForList sends a label change. The answer replaces the row or the list
 // section; the htmx:afterSwap handler below keeps the list open. The search
 // field gets empty at once, so what the user types next is a new search.
-function sendForList(method, url, options) {
+// keep (a delete) keeps the search and the color chosen for a new label.
+// If the row leaves the list (a filter), the focus goes on at the next row,
+// as after a delete (section 1).
+function sendForList(method, url, options, keep) {
   reopenFor = picker.dataset.item;
   pickerBusy = true;
+  carryColor = keep ? picker.dataset.newColor : null;
+  const row = document.getElementById("item-" + reopenFor);
+  const neighbor = row && (row.nextElementSibling || row.previousElementSibling);
+  const check = neighbor && neighbor.querySelector(".check");
+  focusIfGone = check ? check.id : "new-item";
   const input = picker.querySelector(".picker-search");
-  if (input) {
+  if (input && !keep) {
     input.value = "";
     filterPicker();
   }
@@ -658,7 +676,7 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("[data-color-done]")) endColor(true);
   else if (e.target.closest("[data-color-cancel]")) endColor(false);
   else if (!line) return;
-  else if (e.target.closest("[data-ask-delete]")) sendForList("DELETE", "/labels/" + line.dataset.label, { target: "#list-section", swap: "outerHTML" });
+  else if (e.target.closest("[data-ask-delete]")) sendForList("DELETE", "/labels/" + line.dataset.label, { target: "#list-section", swap: "outerHTML" }, true);
   else if (e.target.closest("[data-ask-cancel]")) closeAsk(line);
   else if (e.target.closest(".picker-x")) askDelete(line);
   else if (e.target.closest(".sw")) openColor(e.target.closest(".sw"), line);
@@ -759,6 +777,8 @@ document.addEventListener("htmx:afterRequest", (e) => {
     pickerBusy = false;
     reopenFor = null;
     carrySearch = null;
+    carryColor = null;
+    focusIfGone = null;
     if (picker && picker.isConnected) {
       focusPicker();
     }
@@ -788,12 +808,19 @@ document.addEventListener("htmx:afterSwap", () => {
     htmx.ajax("GET", button.dataset.picker, { target: picker, swap: "outerHTML" }).catch(() => {});
     return;
   }
-  reopenFor = null;
-  pickerBusy = false;
-  const typed = carrySearch ? carrySearch.value : "";
-  carrySearch = null;
   if (fresh) {
+    const typed = carrySearch ? carrySearch.value : "";
+    const color = carryColor;
+    reopenFor = null;
+    pickerBusy = false;
+    carrySearch = null;
+    carryColor = null;
+    focusIfGone = null;
     picker = fresh;
+    if (color) {
+      picker.dataset.newColor = color;
+      picker.querySelector(".picker-create .sw").dataset.color = color;
+    }
     const input = installPicker();
     if (input && input.matches(".picker-search")) {
       if (typed && !input.value) {
@@ -804,12 +831,15 @@ document.addEventListener("htmx:afterSwap", () => {
     }
     return;
   }
+  // The list is gone with its row, or the whole list was drawn again.
   if (pickerButton.isConnected) {
     pickerButton.setAttribute("aria-expanded", "false");
   }
-  picker = null;
-  pickerButton = null;
-  wheel = null;
+  const next = !pickerButton.isConnected && focusIfGone && document.getElementById(focusIfGone);
+  resetPicker();
+  if (next && (!document.activeElement || document.activeElement === document.body)) {
+    next.focus();
+  }
 });
 
 // 14. The due time field (canvas page "12 · 24-hour time", "type digits
