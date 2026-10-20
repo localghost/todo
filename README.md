@@ -15,7 +15,8 @@ A small todo list for the browser. Everyone has their own account and their own 
   stay at the top.
 - Put labels such as "work" or "home" on items with the small + on each item, which opens a
   searchable list of your labels; point at a label to remove it with its ×. Click a label to see
-  only its items. Rename, recolor or delete labels on the Labels page.
+  only its items. Rename or delete labels on the Labels page, and pick any color for them from
+  a color wheel.
 - Times are shown in your browser's time zone.
 
 ## Run it yourself

@@ -16,8 +16,24 @@ const (
 	maxLabelFieldRead = 4096 // longer label fields are refused without parsing
 )
 
-// LabelColors are the colors a label can have, in the order new labels get them.
-var LabelColors = []string{"gray", "red", "orange", "yellow", "green", "teal", "blue", "purple"}
+// LabelColors are the colors new labels get, in turn. A label can have any
+// color of the form #rrggbb (spec 2026-10-20-label-color-wheel-design.md):
+// these are the hues of the eight fixed colors the app had before.
+var LabelColors = []string{"#868279", "#d1382e", "#e5711a", "#e9bd16", "#38c75d", "#2ed1c8", "#2555da", "#6b44bb"}
+
+// CleanColor returns color in lower case if it has the form #rrggbb.
+func CleanColor(color string) (string, bool) {
+	if len(color) != 7 || color[0] != '#' {
+		return "", false
+	}
+	color = strings.ToLower(color)
+	for _, c := range color[1:] {
+		if !('0' <= c && c <= '9' || 'a' <= c && c <= 'f') {
+			return "", false
+		}
+	}
+	return color, true
+}
 
 var (
 	// ErrBadLabel means a label name or color is not valid.
@@ -39,7 +55,7 @@ type Label struct {
 	ID     int64
 	UserID int64
 	Name   string
-	Color  string // one of LabelColors
+	Color  string // #rrggbb
 	Items  int    // number of items with the label (only from Store.Labels)
 }
 
@@ -123,8 +139,9 @@ func (s *Service) UpdateLabel(ctx context.Context, userID, id int64, name, color
 	if err != nil {
 		return Label{}, err
 	}
-	if !slices.Contains(LabelColors, color) {
-		return Label{}, &LabelError{Msg: "Pick one of the colors."}
+	color, ok := CleanColor(color)
+	if !ok {
+		return Label{}, &LabelError{Msg: "Pick a color."}
 	}
 	return s.store.UpdateLabel(ctx, userID, id, name, color)
 }

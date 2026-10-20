@@ -107,7 +107,7 @@ func TestRowHasDueButtonAndCalendarIcon(t *testing.T) {
 	assertContains(t, body,
 		`<span class="meta"><button type="button" class="due" title="Change the due date" aria-haspopup="dialog" data-due-for="1">Due tomorrow, 14:00</button><span class="due-add-wrap"><button type="button" id="due-add-1" class="due-add" aria-label="Set the due date of “Call the dentist”" title="Set the due date" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/1/due"><svg width="12" height="12"`,
 		`<span class="meta"><span class="due-add-wrap"><button type="button" id="due-add-2" class="due-add"`)
-	if i, j := strings.Index(body, `id="due-add-1"`), strings.Index(body, `class="chip c-`); i < 0 || j < i {
+	if i, j := strings.Index(body, `id="due-add-1"`), strings.Index(body, `class="chip" data-color=`); i < 0 || j < i {
 		t.Fatalf("the calendar icon must come before the labels (icon at %d, chip at %d)", i, j)
 	}
 }

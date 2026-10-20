@@ -220,8 +220,8 @@ func TestMigrateV3ToV4KeepsItems(t *testing.T) {
 		t.Fatalf("Open v3: %v", err)
 	}
 	defer s.Close()
-	if v := userVersion(t, path); v != 4 {
-		t.Fatalf("user_version = %d, want 4", v)
+	if v := userVersion(t, path); v != 5 {
+		t.Fatalf("user_version = %d, want 5", v)
 	}
 	items, err := s.List(context.Background(), 1, false)
 	if err != nil || len(items) != 1 || items[0].Text != "Keep me" || len(items[0].Labels) != 0 {
@@ -229,5 +229,56 @@ func TestMigrateV3ToV4KeepsItems(t *testing.T) {
 	}
 	if _, err := s.Create(context.Background(), 1, todo.Change{Text: "new", Labels: []string{"work"}}, t0); err != nil {
 		t.Fatalf("labels after migration: %v", err)
+	}
+}
+
+func TestMigrateV4ToV5TurnsColorNamesIntoHex(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v4.db")
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateUser(context.Background(), "alice", "x", t0); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Create(context.Background(), 1, todo.Change{Text: "A", Labels: []string{"work", "home", "own"}}, t0); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	// Turn the file back into version 4, with color names.
+	db, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{
+		`UPDATE labels SET color = 'blue' WHERE name = 'work'`,
+		`UPDATE labels SET color = 'yellow' WHERE name = 'home'`,
+		`UPDATE labels SET color = '#123456' WHERE name = 'own'`,
+		`PRAGMA user_version = 4`,
+	} {
+		if _, err := db.Exec(stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+	db.Close()
+
+	s, err = sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("Open v4: %v", err)
+	}
+	defer s.Close()
+	if v := userVersion(t, path); v != 5 {
+		t.Fatalf("user_version = %d, want 5", v)
+	}
+	labels, err := s.Labels(context.Background(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, l := range labels {
+		got[l.Name] = l.Color
+	}
+	if got["work"] != "#2555da" || got["home"] != "#e9bd16" || got["own"] != "#123456" {
+		t.Fatalf("colors after migration = %v", got)
 	}
 }

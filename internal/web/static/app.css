@@ -251,15 +251,9 @@ button.due:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 
 #signup-check-error:empty { display: none; }
 
-/* Labels (spec 2026-10-14). Eight colors: soft fill, dark text, thin border. */
-.c-gray   { --l-bg: #EFEEEA; --l-fg: #4A4843; --l-bd: #D9D7D0; }
-.c-red    { --l-bg: #FCEDEC; --l-fg: #9C2A22; --l-bd: #F2C4C0; }
-.c-orange { --l-bg: #FDF0E3; --l-fg: #8A4410; --l-bd: #F3D2B0; }
-.c-yellow { --l-bg: #FBF4D9; --l-fg: #6A560A; --l-bd: #EADC9F; }
-.c-green  { --l-bg: #E8F4EA; --l-fg: #1E6B32; --l-bd: #BFE0C7; }
-.c-teal   { --l-bg: #E3F3F2; --l-fg: #145C58; --l-bd: #B3DEDA; }
-.c-blue   { --l-bg: #EEF2FC; --l-fg: #1A3C99; --l-bd: #C9D6F5; }
-.c-purple { --l-bg: #F1EDFB; --l-fg: #5B3A9E; --l-bd: #D6CBF2; }
+/* Labels (spec 2026-10-14). Soft fill, dark text, thin border. The shades
+   come from the label's color (chips.js, spec 2026-10-20); gray until then. */
+.chip, .sw, .color-btn { --l-bg: #EFEEEA; --l-fg: #4A4843; --l-bd: #D9D7D0; --l-c: #868279; }
 .meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; }
 .chip {
   display: inline-flex; align-items: center; max-width: 100%; white-space: nowrap;
@@ -400,12 +394,35 @@ button.due:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
   padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--card);
 }
 .label-form input[aria-invalid="true"] { border-color: var(--error); }
-.swatches { display: flex; gap: 4px; border: none; margin: 0; padding: 0; }
-.swatches label { position: relative; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
-.swatches input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
-.swatches .dot { width: 26px; height: 26px; border-radius: 50%; background: var(--l-fg); }
-.swatches input:checked + .dot { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); }
-.swatches input:focus-visible + .dot { outline: 2px solid var(--accent); outline-offset: 4px; }
+.label-name-line { display: flex; align-items: center; gap: 8px; flex: 0 1 auto; min-width: 0; }
+/* The color button after the name and its pop-up with the color wheel
+   (spec 2026-10-20-label-color-wheel-design.md). */
+.color-wrap { position: relative; display: inline-flex; flex: none; }
+.color-btn {
+  width: 26px; height: 26px; padding: 0; border-radius: 50%; cursor: pointer;
+  background: var(--l-c); border: 1px solid rgba(31, 30, 27, 0.25); box-shadow: inset 0 0 0 2px var(--card);
+}
+.color-btn:hover { box-shadow: inset 0 0 0 2px var(--card), 0 0 0 2px var(--line); }
+.color-btn[aria-expanded="true"] { box-shadow: inset 0 0 0 2px var(--card), 0 0 0 2px var(--accent); }
+.color-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.picker.color-picker { --caret: 14px; width: auto; gap: 10px; padding: 12px; }
+.picker.color-picker[hidden] { display: none; }
+.picker.color-picker.flip::before { right: 14px; }
+.color-picker .due-actions { justify-content: flex-start; }
+.wheel {
+  position: relative; align-self: center; width: 168px; height: 168px; border-radius: 50%;
+  cursor: crosshair; touch-action: none;
+  background:
+    radial-gradient(circle closest-side, hsl(0, 0%, 50%), hsla(0, 0%, 50%, 0)),
+    conic-gradient(hsl(0, 100%, 50%), hsl(60, 100%, 50%), hsl(120, 100%, 50%), hsl(180, 100%, 50%),
+      hsl(240, 100%, 50%), hsl(300, 100%, 50%), hsl(360, 100%, 50%));
+}
+.wheel:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.wheel-ring {
+  position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -9px 0 0 -9px;
+  border-radius: 50%; border: 2px solid #FFFFFF; box-shadow: 0 0 0 1px rgba(31, 30, 27, 0.6); pointer-events: none;
+}
+.color-preview { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
 .btn-small {
   font: inherit; font-size: 14px; font-weight: 600; min-height: 34px; padding: 0 12px; cursor: pointer;
   border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink);
@@ -423,14 +440,15 @@ button.due:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 .row-ok { margin: 0; font-size: 13px; color: #1E6B32; }
 .page-hint { margin: 0; font-size: 14px; color: var(--muted); }
 
-/* On a phone a label row stacks: name, colors, then Save and Delete. */
+/* On a phone a label row stacks: name and color button, then Save and Delete. */
 @media (max-width: 480px) {
   .label-row { padding: 14px; }
   .label-form { flex-direction: column; align-items: stretch; gap: 10px; }
-  .label-form input[type="text"] { flex: none; max-width: none; font-size: 16px; padding: 8px 10px; }
-  .swatches { justify-content: space-between; }
-  .swatches label { width: 36px; height: 36px; }
-  .swatches .dot { width: 28px; height: 28px; }
+  .label-form input[type="text"] { flex: 1 1 auto; max-width: none; font-size: 16px; padding: 8px 10px; }
+  .color-btn { width: 36px; height: 36px; }
+  .picker.color-picker { --caret: 19px; }
+  .picker.color-picker.flip::before { right: 19px; }
+  .wheel { width: 200px; height: 200px; }
   .label-buttons { display: flex; gap: 8px; }
   .label-buttons .btn-small, .confirm .btn-small { flex: 1 1 0; min-height: 44px; font-size: 15px; }
   .confirm { flex-direction: column; align-items: stretch; }

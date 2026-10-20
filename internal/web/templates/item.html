@@ -17,7 +17,7 @@
 <div class="text-col">
 <button class="text" type="button" title="Click to edit"
   hx-get="/items/{{.ID}}/edit" hx-target="closest li" hx-swap="outerHTML">{{.Text}}</button>
-<span class="meta">{{if $d.Text}}<button type="button" class="due{{if $d.Overdue}} overdue{{end}}" title="Change the due date" aria-haspopup="dialog" data-due-for="{{.ID}}">{{$d.Text}}</button>{{end}}<span class="due-add-wrap"><button type="button" id="due-add-{{.ID}}" class="due-add" aria-label="Set the due date of “{{.Text}}”" title="Set the due date" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/due">{{template "calendar-icon"}}</button></span>{{range .Labels}}<span class="chip c-{{.Color}}"><a href="/?label={{.ID}}" title="Show only “{{.Name}}”">{{.Name}}</a><button type="button" class="chip-x" aria-label="Remove label “{{.Name}}” from “{{$.Text}}”" title="Remove label"
+<span class="meta">{{if $d.Text}}<button type="button" class="due{{if $d.Overdue}} overdue{{end}}" title="Change the due date" aria-haspopup="dialog" data-due-for="{{.ID}}">{{$d.Text}}</button>{{end}}<span class="due-add-wrap"><button type="button" id="due-add-{{.ID}}" class="due-add" aria-label="Set the due date of “{{.Text}}”" title="Set the due date" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/due">{{template "calendar-icon"}}</button></span>{{range .Labels}}<span class="chip" data-color="{{.Color}}"><a href="/?label={{.ID}}" title="Show only “{{.Name}}”">{{.Name}}</a><button type="button" class="chip-x" aria-label="Remove label “{{.Name}}” from “{{$.Text}}”" title="Remove label"
   hx-delete="/items/{{$.ID}}/labels/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">{{template "x-small-icon"}}</button></span>{{end}}<span class="label-add-wrap"><button type="button" id="label-add-{{.ID}}" class="label-add" aria-label="Add a label to “{{.Text}}”" title="Add a label" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/labels">{{template "plus-icon"}}</button></span></span>
 {{if $d.Overdue}}<span class="postpone" role="group" aria-label="Postpone">{{range postponeMinutes}}<button type="button" class="postpone-btn" aria-label="Postpone {{$.Text}} by {{.}} minutes" hx-post="/items/{{$.ID}}/postpone?minutes={{.}}" hx-target="closest li" hx-swap="outerHTML">+{{.}} min</button>{{end}}</span>{{end}}
 </div>
@@ -43,7 +43,7 @@
   role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls="picker-list-{{.Item.ID}}"{{if .Error}} aria-invalid="true" aria-describedby="picker-msg-{{.Item.ID}}"{{end}}>
 {{if .Error}}<p class="picker-msg error" id="picker-msg-{{.Item.ID}}" role="alert">{{.Error}}</p>{{end}}
 <ul class="picker-list" id="picker-list-{{.Item.ID}}" role="listbox" aria-label="Your labels">
-{{range .Options}}<li class="picker-opt" id="picker-opt-{{$.Item.ID}}-{{.ID}}" role="option" aria-selected="false" data-name="{{.Name}}"><span class="sw c-{{.Color}}" aria-hidden="true"></span>{{.Name}}</li>
+{{range .Options}}<li class="picker-opt" id="picker-opt-{{$.Item.ID}}-{{.ID}}" role="option" aria-selected="false" data-name="{{.Name}}"><span class="sw" data-color="{{.Color}}" aria-hidden="true"></span>{{.Name}}</li>
 {{end}}<li class="picker-opt picker-create" id="picker-create-{{$.Item.ID}}" role="option" aria-selected="false" hidden><span class="sw sw-new" aria-hidden="true"></span><span class="picker-create-text"></span></li>
 </ul>
 <p class="picker-empty" hidden></p>{{end}}

@@ -20,8 +20,7 @@ type labelRow struct {
 
 // labelsView is the data for the labels page.
 type labelsView struct {
-	Rows   []labelRow
-	Colors []string
+	Rows []labelRow
 }
 
 // labelsView loads the user's labels. confirm and saved name a label id
@@ -31,7 +30,7 @@ func (s *server) labelsView(r *http.Request, confirm, saved int64) (labelsView, 
 	if err != nil {
 		return labelsView{}, err
 	}
-	v := labelsView{Colors: todo.LabelColors}
+	v := labelsView{}
 	for _, l := range labels {
 		v.Rows = append(v.Rows, labelRow{Label: l, NameValue: l.Name, ColorValue: l.Color,
 			Confirm: l.ID == confirm, Saved: l.ID == saved})
@@ -87,8 +86,8 @@ func (s *server) saveLabel(w http.ResponseWriter, r *http.Request) {
 	for i := range v.Rows {
 		if v.Rows[i].ID == id {
 			v.Rows[i].NameValue, v.Rows[i].Error = name, msg
-			if color != "" {
-				v.Rows[i].ColorValue = color
+			if c, ok := todo.CleanColor(color); ok {
+				v.Rows[i].ColorValue = c
 			}
 		}
 	}

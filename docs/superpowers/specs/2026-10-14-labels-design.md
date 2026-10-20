@@ -22,7 +22,7 @@ These items are not part of this feature:
 |---|---|
 | Owner | Labels belong to one user. Two users can both have "work". |
 | Name | 1 to 30 characters after whitespace is collapsed (same rule as item text). Unique per user, ignoring case: "Work" and "work" are the same label. The first spelling is kept. |
-| Colour | One of 8 fixed colours (gray, red, orange, yellow, green, teal, blue, purple). A new label gets the next colour in turn. The user can change it on the labels page. No free hex colours: a fixed set maps to CSS classes, works in dark and light mode, and keeps contrast readable. |
+| Colour | Since 2026-10-20 any colour from a colour wheel: see `2026-10-20-label-color-wheel-design.md`. First built as: one of 8 fixed colours (gray, red, orange, yellow, green, teal, blue, purple). A new label gets the next colour in turn. The user can change it on the labels page. No free hex colours: a fixed set maps to CSS classes, works in dark and light mode, and keeps contrast readable. |
 | Limits | At most 5 labels per item and 50 labels per user. Over the limit, the form shows an error, like an empty text does. |
 | How to set labels | Replaced the same day by the + on each item: see `2026-10-14-label-plus-design.md`. First built as: a "Labels" text field in the add form and in edit mode, below "Due". Names are separated by commas, for example `work, urgent`. A name that does not exist yet creates the label. Under the field, the user's existing labels show as small buttons; a click adds that name to the field (a few lines in `app.js`; the field also works without it). |
 | On the row | Chips go in the meta line, after the due date. Each chip is a link to the filtered list. |

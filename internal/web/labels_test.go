@@ -70,7 +70,7 @@ func TestPlusAddsOneLabel(t *testing.T) {
 	}
 	got, _ := env.Svc.Get(context.Background(), env.User.ID, a.ID)
 	work := labelID(t, got, "work")
-	assertContains(t, rec.Body.String(), fmt.Sprintf(`<span class="chip c-%s"><a href="/?label=%d"`, got.Labels[0].Color, work),
+	assertContains(t, rec.Body.String(), fmt.Sprintf(`<span class="chip" data-color="%s"><a href="/?label=%d"`, got.Labels[0].Color, work),
 		fmt.Sprintf(`hx-delete="/items/%d/labels/%d"`, a.ID, work), `id="toolbar"`)
 
 	// The list leaves out the item's labels; a new name makes a label.
@@ -130,7 +130,7 @@ func TestFilterByLabel(t *testing.T) {
 
 	body := do(t, env.H, "GET", fmt.Sprintf("/?label=%d", work), nil, nil).Body.String()
 	assertContains(t, body, "Invoice", `class="active-filter"`, `href="/" aria-label="Show all labels"`,
-		"1 open · 0 done", `New items get the label <span class="chip c-`)
+		"1 open · 0 done", `New items get the label <span class="chip" data-color=`)
 	assertNotContains(t, body, "Water the plants")
 
 	// An unknown or foreign label shows the full list.
@@ -224,27 +224,48 @@ func TestLabelsPage(t *testing.T) {
 
 	body := do(t, env.H, "GET", "/labels", nil, nil).Body.String()
 	assertContains(t, body, "<h1>Labels</h1>", ">work</span>", fmt.Sprintf(`href="/?label=%d">1 item</a>`, work),
-		fmt.Sprintf(`action="/labels/%d"`, work), `name="color" value="purple"`)
+		fmt.Sprintf(`action="/labels/%d"`, work))
+	// No fixed colors: a color button after the name opens the color wheel.
+	wl, _ := env.Svc.Label(context.Background(), env.User.ID, work)
+	assertContains(t, body,
+		fmt.Sprintf(`<span class="chip" data-color="%s">work</span>`, wl.Color),
+		fmt.Sprintf(`<button type="button" class="color-btn" data-color="%s" data-name="work" aria-label="Color of “work”"`, wl.Color),
+		fmt.Sprintf(`<input type="hidden" name="color" value="%s">`, wl.Color),
+		`id="color-picker"`, `class="wheel" role="slider"`, `/static/chips.js`, `/static/labels.js`)
+	if strings.Contains(body, "swatches") || strings.Contains(body, `type="radio"`) {
+		t.Fatal("the labels page still shows fixed colors")
+	}
+	if i := strings.Index(body, fmt.Sprintf(`id="label-name-%d"`, work)); i < 0 || !strings.Contains(body[i:strings.Index(body[i:], "</div>")+i], `class="color-btn"`) {
+		t.Fatal("the color button must come right after the name field")
+	}
 	assertContains(t, do(t, env.H, "GET", "/", nil, nil).Body.String(), `<a href="/labels">Labels</a>`)
 	assertContains(t, body, "click + on an item")
 
 	// Rename and recolor.
-	rec := do(t, env.H, "POST", fmt.Sprintf("/labels/%d", work), url.Values{"name": {"deep work"}, "color": {"purple"}}, nil)
+	rec := do(t, env.H, "POST", fmt.Sprintf("/labels/%d", work), url.Values{"name": {"deep work"}, "color": {"#6b44bb"}}, nil)
 	if rec.Code != http.StatusSeeOther || !strings.HasPrefix(rec.Header().Get("Location"), fmt.Sprintf("/labels?saved=%d", work)) {
 		t.Fatalf("save: %d %q", rec.Code, rec.Header().Get("Location"))
 	}
 	l, _ := env.Svc.Label(context.Background(), env.User.ID, work)
-	if l.Name != "deep work" || l.Color != "purple" {
+	if l.Name != "deep work" || l.Color != "#6b44bb" {
 		t.Fatalf("label = %+v", l)
 	}
 	assertContains(t, do(t, env.H, "GET", fmt.Sprintf("/labels?saved=%d", work), nil, nil).Body.String(), "Saved.")
 
 	// A name that is taken.
-	rec = do(t, env.H, "POST", fmt.Sprintf("/labels/%d", work), url.Values{"name": {"HOME"}, "color": {"red"}}, nil)
+	rec = do(t, env.H, "POST", fmt.Sprintf("/labels/%d", work), url.Values{"name": {"HOME"}, "color": {"#d1382e"}}, nil)
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("clash: %d, want 422", rec.Code)
 	}
-	assertContains(t, rec.Body.String(), "You already have a label “HOME”.", `value="HOME"`)
+	assertContains(t, rec.Body.String(), "You already have a label “HOME”.", `value="HOME"`,
+		`<input type="hidden" name="color" value="#d1382e">`)
+
+	// A color that is not #rrggbb.
+	rec = do(t, env.H, "POST", fmt.Sprintf("/labels/%d", work), url.Values{"name": {"deep work"}, "color": {"red"}}, nil)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("bad color: %d, want 422", rec.Code)
+	}
+	assertContains(t, rec.Body.String(), "Pick a color.", `<input type="hidden" name="color" value="#6b44bb">`)
 
 	// Delete asks first, then removes the label but keeps the item.
 	body = do(t, env.H, "GET", fmt.Sprintf("/labels?delete=%d", home), nil, nil).Body.String()
@@ -269,7 +290,7 @@ func TestLabelsOfAnotherUserCannotBeChanged(t *testing.T) {
 	b := addLabeled(t, env.Svc, bob.ID, "Bob's", "secret")
 	id := labelID(t, b, "secret")
 
-	do(t, env.H, "POST", fmt.Sprintf("/labels/%d", id), url.Values{"name": {"mine"}, "color": {"red"}}, nil)
+	do(t, env.H, "POST", fmt.Sprintf("/labels/%d", id), url.Values{"name": {"mine"}, "color": {"#d1382e"}}, nil)
 	do(t, env.H, "POST", fmt.Sprintf("/labels/%d/delete", id), url.Values{}, nil)
 	l, err := env.Svc.Label(ctx, bob.ID, id)
 	if err != nil || l.Name != "secret" {

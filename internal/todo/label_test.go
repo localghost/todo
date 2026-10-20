@@ -110,17 +110,22 @@ func TestUpdateLabelChecksNameAndColor(t *testing.T) {
 	it, _ := svc.AddItem(ctx, 1, todo.Input{Text: "A", Labels: "work"}, nil)
 	id := it.Labels[0].ID
 	for _, c := range []struct{ name, color string }{
-		{"  ", "red"},
-		{"a, b", "red"},
-		{strings.Repeat("x", 31), "red"},
-		{"ok", "pink"},
+		{"  ", "#d1382e"},
+		{"a, b", "#d1382e"},
+		{strings.Repeat("x", 31), "#d1382e"},
+		{"ok", "red"},
+		{"ok", "#d1382"},
+		{"ok", "#d1382e0"},
+		{"ok", "#g1382e"},
+		{"ok", "d1382e9"},
+		{"ok", ""},
 	} {
 		if _, err := svc.UpdateLabel(ctx, 1, id, c.name, c.color); !errors.Is(err, todo.ErrBadLabel) {
 			t.Errorf("UpdateLabel(%q, %q) err = %v, want ErrBadLabel", c.name, c.color, err)
 		}
 	}
-	l, err := svc.UpdateLabel(ctx, 1, id, "  deep   work ", "teal")
-	if err != nil || l.Name != "deep work" || l.Color != "teal" {
+	l, err := svc.UpdateLabel(ctx, 1, id, "  deep   work ", "#2ED1C8")
+	if err != nil || l.Name != "deep work" || l.Color != "#2ed1c8" {
 		t.Fatalf("UpdateLabel = %+v, %v", l, err)
 	}
 }
