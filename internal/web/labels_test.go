@@ -344,3 +344,15 @@ func TestLabelListScriptAndStyle(t *testing.T) {
 	css := do(t, env.H, "GET", "/static/app.css", nil, nil).Body.String()
 	assertContains(t, css, ".picker-x", ".picker-opt.asking", ".picker-color[hidden]")
 }
+
+// A label that is already gone (deleted in another tab) still answers with
+// the list section, so the page does not lose its items.
+func TestDeleteGoneLabelAnswersTheList(t *testing.T) {
+	env := newTestEnv(t)
+	addLabeled(t, env.Svc, env.User.ID, "Invoice", "work")
+	rec := do(t, env.H, "DELETE", "/labels/999", nil, htmxHeaders)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+	assertContains(t, rec.Body.String(), `id="list-section"`, ">work</a>")
+}

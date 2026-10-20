@@ -42,9 +42,11 @@ func (s *server) deleteLabel(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
+	// A label that is already gone (deleted in another tab) answers 404 with
+	// the list as it is now, so the page does not lose its items.
+	status := http.StatusOK
 	if err := s.svc.DeleteLabel(r.Context(), userID(r), id); errors.Is(err, todo.ErrNotFound) {
-		http.NotFound(w, r)
-		return
+		status = http.StatusNotFound
 	} else if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -59,7 +61,7 @@ func (s *server) deleteLabel(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	s.render(w, r, http.StatusOK, part{"list", lv})
+	s.render(w, r, status, part{"list", lv})
 }
 
 // pickerView loads the label list for item: all the user's labels, and the

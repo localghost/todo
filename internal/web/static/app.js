@@ -377,6 +377,7 @@ let picker = null; // the open pop-up
 let pickerButton = null; // its + or calendar icon
 let reopenFor = null; // the item whose label list stays open after the next swap
 let pickerBusy = false; // a label request is on its way; focus can leave for a moment
+let carrySearch = null; // the search field of a list that loads again
 let wheel = null; // the wheel of the open label list (wheel.js)
 let colorEdit = null; // { swatch, label, old } while the wheel view is open
 
@@ -425,6 +426,7 @@ function closePicker(refocus) {
   pickerButton = null;
   reopenFor = null;
   pickerBusy = false;
+  carrySearch = null;
   wheel = null;
 }
 
@@ -508,11 +510,18 @@ function filterPicker() {
 }
 
 // sendForList sends a label change. The answer replaces the row or the list
-// section; the htmx:afterSwap handler below keeps the list open.
+// section; the htmx:afterSwap handler below keeps the list open. The search
+// field gets empty at once, so what the user types next is a new search.
 function sendForList(method, url, options) {
   reopenFor = picker.dataset.item;
   pickerBusy = true;
-  htmx.ajax(method, url, options);
+  const input = picker.querySelector(".picker-search");
+  if (input) {
+    input.value = "";
+    filterPicker();
+  }
+  // A network error rejects the promise; htmx:afterRequest below handles it.
+  htmx.ajax(method, url, options).catch(() => {});
 }
 
 // toggleLabel adds the line's label to the item, or takes it off. The Create
@@ -619,9 +628,11 @@ function endColor(keep) {
 }
 
 function saveColor(edit, color) {
-  fetch("/labels/" + edit.label + "/color", { method: "PUT", body: new URLSearchParams({ color }) })
+  // HX-Request makes an ended session answer 401, not a redirect to the
+  // login page, which fetch would follow and see as a success.
+  fetch("/labels/" + edit.label + "/color", { method: "PUT", headers: { "HX-Request": "true" }, body: new URLSearchParams({ color }) })
     .then((res) => {
-      if (!res.ok) throw new Error("status " + res.status);
+      if (res.status !== 204) throw new Error("status " + res.status);
     })
     .catch(() => {
       paintLabel(edit, edit.old);
@@ -740,11 +751,17 @@ document.addEventListener("focusout", (e) => {
   }, 0);
 });
 
-// A request of the label list that failed: the list is not waiting any more.
+// A request of the label list that failed (also a network error, which has
+// no answer): the list is not waiting any more, and the focus goes back to
+// its search field.
 document.addEventListener("htmx:afterRequest", (e) => {
-  if (pickerBusy && e.detail.failed) {
+  if (pickerBusy && !e.detail.successful) {
     pickerBusy = false;
     reopenFor = null;
+    carrySearch = null;
+    if (picker && picker.isConnected) {
+      focusPicker();
+    }
   }
 });
 
@@ -764,15 +781,25 @@ document.addEventListener("htmx:afterSwap", () => {
     button.setAttribute("aria-expanded", "true");
     button.parentElement.append(picker);
     placePicker();
-    htmx.ajax("GET", button.dataset.picker, { target: picker, swap: "outerHTML" });
+    // Keys typed while the list loads again go to its search field, and
+    // from there to the new list.
+    const search = focusPicker();
+    carrySearch = search;
+    htmx.ajax("GET", button.dataset.picker, { target: picker, swap: "outerHTML" }).catch(() => {});
     return;
   }
   reopenFor = null;
   pickerBusy = false;
+  const typed = carrySearch ? carrySearch.value : "";
+  carrySearch = null;
   if (fresh) {
     picker = fresh;
     const input = installPicker();
     if (input && input.matches(".picker-search")) {
+      if (typed && !input.value) {
+        input.value = typed;
+        filterPicker();
+      }
       input.setSelectionRange(input.value.length, input.value.length);
     }
     return;
