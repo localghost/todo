@@ -1,5 +1,7 @@
 # Labels: the + on each item
 
+Note (2026-10-20): the list now shows all labels and stays open; see `2026-10-20-label-list-manage-design.md`.
+
 Status: approved and built (2026-10-14). Replaces the Labels field of `2026-10-14-labels-design.md`.
 Mockups: canvas "Todo app UI proposal", page "16 · Labels", the boards marked NEW.
 

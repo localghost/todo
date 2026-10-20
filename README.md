@@ -13,10 +13,10 @@ A small todo list for the browser. Everyone has their own account and their own 
 - Overdue items move to the top of the list.
 - Drag items by the grip (⋮⋮) to change their order, or use the arrow keys. Overdue items
   stay at the top.
-- Put labels such as "work" or "home" on items with the small + on each item, which opens a
-  searchable list of your labels; point at a label to remove it with its ×. Click a label to see
-  only its items. Rename or delete labels on the Labels page, and pick any color for them from
-  a color wheel.
+- Put labels such as "work" or "home" on items with the small + on each item. It opens a
+  searchable list of all your labels: click names to add or remove several labels, click a
+  label's color circle to pick any color from a color wheel, and use its × to delete it. Point
+  at a label on an item to remove it with its ×. Click a label to see only its items.
 - Times are shown in your browser's time zone.
 
 ## Run it yourself

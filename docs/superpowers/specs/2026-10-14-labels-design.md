@@ -1,5 +1,7 @@
 # Labels: design spec
 
+Note (2026-10-20): the Labels page is gone; see `2026-10-20-label-list-manage-design.md`.
+
 Date: 2026-10-14
 Status: approved and built
 Builds on: `2026-10-01-todo-app-design.md`, `2026-10-12-drag-order-design.md`

@@ -1,5 +1,7 @@
 # Labels page: a color wheel pop-up
 
+Note (2026-10-20): the Labels page is gone; see `2026-10-20-label-list-manage-design.md`.
+
 Date: 2026-10-20
 Status: approved and built (2026-10-20)
 Changes: `2026-10-14-labels-design.md` (the "Colour" row and the labels page)
