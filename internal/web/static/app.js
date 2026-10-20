@@ -362,19 +362,30 @@ document.addEventListener("htmx:oobAfterSwap", () => {
 });
 
 // 13. Pop-ups on a row: the label list under the + (canvas page "16 ·
-// Labels") and the due date pop-up under the calendar icon (canvas page
-// "10 · Due date"). Only one is open at a time. Esc or a click outside
-// closes it.
-// The label list has a search field. Typing narrows the list; a name that
-// matches no label offers "Create …". Choosing one adds that one label and
-// closes the list. Tab closes it.
-// The due date pop-up is a form: Enter saves, Tab moves inside it, and focus
-// that leaves it closes it without saving. The due text opens it too.
+// Labels", board "label list – several labels, color wheel, × deletes"; spec
+// 2026-10-20-label-list-manage-design.md) and the due date pop-up under the
+// calendar icon (canvas page "10 · Due date"). Only one is open at a time.
+// Esc, a click outside, or focus that leaves it closes it.
+// The label list shows all labels. A click on a name adds or takes off that
+// label; the server answers with the row, and the list moves into the new
+// row and loads again, so it stays open. Typing narrows the list; a name
+// that matches no label offers "Create …". A line's circle shows the color
+// wheel in the pop-up; the × asks, then deletes the label.
+// The due date pop-up is a form: Enter saves and Tab moves inside it. The
+// due text opens it too.
 let picker = null; // the open pop-up
 let pickerButton = null; // its + or calendar icon
+let reopenFor = null; // the item whose label list stays open after the next swap
+let pickerBusy = false; // a label request is on its way; focus can leave for a moment
+let wheel = null; // the wheel of the open label list (wheel.js)
+let colorEdit = null; // { swatch, label, old } while the wheel view is open
 
 function isDuePicker() {
   return picker !== null && picker.classList.contains("due-picker");
+}
+
+function isLabelPicker() {
+  return picker !== null && !isDuePicker();
 }
 
 // focusPicker puts the cursor in the first field of the pop-up: the search
@@ -401,6 +412,10 @@ function closePicker(refocus) {
   if (!picker) {
     return;
   }
+  if (colorEdit) {
+    paintLabel(colorEdit, colorEdit.old);
+    colorEdit = null;
+  }
   picker.remove();
   pickerButton.setAttribute("aria-expanded", "false");
   if (refocus && pickerButton.isConnected) {
@@ -408,6 +423,18 @@ function closePicker(refocus) {
   }
   picker = null;
   pickerButton = null;
+  reopenFor = null;
+  pickerBusy = false;
+  wheel = null;
+}
+
+// installPicker gets a pop-up that just came from the server ready.
+function installPicker() {
+  placePicker();
+  filterPicker();
+  const el = picker.querySelector(".wheel");
+  wheel = el ? makeWheel(el, previewColor) : null;
+  return focusPicker();
 }
 
 function openPicker(button) {
@@ -422,9 +449,7 @@ function openPicker(button) {
       return;
     }
     picker = box;
-    placePicker();
-    filterPicker();
-    focusPicker();
+    installPicker();
   });
 }
 
@@ -449,19 +474,9 @@ function placePicker() {
   picker.style.setProperty("--caret", (plus.left + plus.width / 2 - 8 - 6) + "px");
 }
 
-function pickerOptions() {
+// labelLines are the lines of the label list that the search shows.
+function labelLines() {
   return Array.from(picker.querySelectorAll(".picker-opt")).filter((o) => !o.hidden);
-}
-
-function setActive(option) {
-  const input = picker.querySelector(".picker-search");
-  picker.querySelectorAll(".picker-opt").forEach((o) => o.setAttribute("aria-selected", o === option ? "true" : "false"));
-  if (option) {
-    input.setAttribute("aria-activedescendant", option.id);
-    option.scrollIntoView({ block: "nearest" });
-  } else {
-    input.removeAttribute("aria-activedescendant");
-  }
 }
 
 function cleanName(v) {
@@ -475,7 +490,7 @@ function filterPicker() {
   }
   const typed = cleanName(input.value);
   const q = typed.toLowerCase();
-  const taken = (picker.dataset.taken || "").split(",").map((n) => n.trim().toLowerCase()).filter(Boolean);
+  const full = picker.dataset.full === "true";
   let exact = false;
   picker.querySelectorAll(".picker-opt:not(.picker-create)").forEach((o) => {
     const name = o.dataset.name.toLowerCase();
@@ -483,22 +498,136 @@ function filterPicker() {
     exact = exact || name === q;
   });
   const create = picker.querySelector(".picker-create");
-  create.hidden = q === "" || exact || taken.includes(q);
+  create.hidden = q === "" || exact || full;
   create.dataset.name = typed;
   create.querySelector(".picker-create-text").textContent = "Create “" + typed + "”";
-  const shown = pickerOptions();
+  create.querySelector(".sw").setAttribute("aria-label", "Color of the new label “" + typed + "”");
   const empty = picker.querySelector(".picker-empty");
-  empty.hidden = shown.length > 0;
-  empty.textContent = taken.includes(q) ? "“" + typed + "” is already on this item." : "Type a name to create a label.";
-  setActive(shown[0] || null);
+  empty.hidden = labelLines().length > 0;
+  empty.textContent = full ? "No label has this name." : "Type a name to create a label.";
 }
 
-function choose(option) {
+// sendForList sends a label change. The answer replaces the row or the list
+// section; the htmx:afterSwap handler below keeps the list open.
+function sendForList(method, url, options) {
+  reopenFor = picker.dataset.item;
+  pickerBusy = true;
+  htmx.ajax(method, url, options);
+}
+
+// toggleLabel adds the line's label to the item, or takes it off. The Create
+// line makes the label with the color of its circle.
+function toggleLabel(line) {
   const id = picker.dataset.item;
-  const name = option.dataset.name;
-  // The row comes back without the list; focus goes on at its + (section 1).
-  focusAfterSwap = "label-add-" + id;
-  htmx.ajax("POST", "/items/" + id + "/labels", { target: "#item-" + id, swap: "outerHTML", values: { name: name } });
+  const name = line.querySelector(".picker-name");
+  if (name.getAttribute("aria-disabled") === "true") {
+    return;
+  }
+  const row = { target: "#item-" + id, swap: "outerHTML" };
+  if (line.classList.contains("picker-create")) {
+    sendForList("POST", "/items/" + id + "/labels", { ...row, values: { name: line.dataset.name, color: picker.dataset.newColor } });
+  } else if (name.getAttribute("aria-pressed") === "true") {
+    sendForList("DELETE", "/items/" + id + "/labels/" + line.dataset.label, row);
+  } else {
+    sendForList("POST", "/items/" + id + "/labels", { ...row, values: { name: line.dataset.name } });
+  }
+}
+
+function smallButton(text, cls, data) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = cls;
+  b.setAttribute(data, "");
+  b.textContent = text;
+  return b;
+}
+
+// askDelete turns a line into the question whether to delete its label.
+function askDelete(line) {
+  const n = Number(line.dataset.items);
+  const p = document.createElement("p");
+  p.textContent = "Delete “" + line.dataset.name + "”? " +
+    (n === 0 ? "No items use it." : "It comes off " + n + (n === 1 ? " item" : " items") + ". The items stay.");
+  const yes = smallButton("Delete", "btn-small danger-solid", "data-ask-delete");
+  const buttons = document.createElement("div");
+  buttons.className = "confirm-buttons";
+  buttons.append(yes, smallButton("Cancel", "btn-small", "data-ask-cancel"));
+  const ask = document.createElement("div");
+  ask.className = "picker-ask";
+  ask.setAttribute("role", "alert");
+  ask.append(p, buttons);
+  line.classList.add("asking");
+  line.append(ask);
+  yes.focus();
+}
+
+function closeAsk(line) {
+  line.classList.remove("asking");
+  line.querySelector(".picker-ask").remove();
+  line.querySelector(".picker-x").focus();
+}
+
+// paintLabel shows color on all chips and circles of the edited label, or on
+// the circle of the new label.
+function paintLabel(edit, color) {
+  if (edit.label) {
+    document.querySelectorAll('[data-label="' + edit.label + '"][data-color]').forEach((el) => { el.dataset.color = color; });
+  } else {
+    edit.swatch.dataset.color = color;
+  }
+}
+
+function previewColor(color) {
+  if (!colorEdit) {
+    return;
+  }
+  picker.querySelector(".picker-color .chip").dataset.color = color;
+  paintLabel(colorEdit, color);
+}
+
+// openColor shows the wheel in place of the list.
+function openColor(swatch, line) {
+  const isNew = line.classList.contains("picker-create");
+  colorEdit = { swatch, label: isNew ? "" : line.dataset.label, old: swatch.dataset.color };
+  const view = picker.querySelector(".picker-color");
+  view.querySelector(".picker-color-title").textContent =
+    (isNew ? "Color of the new label “" : "Color of “") + line.dataset.name + "”";
+  const chip = view.querySelector(".chip");
+  chip.textContent = line.dataset.name;
+  chip.dataset.color = colorEdit.old;
+  picker.querySelector(".picker-main").hidden = true;
+  view.hidden = false;
+  wheel.set(colorEdit.old);
+  view.querySelector(".wheel").focus();
+}
+
+// endColor goes back to the list. keep saves the color: a label's color at
+// once, the new label's color when the label is created.
+function endColor(keep) {
+  const edit = colorEdit;
+  colorEdit = null;
+  const color = keep ? wheel.color() : edit.old;
+  paintLabel(edit, color);
+  if (!edit.label) {
+    picker.dataset.newColor = color;
+  } else if (keep && color !== edit.old) {
+    saveColor(edit, color);
+  }
+  picker.querySelector(".picker-color").hidden = true;
+  picker.querySelector(".picker-main").hidden = false;
+  edit.swatch.focus();
+}
+
+function saveColor(edit, color) {
+  fetch("/labels/" + edit.label + "/color", { method: "PUT", body: new URLSearchParams({ color }) })
+    .then((res) => {
+      if (!res.ok) throw new Error("status " + res.status);
+    })
+    .catch(() => {
+      paintLabel(edit, edit.old);
+      const line = document.getElementById("error");
+      if (line) line.textContent = "The color was not saved. Try again.";
+    });
 }
 
 document.addEventListener("click", (e) => {
@@ -511,10 +640,18 @@ document.addEventListener("click", (e) => {
     }
     return;
   }
-  const option = e.target.closest && e.target.closest(".picker-opt");
-  if (option && picker && picker.contains(option)) {
-    choose(option);
+  if (!isLabelPicker() || !picker.contains(e.target) || pickerBusy) {
+    return;
   }
+  const line = e.target.closest(".picker-opt");
+  if (e.target.closest("[data-color-done]")) endColor(true);
+  else if (e.target.closest("[data-color-cancel]")) endColor(false);
+  else if (!line) return;
+  else if (e.target.closest("[data-ask-delete]")) sendForList("DELETE", "/labels/" + line.dataset.label, { target: "#list-section", swap: "outerHTML" });
+  else if (e.target.closest("[data-ask-cancel]")) closeAsk(line);
+  else if (e.target.closest(".picker-x")) askDelete(line);
+  else if (e.target.closest(".sw")) openColor(e.target.closest(".sw"), line);
+  else if (e.target.closest(".picker-name")) toggleLabel(line);
 });
 
 // A press in a pop-up must not take the focus out of its field; a press on
@@ -544,29 +681,37 @@ document.addEventListener("input", (e) => {
   }
 });
 
+// Keys in the label list: ↓ goes from the search field to the names, ↑ ↓
+// move between names, Enter in the search field picks the first line. In
+// the wheel view Enter is Done and Esc is Cancel; elsewhere Esc closes the
+// question or the list.
 document.addEventListener("keydown", (e) => {
-  if (!picker || isDuePicker() || !picker.contains(e.target)) {
+  if (!isLabelPicker() || !picker.contains(e.target)) {
     return;
   }
-  const shown = pickerOptions();
-  const active = shown.find((o) => o.getAttribute("aria-selected") === "true");
-  const at = shown.indexOf(active);
-  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-    e.preventDefault();
-    if (shown.length) {
-      const step = e.key === "ArrowDown" ? 1 : -1;
-      setActive(shown[(at + step + shown.length) % shown.length]);
+  if (colorEdit) {
+    if (e.key === "Escape" || (e.key === "Enter" && e.target.matches(".wheel"))) {
+      e.preventDefault();
+      endColor(e.key === "Enter");
     }
-  } else if (e.key === "Enter") {
+    return;
+  }
+  if (e.key === "Escape") {
     e.preventDefault();
-    if (active && !e.isComposing) {
-      choose(active);
-    }
-  } else if (e.key === "Escape") {
+    const asking = e.target.closest(".picker-opt.asking");
+    if (asking) closeAsk(asking);
+    else closePicker(true);
+    return;
+  }
+  const names = labelLines().map((l) => l.querySelector(".picker-name"));
+  if ((e.key === "ArrowDown" || e.key === "ArrowUp") && e.target.matches(".picker-search, .picker-name")) {
     e.preventDefault();
-    closePicker(true);
-  } else if (e.key === "Tab") {
-    closePicker(false);
+    const at = names.indexOf(e.target) + (e.key === "ArrowDown" ? 1 : -1);
+    if (at < 0) picker.querySelector(".picker-search").focus();
+    else if (names.length) names[Math.min(at, names.length - 1)].focus();
+  } else if (e.key === "Enter" && e.target.matches(".picker-search")) {
+    e.preventDefault();
+    if (names.length && !e.isComposing && !pickerBusy) toggleLabel(names[0].closest(".picker-opt"));
   }
 });
 
@@ -578,32 +723,55 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// Focus that leaves the due date pop-up closes it without saving. The
-// decision waits one tick, as for an edit row (section 2).
+// Focus that leaves a pop-up closes it (the due date pop-up without
+// saving). The decision waits one tick, as for an edit row (section 2).
+// While a label request is on its way, the list is moved to a new row and
+// the focus is lost for a moment: that does not close it.
 document.addEventListener("focusout", (e) => {
-  if (!isDuePicker() || !picker.contains(e.target)) {
+  if (!picker || !picker.contains(e.target)) {
     return;
   }
   const box = picker;
   setTimeout(() => {
-    if (picker === box && !box.contains(document.activeElement)) {
+    const now = document.activeElement;
+    if (picker === box && !pickerBusy && !box.contains(now) && now !== pickerButton) {
       closePicker(false);
     }
   }, 0);
 });
 
+// A request of the label list that failed: the list is not waiting any more.
+document.addEventListener("htmx:afterRequest", (e) => {
+  if (pickerBusy && e.detail.failed) {
+    pickerBusy = false;
+    reopenFor = null;
+  }
+});
+
 // The pop-up belongs to the row: a swap of the row closes it. An error
-// answer replaces only the pop-up (HX-Retarget): go on in the new one.
+// answer replaces only the pop-up (HX-Retarget): go on in the new one. After
+// a label change the row (or the list) comes back: the old list moves into
+// the new row and loads again, so it stays open.
 document.addEventListener("htmx:afterSwap", () => {
   if (!picker || picker.isConnected) {
     return;
   }
   const fresh = pickerButton.isConnected && pickerButton.parentElement.querySelector(".picker");
+  const button = !fresh && reopenFor && document.getElementById("label-add-" + reopenFor);
+  if (button) {
+    reopenFor = null;
+    pickerButton = button;
+    button.setAttribute("aria-expanded", "true");
+    button.parentElement.append(picker);
+    placePicker();
+    htmx.ajax("GET", button.dataset.picker, { target: picker, swap: "outerHTML" });
+    return;
+  }
+  reopenFor = null;
+  pickerBusy = false;
   if (fresh) {
     picker = fresh;
-    placePicker();
-    filterPicker();
-    const input = focusPicker();
+    const input = installPicker();
     if (input && input.matches(".picker-search")) {
       input.setSelectionRange(input.value.length, input.value.length);
     }
@@ -614,6 +782,7 @@ document.addEventListener("htmx:afterSwap", () => {
   }
   picker = null;
   pickerButton = null;
+  wheel = null;
 });
 
 // 14. The due time field (canvas page "12 · 24-hour time", "type digits

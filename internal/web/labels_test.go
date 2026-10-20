@@ -335,3 +335,12 @@ func TestFiftyLabelsMessageNamesTheX(t *testing.T) {
 	assertContains(t, rec.Body.String(), "You have 50 labels. Delete one first (× on its line).")
 	assertNotContains(t, rec.Body.String(), "Labels page")
 }
+
+func TestLabelListScriptAndStyle(t *testing.T) {
+	env := newTestEnv(t)
+	js := do(t, env.H, "GET", "/static/app.js", nil, nil).Body.String()
+	assertContains(t, js, "reopenFor", "makeWheel(", `"/labels/" + edit.label + "/color"`, "askDelete(", "No items use it.")
+	assertNotContains(t, js, "aria-activedescendant", "data-taken")
+	css := do(t, env.H, "GET", "/static/app.css", nil, nil).Body.String()
+	assertContains(t, css, ".picker-x", ".picker-opt.asking", ".picker-color[hidden]")
+}
