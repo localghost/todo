@@ -223,29 +223,16 @@ func TestLabelsOfOtherUsersItems(t *testing.T) {
 	}
 }
 
-func TestLabelsPage(t *testing.T) {
+func TestLabelsPageIsGone(t *testing.T) {
 	env := newTestEnv(t)
-	a := addLabeled(t, env.Svc, env.User.ID, "Invoice", "work, home")
-	work := labelID(t, a, "work")
-
-	body := do(t, env.H, "GET", "/labels", nil, nil).Body.String()
-	assertContains(t, body, "<h1>Labels</h1>", ">work</span>", fmt.Sprintf(`href="/?label=%d">1 item</a>`, work),
-		fmt.Sprintf(`action="/labels/%d"`, work))
-	// No fixed colors: a color button after the name opens the color wheel.
-	wl, _ := env.Svc.Label(context.Background(), env.User.ID, work)
-	assertContains(t, body,
-		fmt.Sprintf(`<span class="chip" data-color="%s">work</span>`, wl.Color),
-		fmt.Sprintf(`<button type="button" class="color-btn" data-color="%s" data-name="work" aria-label="Color of “work”"`, wl.Color),
-		fmt.Sprintf(`<input type="hidden" name="color" value="%s">`, wl.Color),
-		`id="color-picker"`, `class="wheel" role="slider"`, `/static/chips.js`, `/static/labels.js`)
-	if strings.Contains(body, "swatches") || strings.Contains(body, `type="radio"`) {
-		t.Fatal("the labels page still shows fixed colors")
+	rec := do(t, env.H, "GET", "/labels", nil, nil)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/" {
+		t.Fatalf("GET /labels: %d %q, want 303 to /", rec.Code, rec.Header().Get("Location"))
 	}
-	if i := strings.Index(body, fmt.Sprintf(`id="label-name-%d"`, work)); i < 0 || !strings.Contains(body[i:strings.Index(body[i:], "</div>")+i], `class="color-btn"`) {
-		t.Fatal("the color button must come right after the name field")
+	assertNotContains(t, do(t, env.H, "GET", "/", nil, nil).Body.String(), `href="/labels"`)
+	if rec := do(t, env.H, "GET", "/static/labels.js", nil, nil); rec.Code != http.StatusNotFound {
+		t.Fatalf("labels.js: %d, want 404", rec.Code)
 	}
-	assertContains(t, do(t, env.H, "GET", "/", nil, nil).Body.String(), `<a href="/labels">Labels</a>`)
-	assertContains(t, body, "click + on an item")
 }
 
 func TestLabelsOfAnotherUserCannotBeChanged(t *testing.T) {
@@ -270,9 +257,9 @@ func TestLabelsOfAnotherUserCannotBeChanged(t *testing.T) {
 
 func TestLabelNamesAreEscaped(t *testing.T) {
 	env := newTestEnv(t)
-	addLabeled(t, env.Svc, env.User.ID, "X", `<b>bold</b>`)
-	for _, path := range []string{"/", "/labels"} {
-		body := do(t, env.H, "GET", path, nil, nil).Body.String()
+	it := addLabeled(t, env.Svc, env.User.ID, "X", `<b>bold</b>`)
+	for _, path := range []string{"/", fmt.Sprintf("/items/%d/labels", it.ID)} {
+		body := do(t, env.H, "GET", path, nil, htmxHeaders).Body.String()
 		assertContains(t, body, "&lt;b&gt;bold&lt;/b&gt;")
 		assertNotContains(t, body, "<b>bold</b>")
 	}
