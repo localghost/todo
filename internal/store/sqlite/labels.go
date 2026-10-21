@@ -133,3 +133,62 @@ func (s *Store) SetLabelColor(ctx context.Context, userID, id int64, color strin
 func (s *Store) DeleteLabel(ctx context.Context, userID, id int64) error {
 	return s.update(ctx, `DELETE FROM labels WHERE id = ? AND user_id = ?`, id, userID)
 }
+
+// AddItemLabel puts label name on an item in one transaction, with the
+// 5-per-item check inside it (code review 3).
+func (s *Store) AddItemLabel(ctx context.Context, userID, itemID int64, name string, now time.Time) (todo.Item, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return todo.Item{}, fmt.Errorf("add label: %w", err)
+	}
+	defer tx.Rollback()
+	if err := touchItem(ctx, tx, userID, itemID, now); err != nil {
+		return todo.Item{}, err
+	}
+	var has, count int
+	if err := tx.QueryRowContext(ctx,
+		`SELECT COALESCE(SUM(l.name = ?), 0), COUNT(*) FROM item_labels il JOIN labels l ON l.id = il.label_id WHERE il.item_id = ?`,
+		name, itemID).Scan(&has, &count); err != nil {
+		return todo.Item{}, fmt.Errorf("add label: %w", err)
+	}
+	if has > 0 {
+		// Nothing to change. End the transaction first: it holds the only
+		// connection, and Get needs it.
+		tx.Rollback()
+		return s.Get(ctx, userID, itemID)
+	}
+	if count >= todo.MaxLabelsPerItem {
+		return todo.Item{}, todo.ErrItemLabelsFull
+	}
+	if err := setItemLabels(ctx, tx, userID, itemID, []string{name}, now); err != nil {
+		return todo.Item{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return todo.Item{}, fmt.Errorf("add label: %w", err)
+	}
+	return s.Get(ctx, userID, itemID)
+}
+
+// RemoveItemLabel takes one label off an item in one transaction.
+func (s *Store) RemoveItemLabel(ctx context.Context, userID, itemID, labelID int64, now time.Time) (todo.Item, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return todo.Item{}, fmt.Errorf("remove label: %w", err)
+	}
+	defer tx.Rollback()
+	if err := touchItem(ctx, tx, userID, itemID, now); err != nil {
+		return todo.Item{}, err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM item_labels WHERE item_id = ? AND label_id = ?`, itemID, labelID); err != nil {
+		return todo.Item{}, fmt.Errorf("remove label: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return todo.Item{}, fmt.Errorf("remove label: %w", err)
+	}
+	return s.Get(ctx, userID, itemID)
+}
+
+// touchItem sets updated_at of the user's item, or returns todo.ErrNotFound.
+func touchItem(ctx context.Context, tx *sql.Tx, userID, itemID int64, now time.Time) error {
+	return updateOne(ctx, tx, `UPDATE items SET updated_at = ? WHERE id = ? AND user_id = ?`, formatTime(now), itemID, userID)
+}

@@ -50,7 +50,8 @@ type server struct {
 	tokens         *guard.Tokens
 	signupTry      *guard.Limiter // sign-up attempts per IP
 	signupNew      *guard.Limiter // new accounts per IP
-	loginUser      *guard.Limiter // wrong passwords per lowercase username
+	loginUserIP    *guard.Limiter // wrong passwords per lowercase username and IP
+	loginUser      *guard.Limiter // wrong passwords per lowercase username, from all IPs
 	loginIP        *guard.Limiter // failed logins per IP
 	passwordUser   *guard.Limiter // wrong current passwords per user ID ("Change password")
 }
@@ -92,7 +93,10 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Op
 	s.tokens = guard.NewTokens(s.signingKey, s.now)
 	s.signupTry = guard.NewLimiter(30, time.Hour, s.now)
 	s.signupNew = guard.NewLimiter(5, time.Hour, s.now)
-	s.loginUser = guard.NewLimiter(5, 15*time.Minute, s.now)
+	// One IP can block a username only for itself; a lock for everyone needs
+	// 50 wrong passwords, from at least 10 IPs (code review 6).
+	s.loginUserIP = guard.NewLimiter(5, 15*time.Minute, s.now)
+	s.loginUser = guard.NewLimiter(50, 15*time.Minute, s.now)
 	s.loginIP = guard.NewLimiter(20, 15*time.Minute, s.now)
 	s.passwordUser = guard.NewLimiter(5, 15*time.Minute, s.now)
 	tmpl, err := template.New("").Funcs(s.zoneFuncs(time.UTC)).ParseFS(templateFS, "templates/*.html")
@@ -210,6 +214,11 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("Content-Security-Policy", contentSecurityPolicy)
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "same-origin")
+		// HTTPS only from now on (code review 8). Fly's proxy ends TLS and sets
+		// X-Forwarded-Proto; browsers ignore this header on plain HTTP anyway.
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			h.Set("Strict-Transport-Security", "max-age=31536000")
+		}
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/static/"):
 		case r.URL.Path == "/guide" || strings.HasPrefix(r.URL.Path, "/guide-images/"):

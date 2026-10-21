@@ -141,7 +141,8 @@ func (s *Service) Toggle(ctx context.Context, userID, id int64) (Item, error) {
 	return s.store.SetDone(ctx, userID, id, !it.Done, s.now())
 }
 
-// SetDone marks an item done or not done.
+// SetDone marks the item done or not done. Unlike Toggle, sending it twice
+// gives the same result, so a stale tab cannot undo a change.
 func (s *Service) SetDone(ctx context.Context, userID, id int64, done bool) (Item, error) {
 	return s.store.SetDone(ctx, userID, id, done, s.now())
 }

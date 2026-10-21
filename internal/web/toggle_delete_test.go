@@ -85,3 +85,18 @@ func TestDeleteUnknownItem(t *testing.T) {
 		t.Fatalf("status = %d, want 404", rec.Code)
 	}
 }
+
+// The checkbox sends the state the user wants, so a stale tab cannot undo
+// a change: "Mark done" twice leaves the item done (code review 4).
+func TestCheckboxSendsTheWantedState(t *testing.T) {
+	h, s := newTestApp(t)
+	mustAdd(t, s, "Buy milk")
+	body := do(t, h, "GET", "/", nil, nil).Body.String()
+	assertContains(t, body, `hx-post="/items/1/toggle" hx-vals='{"done":"1"}'`)
+	done := url.Values{"done": {"1"}}
+	do(t, h, "POST", "/items/1/toggle", done, htmxHeaders)
+	body = do(t, h, "POST", "/items/1/toggle", done, htmxHeaders).Body.String()
+	assertContains(t, body, `<li id="item-1" class="item done">`, "0 open · 1 done", `hx-vals='{"done":"0"}'`)
+	body = do(t, h, "POST", "/items/1/toggle", url.Values{"done": {"0"}}, htmxHeaders).Body.String()
+	assertContains(t, body, `<li id="item-1" class="item">`, "1 open · 0 done")
+}

@@ -125,20 +125,23 @@ func TestAPILogin(t *testing.T) {
 func TestAPILoginWrongPasswordAndLimit(t *testing.T) {
 	env := newTestEnv(t)
 	env.Auth.SignUp(context.Background(), "alice", pw)
+	// 5 wrong passwords block the username for that IP only (code review 6).
+	phone := fromIP("203.0.113.1")
 	for i := 0; i < 5; i++ {
-		rec := apiDo(t, env, "POST", "/api/v1/login", "", `{"username":"alice","password":"wrong password"}`,
-			fromIP("203.0.113."+strconv.Itoa(i+1)))
+		rec := apiDo(t, env, "POST", "/api/v1/login", "", `{"username":"alice","password":"wrong password"}`, phone)
 		wantError(t, rec, http.StatusUnauthorized, "bad_login")
 	}
-	rec := apiDo(t, env, "POST", "/api/v1/login", "", `{"username":"alice","password":"`+pw+`"}`, fromIP("203.0.113.99"))
+	rec := apiDo(t, env, "POST", "/api/v1/login", "", `{"username":"alice","password":"`+pw+`"}`, phone)
 	wantError(t, rec, http.StatusTooManyRequests, "locked")
 	if rec.Header().Get("Retry-After") == "" {
 		t.Error("no Retry-After header")
 	}
 	// The web log-in shares the limit.
-	if code := login(t, env, "alice", pw, fromIP("203.0.113.98")); code != http.StatusTooManyRequests {
+	if code := login(t, env, "alice", pw, phone); code != http.StatusTooManyRequests {
 		t.Fatalf("web log-in after 5 wrong API tries: %d, want 429", code)
 	}
+	// Another IP still logs in.
+	wantStatus(t, apiDo(t, env, "POST", "/api/v1/login", "", `{"username":"alice","password":"`+pw+`"}`, fromIP("198.51.100.7")), http.StatusOK)
 }
 
 func TestAPIBadJSON(t *testing.T) {

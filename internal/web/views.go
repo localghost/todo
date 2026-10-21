@@ -22,6 +22,9 @@ type listView struct {
 	// overdue (0: none); app.js refreshes the list then.
 	NextOverdue int64
 	Filter      *todo.Label // the list shows only items with this label
+	// Ask shows the question of "Clear done" open; Changed adds that the
+	// number of done items changed since the last question (code review 7).
+	Ask, Changed bool
 }
 
 // formView is the data for the add form.

@@ -93,10 +93,16 @@ func (s *server) checkLogin(r *http.Request, username, password string, persiste
 	// A name that breaks the rules cannot exist: it gets no counter, so junk
 	// names cannot fill the limiter's memory.
 	countUser := auth.ValidateUsername(userKey) == nil
-	var userTicket guard.Ticket
+	var pairTicket, userTicket guard.Ticket
 	if countUser {
+		if pairTicket, ok = s.loginUserIP.Reserve(userKey + "|" + ip); !ok {
+			s.loginIP.Release(ipTicket)
+			s.log.Info("login blocked", "ip", ip, "reason", "username and IP limit")
+			return "", auth.Session{}, errLoginLocked
+		}
 		if userTicket, ok = s.loginUser.Reserve(userKey); !ok {
 			s.loginIP.Release(ipTicket)
+			s.loginUserIP.Release(pairTicket)
 			s.log.Info("login blocked", "ip", ip, "reason", "username limit")
 			return "", auth.Session{}, errLoginLocked
 		}
@@ -107,6 +113,7 @@ func (s *server) checkLogin(r *http.Request, username, password string, persiste
 	}
 	s.loginIP.Release(ipTicket)
 	if countUser {
+		s.loginUserIP.Release(pairTicket)
 		s.loginUser.Release(userTicket)
 	}
 	return token, sess, err

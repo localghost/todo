@@ -13,15 +13,15 @@
 <span class="active-filter">Label: <span class="chip" data-color="{{.Color}}" data-label="{{.ID}}">{{.Name}}</span><a class="clear-filter" href="/" aria-label="Show all labels" title="Show all labels">{{template "x-icon"}}</a></span>{{end}}</div>
 <div class="toolbar-right"><button class="filter" type="button" aria-pressed="{{.HideDone}}"
   hx-post="/settings/hide-done" {{if .HideDone}}hx-vals='{"hide_done":"0"}'{{else}}hx-vals='{"hide_done":"1"}'{{end}} hx-target="#list-section" hx-swap="outerHTML">{{if .HideDone}}Show done ({{.Done}}){{else}}Hide done ({{.Done}}){{end}}</button>{{if .Done}}
-<button class="filter clear-done" type="button" aria-controls="clear-confirm" aria-expanded="false" hx-get="/items/done/clear" hx-target="#clear-confirm">Clear done ({{.Done}})</button>{{end}}</div>
+<button class="filter clear-done" type="button" aria-controls="clear-confirm" aria-expanded="{{.Ask}}" hx-get="/items/done/clear" hx-target="#clear-confirm">Clear done ({{.Done}})</button>{{end}}</div>
 </div>{{end}}
 
 {{/* The question of "Clear done" (canvas page "3 · Done hidden"). The slot
      is swapped with the toolbar, so a row change closes an open question. */}}
-{{define "clear-confirm-slot"}}<div id="clear-confirm"{{if .OOB}} hx-swap-oob="true"{{end}}></div>{{end}}
+{{define "clear-confirm-slot"}}<div id="clear-confirm"{{if .OOB}} hx-swap-oob="true"{{end}}>{{if .Ask}}{{template "clear-confirm" .}}{{end}}</div>{{end}}
 
-{{define "clear-confirm"}}{{if .Done}}<div class="confirm clear-confirm" role="alert"><p>Delete {{if eq .Done 1}}1 done item{{else}}{{.Done}} done items{{end}}{{with .Filter}} with the label “{{.Name}}”{{end}}? You cannot undo this.</p>
-<div class="confirm-buttons"><button type="button" class="btn-small danger-solid" hx-post="/items/done/delete" hx-target="#list-section" hx-swap="outerHTML" autofocus>Delete {{if eq .Done 1}}1 item{{else}}{{.Done}} items{{end}}</button><button type="button" class="btn-small clear-cancel">Cancel</button></div></div>{{end}}{{end}}
+{{define "clear-confirm"}}{{if .Done}}<div class="confirm clear-confirm" role="alert"><p>{{if .Changed}}The number of done items changed. {{end}}Delete {{if eq .Done 1}}1 done item{{else}}{{.Done}} done items{{end}}{{with .Filter}} with the label “{{.Name}}”{{end}}? You cannot undo this.</p>
+<div class="confirm-buttons"><button type="button" class="btn-small danger-solid" hx-post="/items/done/delete" hx-vals='{"count":"{{.Done}}"}' hx-target="#list-section" hx-swap="outerHTML" autofocus>Delete {{if eq .Done 1}}1 item{{else}}{{.Done}} items{{end}}</button><button type="button" class="btn-small clear-cancel">Cancel</button></div></div>{{end}}{{end}}
 
 {{define "empty"}}<div id="empty-state"{{if .OOB}} hx-swap-oob="true"{{end}}>{{if not .Items}}{{if and .Filter (eq .Total 0)}}<p class="empty-title">No items with this label</p><p class="empty-hint">Add one above. It gets the label automatically.</p>{{else if eq .Total 0}}<p class="empty-title">No items yet</p><p class="empty-hint">Type a task above and press Enter.</p>{{else}}<p class="empty-title">All done</p><p class="empty-hint">Done items are hidden. Use “Show done” to see them.</p>{{end}}{{end}}</div>{{end}}
 

@@ -67,7 +67,9 @@ add field.
 
 - **Hide done** hides the done items. **Show done** shows them again. The app remembers your
   choice.
-- **Clear done** deletes all done items. The app asks first, because you cannot undo it.
+- **Clear done** deletes all done items. The app asks first, because you cannot undo it. If the
+  number of done items changes before you click **Delete** (for example in another tab), the
+  app deletes nothing and asks again with the new number.
 
 ![The question of Clear done](guide-images/clear-done.png)
 
