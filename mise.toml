@@ -72,3 +72,15 @@ run = "fly volumes snapshots list \"$(fly volumes list --json | jq -r '.[] | sel
 [tasks."guide:shots"]
 description = "Make the screenshots of the user guide again (needs Node and headless Chromium)"
 run = "tools/guide-shots/run.sh"
+
+# The Android app (android/, spec docs/superpowers/specs/2026-10-21-android-app-design.md).
+# Needs Java 17+ and the Android SDK (ANDROID_HOME, or android/local.properties).
+[tasks."android:test"]
+description = "Run the Android app's unit tests"
+dir = "android"
+run = "./gradlew test"
+
+[tasks."android:build"]
+description = "Build the Android app (a debug APK in android/app/build/outputs/apk/debug/)"
+dir = "android"
+run = "./gradlew assembleDebug"

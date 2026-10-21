@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose draws everything; this only colors the window while the app starts. -->
+    <style name="Theme.TooDoo" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

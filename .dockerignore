@@ -13,3 +13,4 @@ tmp
 *.db-shm
 fly.toml
 mise.toml
+android
