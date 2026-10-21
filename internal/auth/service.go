@@ -21,6 +21,9 @@ const (
 	// MaxSessionsPerUser is how many sessions one user keeps; a new session
 	// ends the oldest one (code review 1).
 	MaxSessionsPerUser = 20
+	// RenewBelow: an app token with less than this left lives LongSession
+	// from now again when it is used (spec 2026-10-21-android-app-design.md).
+	RenewBelow = LongSession / 2
 )
 
 // Service holds the account and session rules.
@@ -125,6 +128,23 @@ func (s *Service) Authenticate(ctx context.Context, token string) (User, Session
 	}
 	sess, u, err := s.store.SessionUser(ctx, HashToken(token), s.now())
 	return u, sess, err
+}
+
+// AuthenticateApp is Authenticate for the Android app's bearer tokens. A
+// persistent session that is used with less than RenewBelow left is renewed,
+// so the app stays logged in while it is used.
+func (s *Service) AuthenticateApp(ctx context.Context, token string) (User, Session, error) {
+	u, sess, err := s.Authenticate(ctx, token)
+	if err != nil {
+		return User{}, Session{}, err
+	}
+	if now := s.now(); sess.Persistent && sess.ExpiresAt.Sub(now) < RenewBelow {
+		sess.ExpiresAt = now.Add(LongSession)
+		if err := s.store.ExtendSession(ctx, sess.TokenHash, sess.ExpiresAt); err != nil {
+			return User{}, Session{}, err
+		}
+	}
+	return u, sess, nil
 }
 
 // LogOut ends the session of token.

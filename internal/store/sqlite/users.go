@@ -148,6 +148,15 @@ func (s *Store) DeleteSession(ctx context.Context, tokenHash string) error {
 	return nil
 }
 
+// ExtendSession sets a new end time for a session.
+func (s *Store) ExtendSession(ctx context.Context, tokenHash string, expiresAt time.Time) error {
+	if _, err := s.db.ExecContext(ctx, `UPDATE sessions SET expires_at = ? WHERE token_hash = ?`,
+		fixedTime(expiresAt), tokenHash); err != nil {
+		return fmt.Errorf("extend session: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) DeleteExpiredSessions(ctx context.Context, now time.Time) (int64, error) {
 	res, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at <= ?`, fixedTime(now))
 	if err != nil {

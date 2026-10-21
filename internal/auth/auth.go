@@ -59,5 +59,6 @@ type Store interface {
 	CreateSession(ctx context.Context, s Session) error
 	SessionUser(ctx context.Context, tokenHash string, now time.Time) (Session, User, error) // ErrNoSession if unknown or expired
 	DeleteSession(ctx context.Context, tokenHash string) error
+	ExtendSession(ctx context.Context, tokenHash string, expiresAt time.Time) error
 	DeleteExpiredSessions(ctx context.Context, now time.Time) (int64, error)
 }

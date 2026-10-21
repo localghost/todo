@@ -53,17 +53,42 @@ const serverBusy = "The server is busy. Please try again in a moment."
 
 func (s *server) login(w http.ResponseWriter, r *http.Request) {
 	username := r.PostFormValue("username")
+	token, sess, err := s.checkLogin(r, username, r.PostFormValue("password"), r.PostFormValue("keep") == "1")
+	switch {
+	case errors.Is(err, errLoginLocked):
+		s.render(w, r, http.StatusTooManyRequests, part{"login", loginView{Username: username, Error: loginLocked}})
+		return
+	case errors.Is(err, auth.ErrBadLogin):
+		s.render(w, r, http.StatusUnprocessableEntity, part{"login", loginView{Username: username, Error: "Wrong username or password."}})
+		return
+	case errors.Is(err, auth.ErrBusy):
+		s.render(w, r, http.StatusServiceUnavailable, part{"login", loginView{Username: username, Error: serverBusy}})
+		return
+	case err != nil:
+		s.serverError(w, r, err)
+		return
+	}
+	if err := s.accounts.LogOut(r.Context(), sessionToken(r)); err != nil {
+		s.log.Error("end previous session", "err", err)
+	}
+	setSessionCookie(w, token, sess)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// errLoginLocked means too many wrong log-ins from this address or for this name.
+var errLoginLocked = errors.New("web: log-in locked")
+
+// checkLogin checks a username and password under the log-in limits and
+// starts a session. It returns errLoginLocked, auth.ErrBadLogin, auth.ErrBusy,
+// or another error. The web page and the app API both use it.
+func (s *server) checkLogin(r *http.Request, username, password string, persistent bool) (string, auth.Session, error) {
 	ip := s.clientIP(r)
 	userKey := strings.ToLower(strings.TrimSpace(username))
-	locked := func() {
-		s.render(w, r, http.StatusTooManyRequests, part{"login", loginView{Username: username, Error: loginLocked}})
-	}
 	// Reserve both slots before the slow password hash; a wrong password keeps them.
 	ipTicket, ok := s.loginIP.Reserve(ip)
 	if !ok {
 		s.log.Info("login blocked", "ip", ip, "reason", "ip limit")
-		locked()
-		return
+		return "", auth.Session{}, errLoginLocked
 	}
 	// A name that breaks the rules cannot exist: it gets no counter, so junk
 	// names cannot fill the limiter's memory.
@@ -73,32 +98,18 @@ func (s *server) login(w http.ResponseWriter, r *http.Request) {
 		if userTicket, ok = s.loginUser.Reserve(userKey); !ok {
 			s.loginIP.Release(ipTicket)
 			s.log.Info("login blocked", "ip", ip, "reason", "username limit")
-			locked()
-			return
+			return "", auth.Session{}, errLoginLocked
 		}
 	}
-	token, sess, err := s.accounts.LogIn(r.Context(), username, r.PostFormValue("password"), r.PostFormValue("keep") == "1")
+	token, sess, err := s.accounts.LogIn(r.Context(), username, password, persistent)
 	if errors.Is(err, auth.ErrBadLogin) {
-		s.render(w, r, http.StatusUnprocessableEntity, part{"login", loginView{Username: username, Error: "Wrong username or password."}})
-		return
+		return "", auth.Session{}, err
 	}
 	s.loginIP.Release(ipTicket)
 	if countUser {
 		s.loginUser.Release(userTicket)
 	}
-	if errors.Is(err, auth.ErrBusy) {
-		s.render(w, r, http.StatusServiceUnavailable, part{"login", loginView{Username: username, Error: serverBusy}})
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	if err := s.accounts.LogOut(r.Context(), sessionToken(r)); err != nil {
-		s.log.Error("end previous session", "err", err)
-	}
-	setSessionCookie(w, token, sess)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	return token, sess, err
 }
 
 const signupFailed = "Sign-up failed. Please wait a moment and try again."

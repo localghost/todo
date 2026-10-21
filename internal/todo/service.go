@@ -141,6 +141,11 @@ func (s *Service) Toggle(ctx context.Context, userID, id int64) (Item, error) {
 	return s.store.SetDone(ctx, userID, id, !it.Done, s.now())
 }
 
+// SetDone marks an item done or not done.
+func (s *Service) SetDone(ctx context.Context, userID, id int64, done bool) (Item, error) {
+	return s.store.SetDone(ctx, userID, id, done, s.now())
+}
+
 func (s *Service) Delete(ctx context.Context, userID, id int64) error {
 	return s.store.Delete(ctx, userID, id)
 }

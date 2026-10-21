@@ -143,6 +143,7 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Op
 	mux.Handle("GET /labels", http.RedirectHandler("/", http.StatusSeeOther))
 	mux.Handle("PUT /labels/{id}/color", s.protect(s.setLabelColor))
 	mux.Handle("DELETE /labels/{id}", s.protect(s.deleteLabel))
+	s.apiRoutes(mux)
 	// Rejects changing requests that a browser marks as coming from another site.
 	return securityHeaders(http.NewCrossOriginProtection().Handler(limitBody(mux))), nil
 }
@@ -313,13 +314,19 @@ const zoneCookie = "todo_tz"
 
 var zoneName = regexp.MustCompile(`^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$`)
 
-// zoneFor returns the browser's time zone from the todo_tz cookie, or the
-// server's zone if the cookie is missing or names no known zone.
+// zoneHeader names the phone's time zone in requests of the Android app.
+const zoneHeader = "Time-Zone"
+
+// zoneFor returns the browser's time zone from the todo_tz cookie (the app's
+// from the Time-Zone header), or the server's zone if neither names a known zone.
 func (s *server) zoneFor(r *http.Request) *time.Location {
 	if c, err := r.Cookie(zoneCookie); err == nil {
 		if loc, ok := s.parseZone(c.Value); ok {
 			return loc
 		}
+	}
+	if loc, ok := s.parseZone(r.Header.Get(zoneHeader)); ok {
+		return loc
 	}
 	if s.defaultZone != nil {
 		return s.defaultZone
