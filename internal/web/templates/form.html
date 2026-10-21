@@ -1,15 +1,9 @@
 {{define "add-form"}}<form id="add-form" class="add" hx-post="/items" hx-target="#items" hx-swap="beforeend">
 <label class="visually-hidden" for="new-item">New item</label>
 <div class="add-row">
-<input id="new-item" name="text" placeholder="What needs to be done?" autocomplete="off" value="{{.Text}}"{{if and .Focus (not .DueError)}} autofocus{{end}}{{if .Error}} aria-invalid="true" aria-describedby="add-error"{{end}}>
+<input id="new-item" name="text" placeholder="What needs to be done?" autocomplete="off" value="{{.Text}}"{{if .Focus}} autofocus{{end}}{{if .Error}} aria-invalid="true" aria-describedby="add-error"{{end}}>
 <button type="submit">Add</button>
-</div>
-<div class="due-line">
-<label for="new-due-date">Due</label>
-<input type="date" id="new-due-date" name="due_date" value="{{.DueDate}}"{{if .DueError}} aria-invalid="true" aria-describedby="add-due-error" autofocus{{end}}>
-<input type="text" name="due_time" value="{{.DueTime}}" class="due-time" placeholder="HH:MM" inputmode="numeric" maxlength="5" pattern="([01]?[0-9]|2[0-3]):?([0-5][0-9])?" title="24-hour time, for example 14:00 or 1400" aria-label="Due time (optional, 24-hour HH:MM)">
 </div>
 {{with .Filter}}<p class="filter-hint">New items get the label <span class="chip" data-color="{{.Color}}" data-label="{{.ID}}">{{.Name}}</span></p>
 {{end}}{{if .Error}}<p id="add-error" class="error">Please type some text first.</p>{{end}}
-{{if .DueError}}<p id="add-due-error" class="error">{{.DueError}}</p>{{end}}
 </form>{{end}}

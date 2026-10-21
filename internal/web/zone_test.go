@@ -50,13 +50,15 @@ func TestDueLabelUsesBrowserZone(t *testing.T) {
 	assertContains(t, do(t, env.H, "GET", "/", nil, tz("Europe/London")).Body.String(), "Due today, 23:30")
 }
 
-// An item saved in Tokyo is the same moment when it is read in Warsaw.
-func TestAddReadsDueInBrowserZone(t *testing.T) {
+// A due date saved in Tokyo is the same moment when it is read in Warsaw.
+// With no due_tz field, the pop-up's save reads the time in the cookie zone.
+func TestDueSaveReadsBrowserZone(t *testing.T) {
 	env := newTestEnv(t)
 	env.Clock.t = time.Date(2026, 10, 1, 12, 0, 0, 0, mustZone(t, "Europe/Warsaw"))
-	form := url.Values{"text": {"Call"}, "due_date": {"2026-10-03"}, "due_time": {"14:00"}}
-	if rec := do(t, env.H, "POST", "/items", form, tz("Asia/Tokyo")); rec.Code != http.StatusOK {
-		t.Fatalf("add: %d", rec.Code)
+	do(t, env.H, "POST", "/items", url.Values{"text": {"Call"}}, tz("Asia/Tokyo"))
+	form := url.Values{"due_date": {"2026-10-03"}, "due_time": {"14:00"}}
+	if rec := do(t, env.H, "PUT", "/items/1/due", form, tz("Asia/Tokyo")); rec.Code != http.StatusOK {
+		t.Fatalf("save: %d", rec.Code)
 	}
 	items, _ := env.Svc.List(context.Background(), env.User.ID, false)
 	want := time.Date(2026, 10, 3, 5, 0, 0, 0, time.UTC)

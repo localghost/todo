@@ -2,6 +2,8 @@
 
 Note (2026-10-21): the calendar icon and the + now always show on every row, also on a computer
 (canvas page "16 · Labels", board "NEW: calendar icon and + always shown", option A).
+Note (2026-10-21): the add form has no due date fields any more. Set a due date with the calendar
+icon on the row (canvas page "10 · Due date", board "NEW: add form without the due date").
 
 Status: approved and built (2026-10-15). Replaces the Due fields of edit mode in
 `2026-10-01-due-dates-design.md`. The add form does not change.

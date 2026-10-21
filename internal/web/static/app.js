@@ -81,7 +81,7 @@ document.addEventListener("mousedown", (e) => {
 
 // 3. After an item is added, clear each add-form field only if it still
 // holds the value that was sent. Text typed while the request ran stays.
-const ADD_FIELDS = ["text", "due_date", "due_time"];
+const ADD_FIELDS = ["text"];
 
 document.addEventListener("htmx:beforeRequest", (e) => {
   const form = e.detail.elt;

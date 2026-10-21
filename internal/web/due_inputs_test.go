@@ -6,45 +6,40 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-	"time"
 )
 
-func TestAddFormHasDueLine(t *testing.T) {
+// The add form has only the text field and Add (canvas page 10, "add form
+// without the due date"). A due date is set with the calendar icon on a row.
+func TestAddFormHasNoDueFields(t *testing.T) {
 	h, _ := newTestApp(t)
 	body := do(t, h, "GET", "/", nil, nil).Body.String()
-	assertContains(t, body,
-		`<input type="date" id="new-due-date" name="due_date" value=""`,
-		`<input type="text" name="due_time" value="" class="due-time" placeholder="HH:MM"`)
+	form := body[strings.Index(body, `<form id="add-form"`):]
+	form = form[:strings.Index(form, "</form>")]
+	assertNotContains(t, form, `id="new-due-date"`, `name="due_date"`, `name="due_time"`, `<label for="new-due-date">`, "due-line")
+	assertContains(t, form, `<input id="new-item" name="text"`, `autofocus`)
 }
 
-func TestAddWithDue(t *testing.T) {
-	h, _ := newTestApp(t)
-	tomorrow := time.Now().AddDate(0, 0, 1).Format("2006-01-02")
+// POST /items ignores due fields: a new item never has a due date.
+func TestAddIgnoresDueFields(t *testing.T) {
+	h, svc := newTestApp(t)
 	rec := do(t, h, "POST", "/items",
-		url.Values{"text": {"Call the dentist"}, "due_date": {tomorrow}, "due_time": {"14:00"}}, htmxHeaders)
+		url.Values{"text": {"Call the dentist"}, "due_date": {"2020-01-01"}, "due_time": {"14:00"}}, htmxHeaders)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
-	assertContains(t, rec.Body.String(), "Due tomorrow, 14:00")
-}
-
-func TestAddBadDueKeepsValues(t *testing.T) {
-	h, svc := newTestApp(t)
-	rec := do(t, h, "POST", "/items",
-		url.Values{"text": {"Call the dentist"}, "due_date": {""}, "due_time": {"14:00"}}, htmxHeaders)
+	if got := rec.Header().Get("HX-Retarget"); got != "" {
+		t.Errorf("HX-Retarget = %q, want none (the row is added at the end)", got)
+	}
+	got, _ := svc.Get(context.Background(), 1, 1)
+	if got.Text != "Call the dentist" || got.DueAt != nil {
+		t.Fatalf("stored %+v, want the text and no due date", got)
+	}
+	rec = do(t, h, "POST", "/items", url.Values{"text": {""}, "due_date": {"bad"}}, htmxHeaders)
 	if rec.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("status = %d, want 422", rec.Code)
+		t.Fatalf("empty text: status = %d, want 422", rec.Code)
 	}
-	if got := rec.Header().Get("HX-Retarget"); got != "#add-form" {
-		t.Errorf("HX-Retarget = %q, want #add-form", got)
-	}
-	assertContains(t, rec.Body.String(),
-		`<p id="add-due-error" class="error">Pick a day for the due date.</p>`,
-		`value="Call the dentist"`, `name="due_time" value="14:00"`)
-	assertNotContains(t, rec.Body.String(), "Please type some text first.")
-	if open, done, _ := svc.Counts(context.Background(), 1); open+done != 0 {
-		t.Fatalf("an item was stored")
-	}
+	assertContains(t, rec.Body.String(), "Please type some text first.")
+	assertNotContains(t, rec.Body.String(), "add-due-error", "due_date")
 }
 
 // Edit mode changes only the text; the due date has its own pop-up.
@@ -73,32 +68,20 @@ func TestEditKeepsDue(t *testing.T) {
 func TestAppJSHandlesDueFields(t *testing.T) {
 	h, _ := newTestApp(t)
 	body := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
-	assertContains(t, body, `"save-edit"`, `"due_date"`, `"due_time"`)
+	assertContains(t, body, `"save-edit"`, `const ADD_FIELDS = ["text"];`)
 	assertNotContains(t, body, ".clear-due", "htmx:validation:halted")
 }
 
-// After a due-date error the cursor goes to the date field, not the text field.
-func TestDueErrorFocusesDateField(t *testing.T) {
-	h, _ := newTestApp(t)
-	add := do(t, h, "POST", "/items",
-		url.Values{"text": {"Call the dentist"}, "due_date": {""}, "due_time": {"14:00"}}, htmxHeaders).Body.String()
-	assertContains(t, add, `aria-describedby="add-due-error" autofocus>`)
-	assertNotContains(t, add, `value="Call the dentist" autofocus`)
-}
-
-// The due time is a 24-hour text field, in the add form and in the due pop-up.
+// The due time is a 24-hour text field in the due pop-up.
 func TestDueTimeIs24HourText(t *testing.T) {
 	h, svc := newTestApp(t)
 	svc.Add(context.Background(), 1, "Call the dentist", "2026-10-03", "14:00")
-	page := do(t, h, "GET", "/", nil, nil).Body.String()
 	edit := do(t, h, "GET", "/items/1/due", nil, htmxHeaders).Body.String()
-	for name, body := range map[string]string{"add form": page, "due pop-up": edit} {
-		if strings.Contains(body, `type="time"`) {
-			t.Errorf("%s still has a native time field", name)
-		}
-		assertContains(t, body, `type="text" name="due_time"`, `placeholder="HH:MM"`, `inputmode="numeric"`,
-			`pattern="([01]?[0-9]|2[0-3]):?([0-5][0-9])?"`)
+	if strings.Contains(edit, `type="time"`) {
+		t.Errorf("the due pop-up still has a native time field")
 	}
+	assertContains(t, edit, `type="text" name="due_time"`, `placeholder="HH:MM"`, `inputmode="numeric"`,
+		`pattern="([01]?[0-9]|2[0-3]):?([0-5][0-9])?"`)
 	assertContains(t, edit, `name="due_time" value="14:00"`)
 }
 

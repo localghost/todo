@@ -26,13 +26,10 @@ type listView struct {
 
 // formView is the data for the add form.
 type formView struct {
-	Text     string
-	DueDate  string
-	DueTime  string
-	Error    bool   // empty text
-	DueError string // message for a bad due date
-	Focus    bool
-	Filter   *todo.Label // new items get this label (the list's filter)
+	Text   string
+	Error  bool // empty text
+	Focus  bool
+	Filter *todo.Label // new items get this label (the list's filter)
 }
 
 // editView is the data for a row in edit mode.

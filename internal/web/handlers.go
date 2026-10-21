@@ -33,29 +33,21 @@ func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	in := todo.Input{Text: r.FormValue("text"), DueDate: r.FormValue("due_date"), DueTime: r.FormValue("due_time")}
+	// The add form has no due fields: a date is set later with the calendar
+	// icon on the row, so a new item is never overdue and goes at the end.
+	in := todo.Input{Text: r.FormValue("text")}
 	if filter != nil {
 		in.Labels = filter.Name // a new item shows in the filtered list
 	}
 	item, err := s.svc.AddItem(r.Context(), userID(r), in, s.zoneFor(r))
-	var dueErr *todo.DueError
-	if errors.Is(err, todo.ErrEmptyText) || errors.As(err, &dueErr) {
-		view := formView{Text: in.Text, DueDate: in.DueDate, DueTime: in.DueTime, Focus: true, Filter: filter,
-			Error: errors.Is(err, todo.ErrEmptyText)}
-		if dueErr != nil {
-			view.DueError = dueErr.Msg
-		}
+	if errors.Is(err, todo.ErrEmptyText) {
 		w.Header().Set("HX-Retarget", "#add-form")
 		w.Header().Set("HX-Reswap", "outerHTML")
-		s.render(w, r, http.StatusUnprocessableEntity, part{"add-form", view})
+		s.render(w, r, http.StatusUnprocessableEntity, part{"add-form", formView{Text: in.Text, Error: true, Focus: true, Filter: filter}})
 		return
 	}
 	if err != nil {
 		s.serverError(w, r, err)
-		return
-	}
-	if item.Overdue(s.nowFor(r)) {
-		s.renderList(w, r, currentUser(r).HideDone) // it belongs at the top, not at the end
 		return
 	}
 	lv, err := s.listView(r, currentUser(r).HideDone)

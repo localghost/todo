@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strconv"
 	"testing"
 )
 
@@ -57,7 +58,8 @@ func TestNotifyBarHasDue(t *testing.T) {
 	svc.Toggle(ctx, 1, done.ID)
 	assertContains(t, do(t, h, "GET", "/", nil, nil).Body.String(), `data-has-due="false"`)
 
-	rec := do(t, h, "POST", "/items", url.Values{"text": {"Open with due"}, "due_date": {"2099-10-03"}}, htmxHeaders)
+	open, _ := svc.Add(ctx, 1, "Open with due", "", "")
+	rec := do(t, h, "PUT", "/items/"+strconv.FormatInt(open.ID, 10)+"/due", url.Values{"due_date": {"2099-10-03"}}, htmxHeaders)
 	assertContains(t, rec.Body.String(), `<div id="notify-bar" class="notify-bar" data-has-due="true" hx-swap-oob="true"></div>`)
 }
 

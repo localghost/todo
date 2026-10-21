@@ -149,7 +149,7 @@ func TestItemShowsDueLabel(t *testing.T) {
 	assertNotContains(t, body, `· <button type="button" class="due`)
 }
 
-// Only the text field of the add form stretches; the due fields keep their natural width.
+// The text field of the add form stretches; the Add button keeps its natural width.
 func TestAddFormOnlyTextFieldStretches(t *testing.T) {
 	h, _ := newTestApp(t)
 	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()

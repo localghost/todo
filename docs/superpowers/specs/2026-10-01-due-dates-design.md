@@ -1,5 +1,8 @@
 # Due dates and notifications — design spec
 
+Note (2026-10-21): the add form has no due date fields any more. Set a due date with the calendar
+icon on the row (canvas page "10 · Due date", board "NEW: add form without the due date").
+
 Date: 2026-10-01
 Status: waiting for review
 Builds on: `2026-10-01-todo-app-design.md`

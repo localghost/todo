@@ -108,17 +108,6 @@ func TestDueChangeMovesItem(t *testing.T) {
 	assertOrder(t, rec.Body.String(), "Pay the rent", "Return library books", "Call the dentist", "Water the plants")
 }
 
-func TestAddedOverdueItemGoesToTop(t *testing.T) {
-	env, _ := overdueEnv(t)
-	form := url.Values{"text": {"Old task"}, "due_date": {"2026-10-02"}, "due_time": {"10:00"}}
-	rec := do(t, env.H, "POST", "/items", form, warsawHTMX())
-	assertRetarget(t, rec, true)
-	assertOrder(t, rec.Body.String(), "Pay the rent", "Old task", "Call the dentist", "Return library books")
-
-	rec = do(t, env.H, "POST", "/items", url.Values{"text": {"New task"}}, warsawHTMX())
-	assertRetarget(t, rec, false)
-}
-
 func TestOverdueOrderWithDoneHidden(t *testing.T) {
 	env, ids := overdueEnv(t)
 	env.Auth.SetHideDone(context.Background(), env.User.ID, true)
@@ -146,8 +135,9 @@ func TestRowAnswerCarriesNextOverdue(t *testing.T) {
 	env := newTestEnv(t)
 	warsaw := mustZone(t, "Europe/Warsaw")
 	env.Clock.t = time.Date(2026, 10, 2, 16, 0, 0, 0, warsaw)
-	form := url.Values{"text": {"Call Bob"}, "due_date": {"2026-10-02"}, "due_time": {"16:01"}}
-	rec := do(t, env.H, "POST", "/items", form, warsawHTMX())
+	do(t, env.H, "POST", "/items", url.Values{"text": {"Call Bob"}}, warsawHTMX())
+	form := url.Values{"due_date": {"2026-10-02"}, "due_time": {"16:01"}, "due_tz": {"Europe/Warsaw"}}
+	rec := do(t, env.H, "PUT", "/items/1/due", form, warsawHTMX())
 	assertRetarget(t, rec, false)
 	next := time.Date(2026, 10, 2, 16, 1, 0, 0, warsaw).UnixMilli()
 	assertContains(t, rec.Body.String(), `id="toolbar" class="toolbar" hx-swap-oob="true" data-hide-done="false" data-next-overdue="`+strconv.FormatInt(next, 10)+`"`)
