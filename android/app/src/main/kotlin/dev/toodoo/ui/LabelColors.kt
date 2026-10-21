@@ -69,3 +69,6 @@ internal fun luminance(rgb: DoubleArray): Double {
 
 private fun toInt(rgb: DoubleArray): Int =
     rgb.fold(0) { acc, v -> (acc shl 8) or Math.round(v * 255).toInt().coerceIn(0, 255) }
+
+/** Returns "#rrggbb" for hue in degrees, saturation and lightness 0..1. */
+fun hslToHex(h: Double, s: Double, l: Double): String = "#%06x".format(toInt(hslToRgb(h, s, l)))

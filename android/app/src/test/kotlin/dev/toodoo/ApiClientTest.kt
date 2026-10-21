@@ -78,6 +78,33 @@ class ApiClientTest {
     }
 
     @Test
+    fun itemSheetCalls() = runTest {
+        val item = """{"id":7,"text":"a","done":false,"labels":[]}"""
+        repeat(4) { server.enqueue(MockResponse().setBody(item)) }
+        server.enqueue(MockResponse().setResponseCode(204))
+        server.enqueue(MockResponse().setBody("""[{"id":1,"name":"home","color":"#38c75d","items":2}]"""))
+        val c = client()
+        c.setDue(7, "2026-10-22", "1430")
+        c.postpone(7, 10)
+        c.addLabel(7, "work")
+        c.removeLabel(7, 3)
+        c.move(7, 0)
+        assertEquals(2, c.labels()[0].items)
+        val sent = List(6) { server.takeRequest() }.map { "${it.method} ${it.path} ${it.body.readUtf8()}" }
+        assertEquals(
+            listOf(
+                """PUT /api/v1/items/7/due {"date":"2026-10-22","time":"1430"}""",
+                """POST /api/v1/items/7/postpone {"minutes":10}""",
+                """POST /api/v1/items/7/labels {"name":"work"}""",
+                "DELETE /api/v1/items/7/labels/3 ",
+                """POST /api/v1/items/7/move {"after":0}""",
+                "GET /api/v1/labels ",
+            ),
+            sent,
+        )
+    }
+
+    @Test
     fun serverAddresses() {
         assertEquals("https://toodoo.fly.dev/", ApiClient.checkServer("toodoo.fly.dev").toString())
         assertEquals("https://toodoo.fly.dev/", ApiClient.checkServer(" https://toodoo.fly.dev/ ").toString())

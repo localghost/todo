@@ -1,6 +1,28 @@
 package dev.toodoo.ui
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.zIndex
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -85,12 +107,18 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListScreen(vm: ListViewModel) {
+fun ListScreen(vm: ListActions) {
     val state by vm.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var menuOpen by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
+    var picker by remember { mutableStateOf<PickerFor?>(null) }
     val list = state.list
+    val context = LocalContext.current
+    val listState = rememberLazyListState()
+    val reorder = remember(listState) { Reorder(listState) }
+    val askNotify = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val openWeb = { path: String -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(vm.server.trimEnd('/') + path))) }
 
     LaunchedEffect(state.message) {
         state.message?.let {
@@ -117,6 +145,12 @@ fun ListScreen(vm: ListViewModel) {
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        vm.loadLabels()
+                        picker = PickerFor.Filter
+                    }) {
+                        Box(Modifier.semantics { contentDescription = "Filter by label" }) { TagIcon(MaterialTheme.colorScheme.onSurface) }
+                    }
                     Box {
                         IconButton(onClick = { menuOpen = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "More") }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
@@ -128,6 +162,22 @@ fun ListScreen(vm: ListViewModel) {
                             DropdownMenuItem(text = { Text("Clear done items") }, enabled = (list?.done ?: 0) > 0, onClick = {
                                 menuOpen = false
                                 confirmClear = true
+                            })
+                            DropdownMenuItem(text = { Text("Labels") }, onClick = {
+                                menuOpen = false
+                                vm.loadLabels()
+                                picker = PickerFor.Filter
+                            })
+                            if (!vm.exactReminders()) {
+                                DropdownMenuItem(text = { Text("Allow exact reminders") }, onClick = {
+                                    menuOpen = false
+                                    // Without it, Android may deliver reminders a few minutes late.
+                                    context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + context.packageName)))
+                                })
+                            }
+                            DropdownMenuItem(text = { Text("Account (web)") }, onClick = {
+                                menuOpen = false
+                                openWeb("/account")
                             })
                             HorizontalDivider()
                             DropdownMenuItem(text = { Text("Log out ${vm.username}") }, onClick = {
@@ -150,9 +200,26 @@ fun ListScreen(vm: ListViewModel) {
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             LazyColumn(
+                state = listState,
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 16.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
+                state.filter?.let { f ->
+                    item(key = "filter") {
+                        InputChip(
+                            selected = true,
+                            onClick = { vm.setFilter(null) },
+                            label = { Text("Label: ${f.name}") },
+                            trailingIcon = { Icon(Icons.Filled.Close, contentDescription = "Show all items", modifier = Modifier.size(InputChipDefaults.IconSize)) },
+                            colors = InputChipDefaults.inputChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                        )
+                    }
+                }
                 if (state.offline) {
                     item(key = "offline") {
                         Text(
@@ -173,10 +240,40 @@ fun ListScreen(vm: ListViewModel) {
                     }
                     else -> {
                         val now = ZonedDateTime.now(phoneZone())
-                        items(list.items, key = { it.id }) { item ->
-                            val first = item.id == list.items.first().id
-                            val last = item.id == list.items.last().id
-                            ItemRow(item, now, first, last, onToggle = { vm.toggle(item) }, onDelete = { vm.delete(item) })
+                        val byId = list.items.associateBy { it.id }
+                        val shown = if (reorder.dragging != null) reorder.order.mapNotNull { byId[it] } else list.items
+                        reorder.movable = { byId[it]?.overdue == false }
+                        reorder.current = list.items.map { it.id }
+                        items(shown, key = { it.id }) { item ->
+                            val first = item.id == shown.first().id
+                            val last = item.id == shown.last().id
+                            val dragged = reorder.dragging == item.id
+                            ItemRow(
+                                item, now, first, last,
+                                onToggle = { vm.toggle(item) },
+                                onDelete = { vm.delete(item) },
+                                onOpen = { vm.openSheet(item) },
+                                onMoveBy = { step -> moveBy(shown, item, step)?.let { vm.move(item.id, it) } },
+                                grip = Modifier.pointerInput(item.id) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = { reorder.start(item.id) },
+                                        onDrag = { change, amount ->
+                                            change.consume()
+                                            reorder.drag(amount.y)
+                                        },
+                                        onDragEnd = { reorder.end()?.let { (id, order) -> vm.move(id, order) } },
+                                        onDragCancel = { reorder.end()?.let { (id, order) -> vm.move(id, order) } },
+                                    )
+                                },
+                                modifier = if (dragged) {
+                                    Modifier.zIndex(1f).graphicsLayer {
+                                        translationY = reorder.offset
+                                        shadowElevation = 8.dp.toPx()
+                                    }
+                                } else {
+                                    Modifier.animateItem()
+                                },
+                            )
                         }
                     }
                 }
@@ -198,11 +295,149 @@ fun ListScreen(vm: ListViewModel) {
             dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel") } },
         )
     }
+
+    state.sheet?.let { item ->
+        ItemSheet(
+            item = item,
+            onSave = { text, due ->
+                val ok = vm.save(item, text, due)
+                // Android 13+ asks for notifications with the first due date, not at start-up.
+                if (ok && due?.first?.isNotEmpty() == true && Build.VERSION.SDK_INT >= 33 &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    askNotify.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                ok
+            },
+            onPostpone = { vm.postpone(item, it) },
+            onRemoveLabel = { vm.removeLabel(item, it) },
+            onAddLabel = {
+                vm.loadLabels()
+                picker = PickerFor.Item
+            },
+            onDelete = {
+                vm.closeSheet()
+                vm.delete(item)
+            },
+            onDismiss = vm::closeSheet,
+        )
+    }
+
+    picker?.let { p ->
+        val sheetItem = state.sheet
+        val mode = when {
+            p == PickerFor.Item && sheetItem != null -> PickerMode.ForItem(sheetItem.text, sheetItem.labels.map { it.id }.toSet())
+            else -> PickerMode.Filter(state.filter)
+        }
+        LabelPicker(
+            labels = state.labels,
+            mode = mode,
+            onPick = { label ->
+                if (mode is PickerMode.ForItem && sheetItem != null) {
+                    if (label.id in mode.selected) vm.removeLabel(sheetItem, label) else vm.addLabel(sheetItem, label.name)
+                } else {
+                    picker = null
+                    vm.setFilter(label)
+                }
+            },
+            onCreate = { name -> sheetItem?.let { vm.addLabel(it, name) } },
+            onClearFilter = {
+                picker = null
+                vm.setFilter(null)
+            },
+            onColor = vm::setLabelColor,
+            onDelete = vm::deleteLabel,
+            onDismiss = { picker = null },
+        )
+    }
+}
+
+/** Which label picker is open. */
+private enum class PickerFor { Item, Filter }
+
+/**
+ * The new order of [shown] after moving [item] one place up (-1) or down
+ * (+1), or null if it cannot move there: overdue items stay at the top.
+ */
+internal fun moveBy(shown: List<Item>, item: Item, step: Int): List<Long>? {
+    val ids = shown.map { it.id }.toMutableList()
+    val from = ids.indexOf(item.id)
+    val to = from + step
+    if (item.overdue || from < 0 || to !in ids.indices || shown[to].overdue) return null
+    ids.removeAt(from)
+    ids.add(to, item.id)
+    return ids
+}
+
+/**
+ * Drag to reorder: the dragged row follows the finger, and the rows swap
+ * places when its middle crosses another row. Rows that are not [movable]
+ * (overdue) do not swap.
+ */
+private class Reorder(private val listState: LazyListState) {
+    var dragging by mutableStateOf<Long?>(null)
+        private set
+    var offset by mutableFloatStateOf(0f)
+        private set
+    val order = mutableStateListOf<Long>()
+    var movable: (Long) -> Boolean = { true }
+
+    /** The list's ids as the server sent them; the screen keeps it up to date. */
+    var current: List<Long> = emptyList()
+    private var before: List<Long> = emptyList()
+
+    fun start(id: Long) {
+        before = current
+        order.clear()
+        order.addAll(current)
+        offset = 0f
+        dragging = id
+    }
+
+    fun drag(dy: Float) {
+        val id = dragging ?: return
+        offset += dy
+        val rows = listState.layoutInfo.visibleItemsInfo
+        val me = rows.find { it.key == id } ?: return
+        val middle = me.offset + offset + me.size / 2f
+        val target = rows.find {
+            val key = it.key
+            key is Long && key != id && movable(key) && middle >= it.offset && middle <= it.offset + it.size
+        } ?: return
+        val from = order.indexOf(id)
+        val to = order.indexOf(target.key as Long)
+        if (from < 0 || to < 0) return
+        order.removeAt(from)
+        order.add(to, id)
+        // The row now sits where the target was; keep it under the finger.
+        val newTop = if (to > from) target.offset + target.size - me.size else target.offset
+        offset -= newTop - me.offset
+    }
+
+    /** Ends the drag; returns the item and the new order, or null if nothing moved. */
+    fun end(): Pair<Long, List<Long>>? {
+        val id = dragging ?: return null
+        val moved = order.toList()
+        dragging = null
+        offset = 0f
+        return if (moved == before) null else Pair(id, moved)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ItemRow(item: Item, now: ZonedDateTime, first: Boolean, last: Boolean, onToggle: () -> Unit, onDelete: () -> Unit) {
+private fun ItemRow(
+    item: Item,
+    now: ZonedDateTime,
+    first: Boolean,
+    last: Boolean,
+    onToggle: () -> Unit,
+    onDelete: () -> Unit,
+    onOpen: () -> Unit,
+    onMoveBy: (Int) -> Unit,
+    grip: Modifier,
+    modifier: Modifier = Modifier,
+) {
     val dismiss = rememberSwipeToDismissBoxState(confirmValueChange = {
         if (it == SwipeToDismissBoxValue.EndToStart) onDelete()
         it == SwipeToDismissBoxValue.EndToStart
@@ -226,14 +461,27 @@ private fun ItemRow(item: Item, now: ZonedDateTime, first: Boolean, last: Boolea
                 Text("Delete", color = colors.onError, fontWeight = FontWeight.SemiBold)
             }
         },
-        modifier = Modifier.semantics {
-            customActions = listOf(CustomAccessibilityAction("Delete") { onDelete(); true })
+        modifier = modifier.semantics {
+            customActions = buildList {
+                add(CustomAccessibilityAction("Delete") { onDelete(); true })
+                if (!item.overdue) {
+                    add(CustomAccessibilityAction("Move up") { onMoveBy(-1); true })
+                    add(CustomAccessibilityAction("Move down") { onMoveBy(1); true })
+                }
+            }
         },
     ) {
         Surface(color = colors.surface, shape = shape, border = BorderStroke(1.dp, colors.outlineVariant)) {
             Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(start = 4.dp), verticalAlignment = Alignment.Top) {
+                // Long-press the grip to drag. Overdue rows have none, as on the web.
+                Box(Modifier.size(24.dp, 48.dp).then(if (item.overdue) Modifier else grip), contentAlignment = Alignment.Center) {
+                    if (!item.overdue) GripIcon(colors.outline)
+                }
                 CheckCircle(item, onToggle)
-                Column(Modifier.weight(1f).padding(top = 12.dp, bottom = 12.dp, end = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(
+                    Modifier.weight(1f).clickable(onClickLabel = "Edit", onClick = onOpen).padding(top = 12.dp, bottom = 12.dp, end = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
                     Text(
                         item.text,
                         fontSize = 17.sp,

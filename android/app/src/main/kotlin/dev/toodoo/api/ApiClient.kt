@@ -73,6 +73,40 @@ class ApiClient(private val http: OkHttpClient, server: String, private val toke
         return json.decodeFromString<Map<String, Int>>(body)["deleted"] ?: 0
     }
 
+    suspend fun item(id: Long): Item = json.decodeFromString(call("GET", "items/$id")!!)
+
+    /** Sets the due date ("2026-10-22") and time ("14:30", "1430", or "" for all day); both "" clear it. */
+    suspend fun setDue(id: Long, date: String, time: String): Item =
+        item("PUT", "items/$id/due", buildJsonObject {
+            put("date", date)
+            put("time", time)
+        })
+
+    suspend fun postpone(id: Long, minutes: Int): Item =
+        item("POST", "items/$id/postpone", buildJsonObject { put("minutes", minutes) })
+
+    /** Puts the item right after item [after] (0: first). */
+    suspend fun move(id: Long, after: Long) {
+        call("POST", "items/$id/move", buildJsonObject { put("after", after) })
+    }
+
+    /** Adds the label [name] to the item, making the label if needed. */
+    suspend fun addLabel(id: Long, name: String): Item =
+        item("POST", "items/$id/labels", buildJsonObject { put("name", name) })
+
+    suspend fun removeLabel(id: Long, labelId: Long): Item =
+        json.decodeFromString(call("DELETE", "items/$id/labels/$labelId")!!)
+
+    suspend fun labels(): List<Label> = json.decodeFromString(call("GET", "labels")!!)
+
+    suspend fun setLabelColor(labelId: Long, color: String) {
+        call("PUT", "labels/$labelId/color", buildJsonObject { put("color", color) })
+    }
+
+    suspend fun deleteLabel(labelId: Long) {
+        call("DELETE", "labels/$labelId")
+    }
+
     private suspend fun item(method: String, path: String, body: JsonObject): Item =
         json.decodeFromString(call(method, path, body)!!)
 
