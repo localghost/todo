@@ -1,7 +1,8 @@
 # Android app: design spec
 
 Date: 2026-10-21
-Status: native app chosen 2026-10-21; section 9 uses the recommended answers until Zbyszek says otherwise. Step 1 (the API) is built.
+Status: native app chosen 2026-10-21; section 9 uses the recommended answers until Zbyszek says otherwise. Steps 1 to 6 are built
+(2026-10-21); the app has not run on a phone yet (the build machine has no emulator).
 Builds on: `2026-10-01-todo-app-design.md`, `2026-10-01-users-design.md`, `2026-10-14-labels-design.md`,
 `2026-10-15-due-popup-design.md`
 Mockup: canvas "Todo app UI proposal", page "17 · Android app".

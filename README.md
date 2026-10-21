@@ -21,6 +21,9 @@ User guide: https://toodoo.fly.dev/guide (no login needed; the text is in
   label's color circle to pick any color from a color wheel, and use its × to delete it. Point
   at a label on an item to remove it with its ×. Click a label to see only its items.
 - Times are shown in your browser's time zone.
+- An Android app with the same list: add, edit, check off, swipe to delete, drag order, due
+  dates, labels and the label filter, and reminders on the phone (also when the app is
+  closed), with Done and Postpone buttons. See [docs/android.md](docs/android.md).
 
 ## Run it yourself
 
@@ -30,6 +33,9 @@ You need Go 1.27.
 
 Then open http://127.0.0.1:8811. Settings are in `config.yaml`. To run it on Fly.io, see
 [docs/deploy.md](docs/deploy.md).
+
+To build the Android app you need Java 17 and the Android SDK; then `mise run android:build`.
+See [docs/android.md](docs/android.md).
 
 ## License
 

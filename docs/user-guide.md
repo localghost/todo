@@ -192,6 +192,36 @@ The app works in the browser of a phone. On a touch screen:
 
 ![The list on a phone](guide-images/phone.png)
 
+## Android app
+
+There is also an app for Android phones (Android 8.0 and newer). It shows the same list as the
+web, so a change on the phone shows in the browser and the other way round.
+
+- **Install:** the app is not in Google Play. Get the APK file (`toodoo.apk`) and open it on the
+  phone; Android asks once to allow the install. How to build it: `docs/android.md` in the repo.
+- **Log in** with your username and password. You stay logged in while you open the app at
+  least every two weeks. Sign-up, the password change and deleting the account are on the web;
+  the menu's "Account (web)" opens that page.
+- **The list:** tap the circle to check an item off, swipe a row to the left to delete it (tap
+  Undo to keep it), pull down to load the list again. Long-press the grip (⋮⋮) and drag to
+  change the order.
+- **An item:** tap its text. The sheet has the text, the due date (type 1430 for 14:30, leave
+  the time empty for all day), Postpone, the labels, and Delete. Save sends the text and the due
+  date.
+- **Labels:** "Add label" in the sheet opens the label list: tap names to add or remove them,
+  type a new name to create it, tap a color dot for the color wheel, and the × deletes a label.
+  The tag button at the top shows only the items of one label.
+- **Reminders:** the phone reminds you when an item is due, also when the app is closed. The
+  reminder has the buttons Done and Postpone 10 min. The app asks for permission to notify when
+  you set your first due date. Without a connection the app shows the last list it loaded; changes
+  need the connection.
+
+![The list in the Android app](guide-images/android-list.png)
+
+![The item sheet](guide-images/android-itemSheet.png)
+
+![The label list in the app](guide-images/android-labelPicker.png)
+
 ## Keys
 
 | Where | Key | What it does |
