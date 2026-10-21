@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -40,10 +41,10 @@ func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 		in.Labels = filter.Name // a new item shows in the filtered list
 	}
 	item, err := s.svc.AddItem(r.Context(), userID(r), in, s.zoneFor(r))
-	if errors.Is(err, todo.ErrEmptyText) {
+	if msg := textMessage(err, "Please type some text first."); msg != "" {
 		w.Header().Set("HX-Retarget", "#add-form")
 		w.Header().Set("HX-Reswap", "outerHTML")
-		s.render(w, r, http.StatusUnprocessableEntity, part{"add-form", formView{Text: in.Text, Error: true, Focus: true, Filter: filter}})
+		s.render(w, r, http.StatusUnprocessableEntity, part{"add-form", formView{Text: in.Text, Error: msg, Focus: true, Filter: filter}})
 		return
 	}
 	if err != nil {
@@ -190,8 +191,9 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 	}
 	text := r.FormValue("text")
 	item, err := s.svc.EditText(r.Context(), userID(r), id, text)
+	msg := textMessage(err, "Text cannot be empty.")
 	switch {
-	case errors.Is(err, todo.ErrEmptyText):
+	case msg != "":
 		old, getErr := s.svc.Get(r.Context(), userID(r), id)
 		if errors.Is(getErr, todo.ErrNotFound) {
 			s.oobOnly(w, r, http.StatusNotFound)
@@ -201,7 +203,7 @@ func (s *server) updateItem(w http.ResponseWriter, r *http.Request) {
 			s.serverError(w, r, getErr)
 			return
 		}
-		s.render(w, r, http.StatusUnprocessableEntity, part{"item-edit", editView{Item: old, Text: text, Error: true}})
+		s.render(w, r, http.StatusUnprocessableEntity, part{"item-edit", editView{Item: old, Text: text, Error: msg}})
 	case errors.Is(err, todo.ErrNotFound):
 		s.oobOnly(w, r, http.StatusNotFound)
 	case err != nil:
@@ -386,4 +388,27 @@ func (s *server) renderListStatus(w http.ResponseWriter, r *http.Request, hideDo
 	w.Header().Set("HX-Retarget", "#list-section")
 	w.Header().Set("HX-Reswap", "outerHTML")
 	s.render(w, r, status, part{"list", lv})
+}
+
+// textMessage returns the message for an item text that the service refused,
+// or "" if err is another error. empty is the message for an empty text.
+func textMessage(err error, empty string) string {
+	switch {
+	case errors.Is(err, todo.ErrEmptyText):
+		return empty
+	case errors.Is(err, todo.ErrTextTooLong):
+		return fmt.Sprintf("The text is too long: at most %d characters.", todo.MaxTextChars)
+	case errors.Is(err, todo.ErrTooManyItems):
+		return fmt.Sprintf("You have %s items. Delete some first.", groupDigits(todo.MaxItemsPerUser))
+	}
+	return ""
+}
+
+// groupDigits writes n with a comma between each group of three digits.
+func groupDigits(n int) string {
+	s := strconv.Itoa(n)
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "," + s[i:]
+	}
+	return s
 }

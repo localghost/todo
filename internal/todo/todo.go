@@ -14,6 +14,16 @@ var (
 	ErrNotFound = errors.New("todo: item not found")
 	// ErrCannotMove means the item is overdue; overdue items stay at the top.
 	ErrCannotMove = errors.New("todo: an overdue item cannot move")
+	// ErrTextTooLong means the text has more than MaxTextChars characters.
+	ErrTextTooLong = errors.New("todo: text is too long")
+	// ErrTooManyItems means the user already has MaxItemsPerUser items.
+	ErrTooManyItems = errors.New("todo: too many items")
+)
+
+// Limits that keep one account from filling the disk (code review 1).
+const (
+	MaxTextChars    = 500  // characters (not bytes) in an item text, after whitespace is collapsed
+	MaxItemsPerUser = 5000 // items of one user, done or not
 )
 
 // Item is one entry in a user's todo list.

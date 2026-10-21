@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Service holds the rules for todo items. All handlers go through it.
@@ -173,10 +174,14 @@ func (s *Service) CountsLabel(ctx context.Context, userID, labelID int64) (open,
 }
 
 // cleanText collapses each run of whitespace to one space and trims the ends.
+// The result must have 1 to MaxTextChars characters.
 func cleanText(text string) (string, error) {
 	text = strings.Join(strings.Fields(text), " ")
 	if text == "" {
 		return "", ErrEmptyText
+	}
+	if utf8.RuneCountInString(text) > MaxTextChars {
+		return "", ErrTextTooLong
 	}
 	return text, nil
 }

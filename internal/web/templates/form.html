@@ -5,5 +5,5 @@
 <button type="submit">Add</button>
 </div>
 {{with .Filter}}<p class="filter-hint">New items get the label <span class="chip" data-color="{{.Color}}" data-label="{{.ID}}">{{.Name}}</span></p>
-{{end}}{{if .Error}}<p id="add-error" class="error">Please type some text first.</p>{{end}}
+{{end}}{{if .Error}}<p id="add-error" class="error">{{.Error}}</p>{{end}}
 </form>{{end}}

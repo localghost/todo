@@ -388,6 +388,13 @@ func (s *Store) Create(ctx context.Context, userID int64, c todo.Change, now tim
 		return todo.Item{}, fmt.Errorf("create item: %w", err)
 	}
 	defer tx.Rollback()
+	var count int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM items WHERE user_id = ?`, userID).Scan(&count); err != nil {
+		return todo.Item{}, fmt.Errorf("create item: %w", err)
+	}
+	if count >= todo.MaxItemsPerUser {
+		return todo.Item{}, todo.ErrTooManyItems
+	}
 	res, err := tx.ExecContext(ctx,
 		`INSERT INTO items (user_id, text, done, position, created_at, updated_at, due_at, due_all_day)
 		 VALUES (?, ?, 0, (SELECT COALESCE(MAX(position), 0) + 1 FROM items WHERE user_id = ?), ?, ?, ?, ?)`,

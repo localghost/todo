@@ -88,11 +88,26 @@ func (s *Store) DeleteUser(ctx context.Context, id int64) error {
 	return s.changeUser(ctx, `DELETE FROM users WHERE id = ?`, id)
 }
 
+// CreateSession stores sess. The user keeps at most auth.MaxSessionsPerUser
+// sessions: the oldest ones (by insert order) end.
 func (s *Store) CreateSession(ctx context.Context, sess auth.Session) error {
-	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO sessions (token_hash, user_id, created_at, expires_at, persistent) VALUES (?, ?, ?, ?, ?)`,
-		sess.TokenHash, sess.UserID, formatTime(sess.CreatedAt), fixedTime(sess.ExpiresAt), sess.Persistent)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
+		return fmt.Errorf("create session: %w", err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO sessions (token_hash, user_id, created_at, expires_at, persistent) VALUES (?, ?, ?, ?, ?)`,
+		sess.TokenHash, sess.UserID, formatTime(sess.CreatedAt), fixedTime(sess.ExpiresAt), sess.Persistent); err != nil {
+		return fmt.Errorf("create session: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM sessions WHERE user_id = ? AND rowid NOT IN
+		   (SELECT rowid FROM sessions WHERE user_id = ? ORDER BY rowid DESC LIMIT ?)`,
+		sess.UserID, sess.UserID, auth.MaxSessionsPerUser); err != nil {
+		return fmt.Errorf("create session: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("create session: %w", err)
 	}
 	return nil

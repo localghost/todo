@@ -70,22 +70,22 @@ func TestPasswordRulesCountCharacters(t *testing.T) {
 }
 
 func TestHashPassword(t *testing.T) {
-	h, err := auth.HashPassword(pw)
+	h, err := auth.HashPassword(context.Background(), pw)
 	if err != nil {
 		t.Fatalf("HashPassword: %v", err)
 	}
 	if !strings.HasPrefix(h, "$argon2id$v=19$m=65536,t=3,p=4$") || strings.Count(h, "$") != 5 {
 		t.Fatalf("hash = %q, want argon2id text form", h)
 	}
-	if !auth.CheckPassword(h, pw) || auth.CheckPassword(h, pw+"x") {
+	if !check(t, h, pw) || check(t, h, pw+"x") {
 		t.Fatal("CheckPassword gives a wrong answer")
 	}
-	other, _ := auth.HashPassword(pw)
+	other, _ := auth.HashPassword(context.Background(), pw)
 	if other == h {
 		t.Fatal("two hashes of the same password are equal (salt missing)")
 	}
 	for _, bad := range []string{"", "x", "$argon2i$v=19$m=65536,t=3,p=4$AAAA$AAAA", "$argon2id$v=19$m=x$AAAA$AAAA"} {
-		if auth.CheckPassword(bad, pw) {
+		if check(t, bad, pw) {
 			t.Errorf("CheckPassword(%q) = true", bad)
 		}
 	}
@@ -258,7 +258,7 @@ func TestCheckPasswordRejectsExtremeParameters(t *testing.T) {
 	for _, params := range []string{"m=4194304,t=3,p=4", "m=65536,t=11,p=4", "m=65536,t=3,p=17", "m=65536,t=3,p=0", "m=7,t=3,p=4", "m=524288,t=3,p=4", "m=65536,t=7,p=4", "m=131072,t=3,p=4"} {
 		h := "$argon2id$v=19$" + params + "$" + salt + "$" + key
 		start := time.Now()
-		if auth.CheckPassword(h, pw) {
+		if check(t, h, pw) {
 			t.Errorf("%s accepted", params)
 		}
 		if d := time.Since(start); d > 50*time.Millisecond {
@@ -266,7 +266,7 @@ func TestCheckPasswordRejectsExtremeParameters(t *testing.T) {
 		}
 	}
 	for _, sk := range [][2]string{{"AAAA", key}, {salt, "AAAA"}} {
-		if auth.CheckPassword("$argon2id$v=19$m=65536,t=3,p=4$"+sk[0]+"$"+sk[1], pw) {
+		if check(t, "$argon2id$v=19$m=65536,t=3,p=4$"+sk[0]+"$"+sk[1], pw) {
 			t.Errorf("short salt or key accepted: %v", sk)
 		}
 	}
@@ -310,11 +310,11 @@ func TestMinPasswordCharsOption(t *testing.T) {
 
 // The bounds must still accept every hash the app makes itself.
 func TestCheckPasswordAcceptsOwnHashes(t *testing.T) {
-	h, err := auth.HashPassword(pw)
+	h, err := auth.HashPassword(context.Background(), pw)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !auth.CheckPassword(h, pw) {
+	if !check(t, h, pw) {
 		t.Fatalf("own hash %s rejected", h)
 	}
 }
@@ -348,4 +348,14 @@ func TestServiceSetHideDone(t *testing.T) {
 	if got, _, err := a.Authenticate(ctx, token); err != nil || !got.HideDone {
 		t.Fatalf("Authenticate = %+v, %v; want HideDone", got, err)
 	}
+}
+
+// check is auth.CheckPassword that fails the test if the check cannot run.
+func check(t *testing.T, encoded, password string) bool {
+	t.Helper()
+	ok, err := auth.CheckPassword(context.Background(), encoded, password)
+	if err != nil {
+		t.Fatalf("CheckPassword: %v", err)
+	}
+	return ok
 }

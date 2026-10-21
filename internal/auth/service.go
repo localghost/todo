@@ -18,6 +18,9 @@ const (
 	ShortSession = 12 * time.Hour
 	// LongSession is the lifetime with "Keep me logged in".
 	LongSession = 30 * 24 * time.Hour
+	// MaxSessionsPerUser is how many sessions one user keeps; a new session
+	// ends the oldest one (code review 1).
+	MaxSessionsPerUser = 20
 )
 
 // Service holds the account and session rules.
@@ -66,7 +69,7 @@ func (s *Service) SignUp(ctx context.Context, username, password string) (User, 
 	if err := ValidatePassword(password, s.minPasswordChars); err != nil {
 		return User{}, err
 	}
-	hash, err := HashPassword(password)
+	hash, err := HashPassword(ctx, password)
 	if err != nil {
 		return User{}, err
 	}
@@ -80,13 +83,17 @@ func (s *Service) LogIn(ctx context.Context, username, password string, persiste
 	}
 	u, err := s.store.UserByName(ctx, username)
 	if errors.Is(err, ErrNoUser) {
-		CheckPassword(dummyHash(), password)
+		if _, err := CheckPassword(ctx, dummyHash(), password); err != nil {
+			return "", Session{}, err
+		}
 		return "", Session{}, ErrBadLogin
 	}
 	if err != nil {
 		return "", Session{}, err
 	}
-	if !CheckPassword(u.PasswordHash, password) {
+	if ok, err := CheckPassword(ctx, u.PasswordHash, password); err != nil {
+		return "", Session{}, err
+	} else if !ok {
 		return "", Session{}, ErrBadLogin
 	}
 	return s.StartSession(ctx, u.ID, persistent)
@@ -137,13 +144,15 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, token, curre
 	if err != nil {
 		return err
 	}
-	if !CheckPassword(u.PasswordHash, current) {
+	if ok, err := CheckPassword(ctx, u.PasswordHash, current); err != nil {
+		return err
+	} else if !ok {
 		return ErrWrongPassword
 	}
 	if err := ValidatePassword(next, s.minPasswordChars); err != nil {
 		return err
 	}
-	hash, err := HashPassword(next)
+	hash, err := HashPassword(ctx, next)
 	if err != nil {
 		return err
 	}
@@ -185,7 +194,7 @@ func (s *Service) ResetPassword(ctx context.Context, username string) (string, e
 		}
 		pw[i] = resetAlphabet[n.Int64()]
 	}
-	hash, err := HashPassword(string(pw))
+	hash, err := HashPassword(ctx, string(pw))
 	if err != nil {
 		return "", err
 	}

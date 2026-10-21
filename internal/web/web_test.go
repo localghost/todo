@@ -32,6 +32,7 @@ type testEnv struct {
 	User  auth.User
 	Token string
 	Clock *testClock
+	DB    string // path of the SQLite file, for tests that fill it fast
 }
 
 func newTestEnv(t *testing.T, opts ...web.Option) *testEnv {
@@ -42,7 +43,8 @@ func newTestEnv(t *testing.T, opts ...web.Option) *testEnv {
 // newTestEnvAuth is newTestEnv with options for the auth service.
 func newTestEnvAuth(t *testing.T, authOpts []auth.Option, opts ...web.Option) *testEnv {
 	t.Helper()
-	store, err := sqlite.Open(filepath.Join(t.TempDir(), "test.db"))
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	store, err := sqlite.Open(dbPath)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -76,7 +78,7 @@ func newTestEnvAuth(t *testing.T, authOpts []auth.Option, opts ...web.Option) *t
 		}
 		raw.ServeHTTP(w, r)
 	})
-	return &testEnv{H: h, Raw: raw, Svc: svc, Auth: accounts, Store: store, User: user, Token: token, Clock: clock}
+	return &testEnv{H: h, Raw: raw, Svc: svc, Auth: accounts, Store: store, User: user, Token: token, Clock: clock, DB: dbPath}
 }
 
 func newTestApp(t *testing.T) (http.Handler, *todo.Service) {

@@ -33,8 +33,8 @@ var staticFS embed.FS
 type server struct {
 	svc            *todo.Service
 	accounts       *auth.Service
-	guideFS        fs.FS      // user-guide.md and guide-images/; nil means no guide
-	guide          *guideView // rendered from guideFS in New
+	guideFS        fs.FS              // user-guide.md and guide-images/; nil means no guide
+	guide          *guideView         // rendered from guideFS in New
 	base           *template.Template // parsed once, never executed; cloned per zone
 	views          sync.Map           // zone name → *template.Template bound to that zone
 	zones          sync.Map           // todo_tz cookie value → *time.Location
@@ -52,6 +52,7 @@ type server struct {
 	signupNew      *guard.Limiter // new accounts per IP
 	loginUser      *guard.Limiter // wrong passwords per lowercase username
 	loginIP        *guard.Limiter // failed logins per IP
+	passwordUser   *guard.Limiter // wrong current passwords per user ID ("Change password")
 }
 
 // Option changes how the app is set up.
@@ -93,6 +94,7 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Op
 	s.signupNew = guard.NewLimiter(5, time.Hour, s.now)
 	s.loginUser = guard.NewLimiter(5, 15*time.Minute, s.now)
 	s.loginIP = guard.NewLimiter(20, 15*time.Minute, s.now)
+	s.passwordUser = guard.NewLimiter(5, 15*time.Minute, s.now)
 	tmpl, err := template.New("").Funcs(s.zoneFuncs(time.UTC)).ParseFS(templateFS, "templates/*.html")
 	if err != nil {
 		return nil, err

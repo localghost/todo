@@ -3,6 +3,7 @@ package web
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"todo/internal/auth"
@@ -47,6 +48,9 @@ func (s *server) loginPage(w http.ResponseWriter, r *http.Request) {
 
 const loginLocked = "Too many attempts. Please try again in 15 minutes."
 
+// serverBusy answers auth.ErrBusy: too many password checks wait already.
+const serverBusy = "The server is busy. Please try again in a moment."
+
 func (s *server) login(w http.ResponseWriter, r *http.Request) {
 	username := r.PostFormValue("username")
 	ip := s.clientIP(r)
@@ -81,6 +85,10 @@ func (s *server) login(w http.ResponseWriter, r *http.Request) {
 	s.loginIP.Release(ipTicket)
 	if countUser {
 		s.loginUser.Release(userTicket)
+	}
+	if errors.Is(err, auth.ErrBusy) {
+		s.render(w, r, http.StatusServiceUnavailable, part{"login", loginView{Username: username, Error: serverBusy}})
+		return
 	}
 	if err != nil {
 		s.serverError(w, r, err)
@@ -156,6 +164,11 @@ func (s *server) signup(w http.ResponseWriter, r *http.Request) {
 		}
 		s.render(w, r, http.StatusUnprocessableEntity, part{"signup", view})
 		return
+	case errors.Is(err, auth.ErrBusy):
+		view := s.newSignupView(username)
+		view.Error = serverBusy
+		s.render(w, r, http.StatusServiceUnavailable, part{"signup", view})
+		return
 	case err != nil:
 		s.serverError(w, r, err)
 		return
@@ -202,14 +215,29 @@ func (s *server) accountPage(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) changePassword(w http.ResponseWriter, r *http.Request) {
 	view := s.accountView(r)
+	// Reserve a ticket before the slow password check; a wrong current
+	// password keeps it. After 5 in 15 minutes, no check runs (code review 2).
+	ticket, ok := s.passwordUser.Reserve(strconv.FormatInt(userID(r), 10))
+	if !ok {
+		view.PasswordError = "Too many wrong passwords. Wait 15 minutes, then try again."
+		s.render(w, r, http.StatusTooManyRequests, part{"account", view})
+		return
+	}
 	err := s.accounts.ChangePassword(r.Context(), userID(r), sessionToken(r),
 		r.PostFormValue("current_password"), r.PostFormValue("new_password"))
+	if !errors.Is(err, auth.ErrWrongPassword) {
+		s.passwordUser.Release(ticket)
+	}
 	var rule *auth.RuleError
 	switch {
 	case errors.Is(err, auth.ErrWrongPassword):
 		view.PasswordError = "The current password is wrong."
 	case errors.As(err, &rule):
 		view.PasswordError = rule.Msg
+	case errors.Is(err, auth.ErrBusy):
+		view.PasswordError = serverBusy
+		s.render(w, r, http.StatusServiceUnavailable, part{"account", view})
+		return
 	case err != nil:
 		s.serverError(w, r, err)
 		return

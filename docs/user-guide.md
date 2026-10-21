@@ -18,7 +18,8 @@ There is no email address. If you forget your password, ask the admin of the app
 
 1. Type your username and password.
 2. If you use your own computer, select **Keep me logged in**. Then you stay logged in for 30
-   days.
+   days. You can be logged in on at most 20 devices or browsers at the same time. A new login
+   ends the oldest one.
 3. Click **Log in**.
 
 ![The login page](guide-images/login.png)
@@ -30,7 +31,8 @@ To log out, click **Log out** at the top right of your list.
 Click **Account** at the top right of your list. On the Account page you can:
 
 - Change your password. You must type your current password first. After the change, the app
-  logs you out on your other devices.
+  logs you out on your other devices. After 5 wrong current passwords, wait 15 minutes before
+  you try again.
 - Delete your account. Type your username to confirm. This deletes all your items, and you
   cannot undo it.
 
@@ -42,6 +44,8 @@ Click **Account** at the top right of your list. On the Account page you can:
 
 1. Type the task in the field "What needs to be done?".
 2. Press Enter or click **Add**. The item goes to the end of the list.
+
+An item text has at most 500 characters. You can have at most 5,000 items, done or not.
 
 If nothing on the page has the focus, you can start to type at once. The text goes into the
 add field.

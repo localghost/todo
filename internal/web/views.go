@@ -27,7 +27,7 @@ type listView struct {
 // formView is the data for the add form.
 type formView struct {
 	Text   string
-	Error  bool // empty text
+	Error  string // why the text was refused, or ""
 	Focus  bool
 	Filter *todo.Label // new items get this label (the list's filter)
 }
@@ -36,7 +36,7 @@ type formView struct {
 type editView struct {
 	Item  todo.Item
 	Text  string
-	Error bool // empty text
+	Error string // why the text was refused, or ""
 }
 
 // duePickerView is the data for the due date pop-up of an item.
