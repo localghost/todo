@@ -39,8 +39,8 @@ func filtered(id int64) map[string]string {
 }
 
 // The + is small and gray, with no circle (canvas page 16, option C). It shows
-// only when the pointer is on the row or focus is in it, also on a row
-// without labels; an invisible area keeps it easy to click.
+// on every row, also on a row without labels; an invisible area keeps it easy
+// to click.
 func TestLabelPlusIsSmallAndGray(t *testing.T) {
 	env := newTestEnv(t)
 	addLabeled(t, env.Svc, env.User.ID, "Invoice", "")

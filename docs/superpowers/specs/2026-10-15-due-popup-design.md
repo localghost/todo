@@ -1,5 +1,8 @@
 # Due date: a calendar icon and a pop-up on each item
 
+Note (2026-10-21): the calendar icon and the + now always show on every row, also on a computer
+(canvas page "16 · Labels", board "NEW: calendar icon and + always shown", option A).
+
 Status: approved and built (2026-10-15). Replaces the Due fields of edit mode in
 `2026-10-01-due-dates-design.md`. The add form does not change.
 Mockups: canvas "Todo app UI proposal", page "10 · Due date", board "NEW: calendar icon and due

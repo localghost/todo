@@ -117,8 +117,24 @@ func TestCalendarIconCSS(t *testing.T) {
 	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
 	assertContains(t, css,
 		".label-add, .due-add {", ".label-add::after, .due-add::after {",
-		".item:hover .due-add, .item:focus-within .due-add, .due-add[aria-expanded=\"true\"]",
 		"button.due {", ".due-picker {", ".due-actions {", ".due-save {", ".due-remove {")
+}
+
+// The calendar icon and the + show on every row, also with no pointer on it
+// (canvas page 16, "always shown", option A). Only the × on a chip waits for
+// the pointer.
+func TestRowIconsAlwaysShow(t *testing.T) {
+	h, _ := newTestApp(t)
+	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
+	assertNotContains(t, css, ".item:hover .label-add", ".item:hover .due-add")
+	i := strings.Index(css, ".label-add, .due-add {")
+	if i < 0 {
+		t.Fatal("no .label-add, .due-add rule")
+	}
+	if rule := css[i : i+strings.Index(css[i:], "}")]; strings.Contains(rule, "opacity") {
+		t.Fatalf("the icons must not be hidden: %s", rule)
+	}
+	assertContains(t, css, ".chip:hover .chip-x, .chip:focus-within .chip-x {")
 }
 
 // On hover only the lines of the calendar icon and the + get darker; there
