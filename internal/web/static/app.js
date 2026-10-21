@@ -430,6 +430,12 @@ function resetPicker() {
 
 function closePicker(refocus) {
   if (!picker) {
+    // A pop-up that still loads, or that failed to load: forget it, so the
+    // next click on its button opens it again (code review 5).
+    if (pickerButton) {
+      pickerButton.setAttribute("aria-expanded", "false");
+      pickerButton = null;
+    }
     return;
   }
   picker.remove();
@@ -454,15 +460,23 @@ function openPicker(button) {
   pickerButton = button;
   button.setAttribute("aria-expanded", "true");
   const wrap = button.parentElement;
+  // No pop-up came (a network or server error): the button works again.
+  const failed = () => {
+    if (pickerButton === button) {
+      button.setAttribute("aria-expanded", "false");
+      pickerButton = null;
+    }
+  };
   htmx.ajax("GET", button.dataset.picker, { target: wrap, swap: "beforeend" }).then(() => {
     const box = wrap.querySelector(".picker");
     if (!box || pickerButton !== button) {
       if (box) box.remove();
+      else failed();
       return;
     }
     picker = box;
     installPicker();
-  });
+  }).catch(failed);
 }
 
 // Open to the left of the + when the list does not fit on the right.

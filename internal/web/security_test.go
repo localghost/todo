@@ -68,3 +68,19 @@ func TestCrossSiteFormsRejected(t *testing.T) {
 		t.Errorf("cross-site account delete: %d, want 403", rec.Code)
 	}
 }
+
+// HTTPS answers tell the browser to use only HTTPS from now on (HSTS, code
+// review 8). Fly's proxy ends TLS and sets X-Forwarded-Proto. Plain HTTP
+// answers have no HSTS header (browsers ignore it there).
+func TestHSTSOnHTTPS(t *testing.T) {
+	env := newTestEnv(t)
+	for _, path := range []string{"/login", "/static/app.css", "/guide"} {
+		rec := do(t, env.H, "GET", path, nil, map[string]string{anonHeader: "1", "X-Forwarded-Proto": "https"})
+		if got := rec.Header().Get("Strict-Transport-Security"); got != "max-age=31536000" {
+			t.Errorf("%s over HTTPS: HSTS = %q", path, got)
+		}
+	}
+	if got := do(t, env.H, "GET", "/login", nil, anon).Header().Get("Strict-Transport-Security"); got != "" {
+		t.Errorf("plain HTTP: HSTS = %q, want none", got)
+	}
+}

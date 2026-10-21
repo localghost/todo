@@ -69,7 +69,17 @@ func (s *server) toggleItem(w http.ResponseWriter, r *http.Request) {
 		s.oobOnly(w, r, http.StatusNotFound)
 		return
 	}
-	item, err := s.svc.Toggle(r.Context(), userID(r), id)
+	old := s.oldItem(r, id)
+	// The checkbox sends the wanted state (code review 4); a request with no
+	// value, from a page loaded before this change, flips the item.
+	var item todo.Item
+	var err error
+	switch r.PostFormValue("done") {
+	case "1", "0":
+		item, err = s.svc.SetDone(r.Context(), userID(r), id, r.PostFormValue("done") == "1")
+	default:
+		item, err = s.svc.Toggle(r.Context(), userID(r), id)
+	}
 	if errors.Is(err, todo.ErrNotFound) {
 		s.oobOnly(w, r, http.StatusNotFound)
 		return
@@ -78,9 +88,7 @@ func (s *server) toggleItem(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	before := item
-	before.Done = !item.Done
-	if now := s.nowFor(r); before.Overdue(now) != item.Overdue(now) {
+	if now := s.nowFor(r); old.Overdue(now) != item.Overdue(now) {
 		s.renderList(w, r, hideDone) // the item enters or leaves the overdue group
 		return
 	}
@@ -139,6 +147,20 @@ func (s *server) clearDone(w http.ResponseWriter, r *http.Request) {
 	var labelID int64
 	if filter != nil {
 		labelID = filter.ID
+	}
+	// The question sends the number it showed. If another tab changed it,
+	// delete nothing and ask again with the new number (code review 7).
+	if shown := r.PostFormValue("count"); shown != "" && isHTMX(r) {
+		lv, err := s.listView(r, currentUser(r).HideDone)
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		if strconv.Itoa(lv.Done) != shown {
+			lv.Ask, lv.Changed = true, true
+			s.render(w, r, http.StatusOK, part{"list", lv})
+			return
+		}
 	}
 	if _, err := s.svc.ClearDone(r.Context(), userID(r), labelID); err != nil {
 		s.serverError(w, r, err)

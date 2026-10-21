@@ -68,10 +68,17 @@ func (s *server) login(w http.ResponseWriter, r *http.Request) {
 	// A name that breaks the rules cannot exist: it gets no counter, so junk
 	// names cannot fill the limiter's memory.
 	countUser := auth.ValidateUsername(userKey) == nil
-	var userTicket guard.Ticket
+	var pairTicket, userTicket guard.Ticket
 	if countUser {
+		if pairTicket, ok = s.loginUserIP.Reserve(userKey + "|" + ip); !ok {
+			s.loginIP.Release(ipTicket)
+			s.log.Info("login blocked", "ip", ip, "reason", "username and IP limit")
+			locked()
+			return
+		}
 		if userTicket, ok = s.loginUser.Reserve(userKey); !ok {
 			s.loginIP.Release(ipTicket)
+			s.loginUserIP.Release(pairTicket)
 			s.log.Info("login blocked", "ip", ip, "reason", "username limit")
 			locked()
 			return
@@ -84,6 +91,7 @@ func (s *server) login(w http.ResponseWriter, r *http.Request) {
 	}
 	s.loginIP.Release(ipTicket)
 	if countUser {
+		s.loginUserIP.Release(pairTicket)
 		s.loginUser.Release(userTicket)
 	}
 	if errors.Is(err, auth.ErrBusy) {

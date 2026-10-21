@@ -20,35 +20,58 @@ func login(t *testing.T, env *testEnv, user, pass string, h map[string]string) i
 	return do(t, env.H, "POST", "/login", url.Values{"username": {user}, "password": {pass}}, h).Code
 }
 
-func TestLoginLimitPerUsername(t *testing.T) {
+// 5 wrong passwords for one username from one IP block that pair for 15
+// minutes. The same user from another IP can still log in, so one attacker
+// cannot lock a user out (code review 6).
+func TestLoginLimitPerUsernameAndIP(t *testing.T) {
 	env := newTestEnv(t)
 	env.Auth.SignUp(context.Background(), "alice", pw)
+	attacker := fromIP("203.0.113.1")
 	for i := 0; i < 5; i++ {
-		if code := login(t, env, "alice", "wrong password", fromIP("203.0.113."+strconv.Itoa(i+1))); code != http.StatusUnprocessableEntity {
+		if code := login(t, env, "alice", "wrong password", attacker); code != http.StatusUnprocessableEntity {
 			t.Fatalf("wrong %d: %d, want 422", i+1, code)
 		}
 	}
-	rec := do(t, env.H, "POST", "/login", url.Values{"username": {"alice"}, "password": {pw}}, fromIP("203.0.113.99"))
+	rec := do(t, env.H, "POST", "/login", url.Values{"username": {"alice"}, "password": {pw}}, fromIP("203.0.113.1"))
 	if rec.Code != http.StatusTooManyRequests {
-		t.Fatalf("6th try with the right password: %d, want 429", rec.Code)
+		t.Fatalf("6th try from the same IP with the right password: %d, want 429", rec.Code)
 	}
 	assertContains(t, rec.Body.String(), lockedMsg)
-	if code := login(t, env, "tester-other", "wrong password", fromIP("203.0.113.99")); code != http.StatusUnprocessableEntity {
-		t.Fatalf("other username: %d, want 422 (not blocked)", code)
+	if code := login(t, env, "tester-other", "wrong password", attacker); code != http.StatusUnprocessableEntity {
+		t.Fatalf("other username from the same IP: %d, want 422 (not blocked)", code)
+	}
+	if code := login(t, env, "alice", pw, fromIP("198.51.100.7")); code != http.StatusSeeOther {
+		t.Fatalf("alice from her own IP: %d, want 303", code)
 	}
 	env.Clock.t = env.Clock.t.Add(15*time.Minute + time.Second)
-	if code := login(t, env, "alice", pw, fromIP("203.0.113.99")); code != http.StatusSeeOther {
+	if code := login(t, env, "alice", pw, fromIP("203.0.113.1")); code != http.StatusSeeOther {
 		t.Fatalf("after 15 minutes: %d, want 303", code)
+	}
+}
+
+// Guessing one password from many IPs stops after 50 wrong tries per
+// username in 15 minutes, from any IP.
+func TestLoginLimitPerUsernameAllIPs(t *testing.T) {
+	env := newTestEnv(t)
+	env.Auth.SignUp(context.Background(), "alice", pw)
+	for i := 0; i < 50; i++ {
+		ip := fromIP("203.0.113." + strconv.Itoa(i/5+1)) // 5 tries from each of 10 IPs
+		if code := login(t, env, "alice", "wrong password", ip); code != http.StatusUnprocessableEntity {
+			t.Fatalf("wrong %d: %d, want 422", i+1, code)
+		}
+	}
+	if code := login(t, env, "alice", pw, fromIP("198.51.100.7")); code != http.StatusTooManyRequests {
+		t.Fatalf("after 50 wrong tries from 10 IPs: %d, want 429", code)
 	}
 }
 
 func TestLoginLimitIgnoresUsernameCase(t *testing.T) {
 	env := newTestEnv(t)
 	env.Auth.SignUp(context.Background(), "alice", pw)
-	for i, name := range []string{"alice", "ALICE", "Alice", "aLiCe", "ALIce"} {
-		login(t, env, name, "wrong password", fromIP("203.0.113."+strconv.Itoa(i+1)))
+	for _, name := range []string{"alice", "ALICE", "Alice", "aLiCe", "ALIce"} {
+		login(t, env, name, "wrong password", fromIP("203.0.113.1"))
 	}
-	if code := login(t, env, "alicE", pw, fromIP("203.0.113.50")); code != http.StatusTooManyRequests {
+	if code := login(t, env, "alicE", pw, fromIP("203.0.113.1")); code != http.StatusTooManyRequests {
 		t.Fatalf("after 5 wrong tries in mixed case: %d, want 429", code)
 	}
 }
@@ -89,7 +112,7 @@ func TestParallelWrongLoginsAreCapped(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			code := login(t, env, "alice", "wrong password", fromIP("198.18.0."+strconv.Itoa(i+1)))
+			code := login(t, env, "alice", "wrong password", fromIP("198.18.0.1"))
 			mu.Lock()
 			counts[code]++
 			mu.Unlock()

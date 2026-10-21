@@ -3,6 +3,7 @@ package web_test
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -37,7 +38,7 @@ func TestClearDoneAsksFirst(t *testing.T) {
 	}
 	assertContains(t, rec.Body.String(),
 		`<div class="confirm clear-confirm" role="alert"><p>Delete 2 done items? You cannot undo this.</p>`,
-		`hx-post="/items/done/delete" hx-target="#list-section" hx-swap="outerHTML" autofocus>Delete 2 items</button>`,
+		`hx-post="/items/done/delete" hx-vals='{"count":"2"}' hx-target="#list-section" hx-swap="outerHTML" autofocus>Delete 2 items</button>`,
 		`<button type="button" class="btn-small clear-cancel">Cancel</button>`)
 
 	w := addLabeled(t, env.Svc, 1, "Send the invoice", "work")
@@ -124,4 +125,34 @@ func TestAppJSClosesTheQuestion(t *testing.T) {
 	h, _ := newTestApp(t)
 	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
 	assertContains(t, js, `function closeClearConfirm(`, `e.target.closest(".clear-cancel")`, `e.target.closest(".clear-done")`)
+}
+
+// If the number of done items changed after the question showed, Delete
+// deletes nothing and the list comes back with the question open and the
+// new number (canvas page 3, "the number changed"; code review 7).
+func TestClearDoneAsksAgainWhenTheCountChanged(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+	done := func(text string) { it := mustAdd(t, env.Svc, text); env.Svc.Toggle(ctx, 1, it.ID) }
+	done("a")
+	done("b")
+	done("c")
+	rec := do(t, env.H, "POST", "/items/done/delete", url.Values{"count": {"1"}}, htmxHeaders)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	assertContains(t, rec.Body.String(), `<section id="list-section"`,
+		`<p>The number of done items changed. Delete 3 done items? You cannot undo this.</p>`,
+		`hx-vals='{"count":"3"}'`, `Delete 3 items</button>`, `aria-expanded="true" hx-get="/items/done/clear"`)
+	if _, n, _ := env.Svc.Counts(ctx, 1); n != 3 {
+		t.Fatalf("done items = %d, want 3 (nothing deleted)", n)
+	}
+	body := do(t, env.H, "POST", "/items/done/delete", url.Values{"count": {"3"}}, htmxHeaders).Body.String()
+	assertNotContains(t, body, "The number of done items changed.")
+	if _, n, _ := env.Svc.Counts(ctx, 1); n != 0 {
+		t.Fatalf("done items = %d, want 0", n)
+	}
+	// All done items went away meanwhile: no question, nothing to delete.
+	body = do(t, env.H, "POST", "/items/done/delete", url.Values{"count": {"2"}}, htmxHeaders).Body.String()
+	assertContains(t, body, `<div id="clear-confirm"></div>`)
 }

@@ -42,6 +42,8 @@ var (
 	ErrLabelExists = errors.New("todo: label exists")
 	// ErrTooManyLabels means the user would have more than MaxLabelsPerUser labels.
 	ErrTooManyLabels = errors.New("todo: too many labels")
+	// ErrItemLabelsFull means the item has MaxLabelsPerItem labels already.
+	ErrItemLabelsFull = errors.New("todo: the item has the most labels")
 )
 
 // LabelError is an ErrBadLabel with a message for the user.
@@ -154,26 +156,17 @@ func (s *Service) AddLabel(ctx context.Context, userID, itemID int64, name, colo
 	if err != nil {
 		return Item{}, err
 	}
-	it, err := s.store.Get(ctx, userID, itemID)
-	if err != nil {
-		return Item{}, err
-	}
-	names := make([]string, 0, len(it.Labels)+1)
-	for _, l := range it.Labels {
-		if strings.EqualFold(l.Name, name) {
-			return it, nil
-		}
-		names = append(names, l.Name)
-	}
-	if len(names) >= MaxLabelsPerItem {
-		return Item{}, &LabelError{Msg: "An item can have at most 5 labels."}
-	}
 	labels, err := s.store.Labels(ctx, userID)
 	if err != nil {
 		return Item{}, err
 	}
 	isNew := !slices.ContainsFunc(labels, func(l Label) bool { return strings.EqualFold(l.Name, name) })
-	it, err = s.setLabels(ctx, userID, it, append(names, name))
+	// The store adds one label row in one transaction, so changes at the same
+	// time do not undo each other (code review 3).
+	it, err := s.store.AddItemLabel(ctx, userID, itemID, name, s.now())
+	if errors.Is(err, ErrItemLabelsFull) {
+		return Item{}, &LabelError{Msg: "An item can have at most 5 labels."}
+	}
 	color, ok := CleanColor(color)
 	if err != nil || !isNew || !ok {
 		return it, err
@@ -191,24 +184,5 @@ func (s *Service) AddLabel(ctx context.Context, userID, itemID int64, name, colo
 
 // RemoveLabel takes label labelID off an item. The label itself stays.
 func (s *Service) RemoveLabel(ctx context.Context, userID, itemID, labelID int64) (Item, error) {
-	it, err := s.store.Get(ctx, userID, itemID)
-	if err != nil {
-		return Item{}, err
-	}
-	if !it.HasLabel(labelID) {
-		return it, nil
-	}
-	names := []string{}
-	for _, l := range it.Labels {
-		if l.ID != labelID {
-			names = append(names, l.Name)
-		}
-	}
-	return s.setLabels(ctx, userID, it, names)
-}
-
-// setLabels replaces the item's labels, keeping its text and due date.
-func (s *Service) setLabels(ctx context.Context, userID int64, it Item, names []string) (Item, error) {
-	return s.store.UpdateItem(ctx, userID, it.ID,
-		Change{Text: it.Text, DueAt: it.DueAt, DueAllDay: it.DueAllDay, Labels: names}, s.now())
+	return s.store.RemoveItemLabel(ctx, userID, itemID, labelID, s.now())
 }
