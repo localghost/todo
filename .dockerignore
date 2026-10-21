@@ -1,7 +1,11 @@
 .git
 .superpowers
 .air.toml
-docs
+# The image needs docs/embed.go, docs/user-guide.md and docs/guide-images/ (the guide at /guide).
+docs/superpowers
+docs/deploy.md
+docs/future-work.md
+tools
 tmp
 /todo
 *.db

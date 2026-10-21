@@ -15,6 +15,7 @@ import (
 	"time"
 	_ "time/tzdata" // every browser time zone loads, also in an image without zone files
 
+	"todo/docs"
 	"todo/internal/auth"
 	"todo/internal/config"
 	"todo/internal/store/sqlite"
@@ -64,7 +65,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	handler, err := web.New(todo.NewService(store), accounts, logger, web.WithSigningKey(key), web.WithTrustProxy(*trustProxy), web.WithClientIPHeader(*clientIPHeader), web.WithDefaultZone(zone))
+	handler, err := web.New(todo.NewService(store), accounts, logger, web.WithSigningKey(key), web.WithTrustProxy(*trustProxy), web.WithClientIPHeader(*clientIPHeader), web.WithDefaultZone(zone), web.WithGuide(docs.Guide))
 	if err != nil {
 		return err
 	}

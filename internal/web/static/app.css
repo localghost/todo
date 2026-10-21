@@ -452,3 +452,32 @@ button.due:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
   .confirm { flex-direction: column; align-items: stretch; }
   .confirm p { flex: none; }
 }
+
+/* The user guide at /guide (canvas page "2 · Main list"). The text comes from
+   Markdown, so the rules style plain elements inside .guide. */
+main.guide { display: block; max-width: 760px; font-size: 17px; line-height: 1.55; }
+.guide-top { margin-bottom: 20px; font-size: 15px; }
+.guide .guide-brand { margin: 0; font-size: 30px; font-weight: 700; }
+.guide a { color: var(--accent); }
+.guide h1 { margin: 0 0 8px; }
+.guide h2 { margin: 40px 0 10px; font-size: 24px; scroll-margin-top: 16px; }
+.guide h3 { margin: 24px 0 6px; font-size: 19px; }
+.guide p, .guide ul, .guide ol { margin: 0 0 12px; }
+.guide li { margin: 2px 0; }
+.guide code { font-size: 15px; padding: 1px 5px; border-radius: 4px; background: var(--card); border: 1px solid var(--line); }
+.guide img {
+  display: block; max-width: 100%; height: auto; margin: 8px 0 18px;
+  border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 1px 2px rgba(31, 30, 27, 0.06);
+}
+.guide table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 15px; background: var(--card); }
+.guide th, .guide td { text-align: left; vertical-align: top; padding: 7px 10px; border: 1px solid var(--line); }
+.guide th { background: var(--ground); font-weight: 700; }
+.guide-toc { margin: 16px 0 8px; padding: 12px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+.guide-toc p { margin: 0 0 4px; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.guide-toc ol { margin: 0; padding-left: 22px; line-height: 1.8; }
+@media (max-width: 480px) {
+  main.guide { font-size: 16px; }
+  .guide h2 { font-size: 22px; }
+  .guide table { font-size: 14px; }
+  .guide th, .guide td { padding: 6px; }
+}

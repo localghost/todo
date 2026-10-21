@@ -7,6 +7,7 @@ import (
 	"embed"
 	"errors"
 	"html/template"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
@@ -32,6 +33,8 @@ var staticFS embed.FS
 type server struct {
 	svc            *todo.Service
 	accounts       *auth.Service
+	guideFS        fs.FS      // user-guide.md and guide-images/; nil means no guide
+	guide          *guideView // rendered from guideFS in New
 	base           *template.Template // parsed once, never executed; cloned per zone
 	views          sync.Map           // zone name → *template.Template bound to that zone
 	zones          sync.Map           // todo_tz cookie value → *time.Location
@@ -95,9 +98,20 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Op
 		return nil, err
 	}
 	s.base = tmpl
+	if s.guideFS != nil {
+		md, err := fs.ReadFile(s.guideFS, "user-guide.md")
+		if err != nil {
+			return nil, err
+		}
+		if s.guide, err = renderGuide(md); err != nil {
+			return nil, err
+		}
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", noDirListing(http.FileServerFS(staticFS)))
+	mux.HandleFunc("GET /guide", s.guidePage)
+	mux.Handle("GET /guide-images/", s.guideImages())
 	mux.HandleFunc("GET /login", s.loginPage)
 	mux.HandleFunc("POST /login", s.login)
 	mux.HandleFunc("GET /signup", s.signupPage)
@@ -193,7 +207,11 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("Content-Security-Policy", contentSecurityPolicy)
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "same-origin")
-		if !strings.HasPrefix(r.URL.Path, "/static/") {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/static/"):
+		case r.URL.Path == "/guide" || strings.HasPrefix(r.URL.Path, "/guide-images/"):
+			h.Set("Cache-Control", "public, max-age=3600") // the same for everyone
+		default:
 			// Private data: the browser must not keep it (for example for Back after logout).
 			h.Set("Cache-Control", "no-store")
 		}

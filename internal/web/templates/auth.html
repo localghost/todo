@@ -29,6 +29,7 @@
 </form>
 </div>
 <p class="auth-foot">No account yet? <a href="/signup">Sign up</a></p>
+<p class="auth-foot">New here? <a href="/guide">Read the user guide</a></p>
 </main>
 </body>
 </html>
@@ -59,6 +60,7 @@
 </form>
 </div>
 <p class="auth-foot">Already have an account? <a href="/login">Log in</a></p>
+<p class="auth-foot">New here? <a href="/guide">Read the user guide</a></p>
 </main>
 </body>
 </html>
@@ -66,7 +68,7 @@
 
 {{define "account"}}{{template "auth-head" "Account"}}
 <main class="account-wrap">
-<div class="account-top"><a href="/">← Back to my list</a> <form method="post" action="/logout" class="inline-form"><button type="submit" class="link-button">Log out</button></form></div>
+<div class="account-top"><span><a href="/">← Back to my list</a> · <a href="/guide">User guide</a></span> <form method="post" action="/logout" class="inline-form"><button type="submit" class="link-button">Log out</button></form></div>
 <h1>Account</h1>
 <p class="account-who">Signed in as <strong>{{.Username}}</strong> · member since {{.MemberSince}}</p>
 <section class="auth-card" aria-labelledby="pw-title">

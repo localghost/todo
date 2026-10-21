@@ -68,3 +68,7 @@ run = 'fly ssh console -C "/todo users delete -yes -db $TODO_DB -config $TODO_CO
 [tasks."fly:snapshots"]
 description = "List the daily snapshots of the data volume"
 run = "fly volumes snapshots list \"$(fly volumes list --json | jq -r '.[] | select(.name == \"todo_data\" and .attached_machine_id != null) | .id')\""
+
+[tasks."guide:shots"]
+description = "Make the screenshots of the user guide again (needs Node and headless Chromium)"
+run = "tools/guide-shots/run.sh"

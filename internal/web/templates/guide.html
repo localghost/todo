@@ -1,0 +1,22 @@
+{{/* The user guide (canvas page "2 · Main list", "user guide at /guide").
+     It is public and has no scripts. The text comes from docs/user-guide.md. */}}
+{{define "guide"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User guide – Todo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<main class="guide">
+<header class="top guide-top"><p class="guide-brand">Todo</p><a href="/">Open the app →</a></header>
+{{.Intro}}
+<nav class="guide-toc" aria-labelledby="guide-toc-title"><p id="guide-toc-title">Contents</p>
+<ol>{{range .Sections}}<li><a href="#{{.ID}}">{{.Title}}</a></li>{{end}}</ol></nav>
+{{.Body}}
+</main>
+</body>
+</html>{{end}}

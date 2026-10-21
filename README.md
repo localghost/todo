@@ -4,6 +4,9 @@ A small todo list for the browser. Everyone has their own account and their own 
 
 **Open the app: https://toodoo.fly.dev**
 
+User guide: https://toodoo.fly.dev/guide (no login needed; the text is in
+[docs/user-guide.md](docs/user-guide.md)).
+
 ## What it does
 
 - Add, edit, check off and delete items. Hide the done ones, or clear them all at once.
