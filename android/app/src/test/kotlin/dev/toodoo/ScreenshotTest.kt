@@ -7,11 +7,15 @@ import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.app.ActivityOptionsCompat
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.NightMode
@@ -24,6 +28,7 @@ import dev.toodoo.ui.ListActions
 import dev.toodoo.ui.ListScreen
 import dev.toodoo.ui.ListState
 import dev.toodoo.ui.PickerMode
+import dev.toodoo.ui.TimePickerBody
 import dev.toodoo.ui.TooDooTheme
 import java.time.LocalDate
 import java.time.ZoneId
@@ -126,6 +131,43 @@ class ScreenshotTest {
     @Test
     fun itemSheet() = snap {
         ItemSheetBody(items[1], onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onDelete = {}, onDismiss = {})
+    }
+
+    // No date: "Date", and the time button is off.
+    @Test
+    fun itemSheetNoDate() = snap {
+        ItemSheetBody(items[2], onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onDelete = {}, onDismiss = {})
+    }
+
+    // A 360 dp phone and a date in another year, the longest date text: it must fit.
+    @Test
+    fun itemSheetSmallPhone() {
+        paparazzi.unsafeUpdateConfig(DeviceConfig.NEXUS_5)
+        val nextYear = ZonedDateTime.now().plusYears(1).withHour(14).withMinute(30).toInstant().toString()
+        snap {
+            ItemSheetBody(items[1].copy(dueAt = nextYear), onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onDelete = {}, onDismiss = {})
+        }
+    }
+
+    @Test
+    fun itemSheetAllDay() = snap {
+        ItemSheetBody(items[3], onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onDelete = {}, onDismiss = {})
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Test
+    fun timePicker() = snap {
+        Box(Modifier.padding(24.dp)) {
+            TimePickerBody(rememberTimePickerState(14, 30, is24Hour = true), onOk = {}, onAllDay = {}, onDismiss = {})
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Test
+    fun timeInput() = snap {
+        Box(Modifier.padding(24.dp)) {
+            TimePickerBody(rememberTimePickerState(14, 30, is24Hour = true), onOk = {}, onAllDay = {}, onDismiss = {}, startTyping = true)
+        }
     }
 
     @Test

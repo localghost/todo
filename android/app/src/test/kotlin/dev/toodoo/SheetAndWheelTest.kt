@@ -1,12 +1,17 @@
 package dev.toodoo
 
 import dev.toodoo.api.Item
+import dev.toodoo.ui.clockText
+import dev.toodoo.ui.dateButtonText
 import dev.toodoo.ui.dueFields
 import dev.toodoo.ui.hslToHex
 import dev.toodoo.ui.moveBy
+import dev.toodoo.ui.pickerStart
+import dev.toodoo.ui.timeButtonText
 import dev.toodoo.ui.wheelColor
 import dev.toodoo.ui.wheelPick
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -20,6 +25,36 @@ class SheetAndWheelTest {
         assertEquals(Pair(LocalDate.of(2026, 10, 22), "14:30"), dueFields(Item(1, "a", false, dueAt = "2026-10-22T12:30:00Z"), warsaw))
         assertEquals(Pair(LocalDate.of(2026, 10, 22), ""), dueFields(Item(1, "a", false, dueAt = "2026-10-22T07:00:00Z", dueAllDay = true), warsaw))
         assertEquals(Pair(null, ""), dueFields(Item(1, "a", false), warsaw))
+    }
+
+    @Test
+    fun dateButtonShowsTheDateOrDate() {
+        val today = LocalDate.of(2026, 10, 21)
+        assertEquals("Date", dateButtonText(null, today))
+        assertEquals("Wed 21 Oct", dateButtonText(today, today))
+        assertEquals("21 Oct 2027", dateButtonText(LocalDate.of(2027, 10, 21), today))
+    }
+
+    @Test
+    fun timeButtonShowsTheTimeOrAllDay() {
+        assertEquals("Time", timeButtonText("", hasDate = false))
+        assertEquals("All day", timeButtonText("", hasDate = true))
+        assertEquals("14:30", timeButtonText("14:30", hasDate = true))
+    }
+
+    @Test
+    fun pickerStartsAtTheTimeOrTheNextHour() {
+        assertEquals(Pair(14, 30), pickerStart("14:30", LocalTime.of(9, 10)))
+        assertEquals(Pair(10, 0), pickerStart("", LocalTime.of(9, 10)))
+        assertEquals(Pair(10, 0), pickerStart("", LocalTime.of(9, 0)))
+        assertEquals(Pair(0, 0), pickerStart("", LocalTime.of(23, 30)))
+    }
+
+    @Test
+    fun clockTextHasTwoDigits() {
+        assertEquals("09:05", clockText(9, 5))
+        assertEquals("00:00", clockText(0, 0))
+        assertEquals("23:59", clockText(23, 59))
     }
 
     @Test

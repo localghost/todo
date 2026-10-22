@@ -2,6 +2,7 @@ package dev.toodoo.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -22,12 +23,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -35,8 +38,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimeInput
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerState
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,13 +57,14 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.toodoo.api.Item
 import dev.toodoo.api.Label
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -67,7 +75,29 @@ import kotlinx.coroutines.launch
 val POSTPONE_MINUTES = listOf(5, 10, 15, 30)
 
 private val dateButton = DateTimeFormatter.ofPattern("EEE d MMM", Locale.ENGLISH)
-private val dateButtonYear = DateTimeFormatter.ofPattern("EEE d MMM yyyy", Locale.ENGLISH)
+private val dateButtonYear = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
+
+/** The date button's text: "Date" with no date; the weekday only in this year, so the text stays short. */
+fun dateButtonText(date: LocalDate?, today: LocalDate): String =
+    date?.format(if (date.year == today.year) dateButton else dateButtonYear) ?: "Date"
+
+/** The time button's text: the time, "All day" for a date with no time, or "Time" with no date. */
+fun timeButtonText(time: String, hasDate: Boolean): String = when {
+    !hasDate -> "Time"
+    time.isEmpty() -> "All day"
+    else -> time
+}
+
+/** The hour and minute the time picker opens at: the item's time ("HH:MM"), or the next full hour. */
+fun pickerStart(time: String, now: LocalTime): Pair<Int, Int> {
+    val parts = time.split(":")
+    val hour = parts.getOrNull(0)?.toIntOrNull()
+    val minute = parts.getOrNull(1)?.toIntOrNull()
+    return if (hour != null && minute != null) Pair(hour, minute) else Pair((now.hour + 1) % 24, 0)
+}
+
+/** "HH:MM", as the API takes it. */
+fun clockText(hour: Int, minute: Int): String = "%02d:%02d".format(hour, minute)
 
 /** The due date and time of [item] in [zone], as the sheet's fields show them: the time is "" for all day. */
 fun dueFields(item: Item, zone: ZoneId): Pair<LocalDate?, String> {
@@ -116,6 +146,7 @@ fun ItemSheetBody(
     var date by remember(item.id, startDate) { mutableStateOf(startDate) }
     var time by rememberSaveable(item.id, startTime) { mutableStateOf(startTime) }
     var picking by remember { mutableStateOf(false) }
+    var pickingTime by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val colors = MaterialTheme.colorScheme
@@ -154,24 +185,29 @@ fun ItemSheetBody(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             label("Due")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                // 12 dp side padding (not the default 24), so a date fits on a 360 dp phone.
                 OutlinedButton(
                     onClick = { picking = true },
                     shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp),
                     modifier = Modifier.weight(1f).height(52.dp),
                 ) {
                     Icon(Icons.Filled.DateRange, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(date?.let { it.format(if (it.year == LocalDate.now(zone).year) dateButton else dateButtonYear) } ?: "Pick a date", maxLines = 1, fontSize = 16.sp, color = colors.onSurface, modifier = Modifier.weight(1f))
+                    Text(dateButtonText(date, LocalDate.now(zone)), maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 16.sp, color = colors.onSurface, modifier = Modifier.weight(1f))
                 }
-                OutlinedTextField(
-                    value = time,
-                    onValueChange = { time = it.take(5) },
-                    placeholder = { Text("All day", fontSize = 15.sp) },
-                    singleLine = true,
+                val timeText = timeButtonText(time, hasDate = date != null)
+                OutlinedButton(
+                    onClick = { pickingTime = true },
                     enabled = date != null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.width(108.dp).semantics { contentDescription = "Time" },
-                )
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    modifier = Modifier.width(112.dp).height(52.dp).semantics { contentDescription = "Time: $timeText" },
+                ) {
+                    ClockIcon(LocalContentColor.current)
+                    Spacer(Modifier.width(8.dp))
+                    Text(timeText, maxLines = 1, fontSize = 16.sp, color = if (date != null) colors.onSurface else LocalContentColor.current)
+                }
                 IconButton(onClick = {
                     date = null
                     time = ""
@@ -179,7 +215,7 @@ fun ItemSheetBody(
                     Icon(Icons.Filled.Close, contentDescription = "Clear the due date", modifier = Modifier.size(18.dp))
                 }
             }
-            Text("Leave the time empty for all day. Type 1430 for 14:30.", fontSize = 13.sp, color = colors.onSurfaceVariant)
+            Text("Tap the time to pick one. No time means all day.", fontSize = 13.sp, color = colors.onSurfaceVariant)
         }
 
         if (item.dueAt != null && !item.done) {
@@ -235,6 +271,56 @@ fun ItemSheetBody(
             },
             dismissButton = { TextButton(onClick = { picking = false }) { Text("Cancel") } },
         ) { DatePicker(state) }
+    }
+
+    if (pickingTime) {
+        TimePickerDialog(time, zone, onPick = {
+            time = it
+            pickingTime = false
+        }, onDismiss = { pickingTime = false })
+    }
+}
+
+/**
+ * The time picker (mockup "Date button and time picker", page 17): the
+ * 24-hour dial, as in Google Calendar. [onPick] gets "HH:MM", or "" for
+ * "All day".
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TimePickerDialog(time: String, zone: ZoneId, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    val (hour, minute) = remember(time) { pickerStart(time, LocalTime.now(zone)) }
+    val state = rememberTimePickerState(initialHour = hour, initialMinute = minute, is24Hour = true)
+    BasicAlertDialog(onDismissRequest = onDismiss) {
+        TimePickerBody(state, onOk = { onPick(clockText(state.hour, state.minute)) }, onAllDay = { onPick("") }, onDismiss = onDismiss)
+    }
+}
+
+/** The inside of the time picker. The keyboard icon switches to two number fields and back. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TimePickerBody(state: TimePickerState, onOk: () -> Unit, onAllDay: () -> Unit, onDismiss: () -> Unit, startTyping: Boolean = false) {
+    var typing by rememberSaveable { mutableStateOf(startTyping) }
+    val colors = MaterialTheme.colorScheme
+    Surface(shape = RoundedCornerShape(28.dp), color = colors.surface, tonalElevation = 6.dp) {
+        Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Text(if (typing) "Enter time" else "Select time", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.onSurfaceVariant)
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                if (typing) TimeInput(state) else TimePicker(state)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = { typing = !typing },
+                    modifier = Modifier.semantics { contentDescription = if (typing) "Use the clock dial" else "Type the time" },
+                ) {
+                    if (typing) ClockIcon(colors.onSurfaceVariant, size = 24.dp) else KeyboardIcon(colors.onSurfaceVariant)
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onAllDay) { Text("All day") }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onOk) { Text("OK") }
+            }
+        }
     }
 }
 

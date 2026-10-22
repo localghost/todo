@@ -207,9 +207,10 @@ web, so a change on the phone shows in the browser and the other way round.
 - **The list:** tap the circle to check an item off, swipe a row to the left to delete it (tap
   Undo to keep it), pull down to load the list again. Long-press the grip (⋮⋮) and drag to
   change the order.
-- **An item:** tap its text. The sheet has the text, the due date (type 1430 for 14:30, leave
-  the time empty for all day), Postpone, the labels, and Delete. Save sends the text and the due
-  date.
+- **An item:** tap its text. The sheet has the text, the due date, Postpone, the labels, and
+  Delete. Tap "Date" to pick the day. Then tap the time button to pick the time on a 24-hour
+  clock. The keyboard icon in the time picker lets you type the time instead. "All day" removes
+  the time. Save sends the text and the due date.
 - **Labels:** "Add label" in the sheet opens the label list: tap names to add or remove them,
   type a new name to create it, tap a color dot for the color wheel, and the × deletes a label.
   The tag button at the top shows only the items of one label.
