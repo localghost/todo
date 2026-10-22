@@ -50,6 +50,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -108,8 +109,8 @@ fun dueFields(item: Item, zone: ZoneId): Pair<LocalDate?, String> {
 
 /**
  * The item sheet (mockup "item sheet"): text, due date and time, postpone,
- * labels and delete. Text and due date are sent with Save; postpone and
- * labels at once.
+ * labels, mark as done and delete. Text and due date are sent with Save;
+ * postpone and labels at once.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,12 +120,13 @@ fun ItemSheet(
     onPostpone: (Int) -> Unit,
     onRemoveLabel: (Label) -> Unit,
     onAddLabel: () -> Unit,
+    onToggleDone: () -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = MaterialTheme.colorScheme.surface) {
-        ItemSheetBody(item, onSave, onPostpone, onRemoveLabel, onAddLabel, onDelete, onDismiss)
+        ItemSheetBody(item, onSave, onPostpone, onRemoveLabel, onAddLabel, onToggleDone, onDelete, onDismiss)
     }
 }
 
@@ -137,6 +139,7 @@ fun ItemSheetBody(
     onPostpone: (Int) -> Unit,
     onRemoveLabel: (Label) -> Unit,
     onAddLabel: () -> Unit,
+    onToggleDone: () -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -246,6 +249,13 @@ fun ItemSheetBody(
                     }
                 }
             }
+        }
+
+        // The same as a swipe right on the row, for those who do not swipe.
+        OutlinedButton(onClick = onToggleDone, border = BorderStroke(1.dp, colors.primary), modifier = Modifier.fillMaxWidth().height(48.dp)) {
+            if (item.done) UndoIcon(colors.primary, size = 18.dp) else Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(if (item.done) "Mark as not done" else "Mark as done", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

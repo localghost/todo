@@ -1,7 +1,7 @@
 # Android: swipe right for done, hold to move
 
 Date: 2026-10-22
-Status: draft for Zbyszek's review. Nothing is built yet.
+Status: approved 2026-10-22 (blue, the change waits for the snackbar, with the hint); built.
 Builds on: `2026-10-21-android-app-design.md` (section 4.1, the list)
 Mockup: canvas "Todo app UI proposal", page "18 · Swipe and hold".
 
@@ -41,10 +41,11 @@ The web app does not change. No API or schema change.
 ## 4. Undo
 
 - After a swipe right a snackbar shows "“Send invoice to Kowalski” done" (or "… not done") with
-  "Undo", for 5 seconds, like the delete snackbar.
-- Unlike delete, the change is sent to the server right away (it is cheap to undo and the web
-  should see it at once). Undo sends the opposite change.
-- A new swipe while a snackbar shows replaces it; the earlier change stays.
+  "Undo", for about 5 seconds, like the delete snackbar.
+- Like delete, the change shows on the phone at once but is sent to the server when the
+  snackbar goes away. Undo needs no request: the list loads again as the server has it.
+- A new swipe or delete while a snackbar shows sends the earlier change at once and shows the
+  new snackbar.
 
 ## 5. Hold to move
 
@@ -68,7 +69,7 @@ Swipes and holds are hard to find and hard for some hands, so each has another w
   "Move down" (not on overdue rows), "Delete", and double tap to edit. "Move up/down" and
   "Delete" exist today; "Mark as done" is new.
 - **Item sheet:** a "Mark as done" (or "Mark as not done") button above Delete / Cancel / Save.
-  It saves at once and closes the sheet.
+  It closes the sheet and does what a swipe right does, snackbar and Undo included.
 - **Reminder notification:** keeps its "Done" button.
 - **First start after the update:** a blue hint above the list: "Swipe a row right to mark it
   done, left to delete it. Hold a row to move it." with "Got it". It shows once.
@@ -80,15 +81,14 @@ Swipes and holds are hard to find and hard for some hands, so each has another w
   directions (start-to-end toggles and snaps back, never dismisses); the long-press drag moves
   from the grip to the whole row; the new "Mark as done" accessibility action; the hint; the
   done/not done snackbar with Undo; the overdue hold message.
-- `ListViewModel.kt`: `toggle` returns the old state for Undo.
+- `ListViewModel.kt`: `pendingDelete` becomes `pending` (a delete or a done change), with
+  `undo` and `commit`; the hint flag is kept with the session (`SessionStore`).
 - `ItemSheet.kt`: the "Mark as done" button.
 - Paparazzi screenshots (`mise run android:shots`) and the unit tests for the row actions.
 - `docs/user-guide.md` (Android section), `README.md` ("What it does"), `docs/android.md`.
 
-## 8. Questions for you
+## 8. Answers (2026-10-22)
 
-1. Blue for done, or another color (green would match "done" better but is close to red for
-   some color-blind users)?
-2. Swipe right sends the change at once with Undo (recommended), or waits for the snackbar to
-   go, like delete?
-3. Keep the one-time hint, or no hint?
+1. Blue for done.
+2. The change waits for the snackbar, like delete.
+3. Keep the one-time hint.

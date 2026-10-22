@@ -204,11 +204,15 @@ web, so a change on the phone shows in the browser and the other way round.
 - **Log in** with your username and password. You stay logged in while you open the app at
   least every two weeks. Sign-up, the password change and deleting the account are on the web;
   the menu's "Account (web)" opens that page.
-- **The list:** tap the circle to check an item off, swipe a row to the left to delete it (tap
-  Undo to keep it), pull down to load the list again. Long-press the grip (⋮⋮) and drag to
-  change the order.
-- **An item:** tap its text. The sheet has the text, the due date, Postpone, the labels, and
-  Delete. Tap "Date" to pick the day. Then tap the time button to pick the time on a 24-hour
+- **The list:** swipe a row to the right to mark it done (on a done row, the same swipe marks it
+  not done again). Swipe a row to the left to delete it. Both show Undo for a few seconds, and
+  the change is saved when Undo goes away. Hold a row still for half a second until it lifts,
+  then drag it to change the order (overdue items stay at the top). Pull down to load the list
+  again. The first time, a blue hint above the list explains this; "Got it" closes it.
+- **Without swiping:** the item sheet has a "Mark as done" button. With TalkBack, each row has
+  the actions Mark as done, Move up, Move down and Delete.
+- **An item:** tap it. The sheet has the text, the due date, Postpone, the labels, "Mark as
+  done", and Delete. Tap "Date" to pick the day. Then tap the time button to pick the time on a 24-hour
   clock. The keyboard icon in the time picker lets you type the time instead. "All day" removes
   the time. Save sends the text and the due date.
 - **Labels:** "Add label" in the sheet opens the label list: tap names to add or remove them,

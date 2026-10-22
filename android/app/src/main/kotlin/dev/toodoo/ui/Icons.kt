@@ -17,14 +17,22 @@ import androidx.compose.ui.unit.dp
 
 // Icons that material-icons-core lacks, drawn like the mockups (page 17).
 
-/** The grip of a row: two columns of three dots. */
+/** An arrow turning back, for "Not done" under a swiped row. */
 @Composable
-fun GripIcon(color: Color, modifier: Modifier = Modifier) {
-    Canvas(modifier.size(12.dp, 18.dp)) {
-        val r = 1.6.dp.toPx()
-        for (x in listOf(3f, 9f)) for (y in listOf(3f, 9f, 15f)) {
-            drawCircle(color, r, Offset(x.dp.toPx(), y.dp.toPx()))
+fun UndoIcon(color: Color, modifier: Modifier = Modifier, size: Dp = 20.dp) {
+    Canvas(modifier.size(size)) {
+        val u = this.size.width / 24f
+        val arrow = Path().apply {
+            moveTo(9 * u, 5 * u)
+            lineTo(4 * u, 10 * u)
+            lineTo(9 * u, 15 * u)
+            moveTo(4 * u, 10 * u)
+            lineTo(14 * u, 10 * u)
+            cubicTo(17.5f * u, 10 * u, 20 * u, 12.5f * u, 20 * u, 15 * u)
+            cubicTo(20 * u, 17.5f * u, 17.5f * u, 20 * u, 14 * u, 20 * u)
+            lineTo(12 * u, 20 * u)
         }
+        drawPath(arrow, color, style = Stroke(width = 2.2f * u, cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
 }
 

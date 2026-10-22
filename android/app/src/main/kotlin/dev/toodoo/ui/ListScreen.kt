@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.view.HapticFeedbackConstants
+import android.view.View
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -21,6 +23,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
@@ -126,11 +129,23 @@ fun ListScreen(vm: ListActions) {
             snackbar.showSnackbar(it)
         }
     }
-    state.pendingDelete?.let { item ->
-        LaunchedEffect(item.id) {
-            val result = snackbar.showSnackbar("“${item.text}” deleted", actionLabel = "Undo", duration = SnackbarDuration.Short)
-            if (result == SnackbarResult.ActionPerformed) vm.undoDelete() else vm.commitDelete(item)
+    state.pending?.let { p ->
+        LaunchedEffect(p) {
+            val what = when {
+                p.delete -> "deleted"
+                p.item.done -> "not done"
+                else -> "done"
+            }
+            val result = snackbar.showSnackbar("“${p.item.text}” $what", actionLabel = "Undo", duration = SnackbarDuration.Short)
+            if (result == SnackbarResult.ActionPerformed) vm.undo() else vm.commit(p)
         }
+    }
+    val scope = rememberCoroutineScope()
+    val view = LocalView.current
+    val overdueHeld = {
+        haptic(view, rejected = true)
+        scope.launch { snackbar.showSnackbar("Overdue items stay at the top.") }
+        Unit
     }
 
     Scaffold(
@@ -220,6 +235,9 @@ fun ListScreen(vm: ListActions) {
                         )
                     }
                 }
+                if (state.gestureHint) {
+                    item(key = "hint") { GestureHint(onClose = vm::gestureHintSeen) }
+                }
                 if (state.offline) {
                     item(key = "offline") {
                         Text(
@@ -249,26 +267,35 @@ fun ListScreen(vm: ListActions) {
                             val last = item.id == shown.last().id
                             val dragged = reorder.dragging == item.id
                             ItemRow(
-                                item, now, first, last,
+                                item, now, first, last, dragged,
                                 onToggle = { vm.toggle(item) },
                                 onDelete = { vm.delete(item) },
                                 onOpen = { vm.openSheet(item) },
                                 onMoveBy = { step -> moveBy(shown, item, step)?.let { vm.move(item.id, it) } },
-                                grip = Modifier.pointerInput(item.id) {
-                                    detectDragGesturesAfterLongPress(
-                                        onDragStart = { reorder.start(item.id) },
-                                        onDrag = { change, amount ->
-                                            change.consume()
-                                            reorder.drag(amount.y)
-                                        },
-                                        onDragEnd = { reorder.end()?.let { (id, order) -> vm.move(id, order) } },
-                                        onDragCancel = { reorder.end()?.let { (id, order) -> vm.move(id, order) } },
-                                    )
+                                // Hold a row to lift it. Overdue rows stay at the top, as on the web.
+                                hold = Modifier.pointerInput(item.id, item.overdue) {
+                                    if (item.overdue) {
+                                        detectDragGesturesAfterLongPress(onDragStart = { overdueHeld() }, onDrag = { change, _ -> change.consume() })
+                                    } else {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = {
+                                                haptic(view)
+                                                reorder.start(item.id)
+                                            },
+                                            onDrag = { change, amount ->
+                                                change.consume()
+                                                reorder.drag(amount.y)
+                                            },
+                                            onDragEnd = { reorder.end()?.let { (id, order) -> vm.move(id, order) } },
+                                            onDragCancel = { reorder.end()?.let { (id, order) -> vm.move(id, order) } },
+                                        )
+                                    }
                                 },
                                 modifier = if (dragged) {
                                     Modifier.zIndex(1f).graphicsLayer {
                                         translationY = reorder.offset
-                                        shadowElevation = 8.dp.toPx()
+                                        scaleX = 1.03f
+                                        shadowElevation = 10.dp.toPx()
                                     }
                                 } else {
                                     Modifier.animateItem()
@@ -314,6 +341,10 @@ fun ListScreen(vm: ListActions) {
             onAddLabel = {
                 vm.loadLabels()
                 picker = PickerFor.Item
+            },
+            onToggleDone = {
+                vm.closeSheet()
+                vm.toggle(item)
             },
             onDelete = {
                 vm.closeSheet()
@@ -424,6 +455,10 @@ private class Reorder(private val listState: LazyListState) {
     }
 }
 
+/**
+ * One row. Swipe right to mark it done (or not done), left to delete it;
+ * [hold] lifts it for dragging. TalkBack gets the same as actions.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ItemRow(
@@ -431,17 +466,34 @@ private fun ItemRow(
     now: ZonedDateTime,
     first: Boolean,
     last: Boolean,
+    dragged: Boolean,
     onToggle: () -> Unit,
     onDelete: () -> Unit,
     onOpen: () -> Unit,
     onMoveBy: (Int) -> Unit,
-    grip: Modifier,
+    hold: Modifier,
     modifier: Modifier = Modifier,
 ) {
-    val dismiss = rememberSwipeToDismissBoxState(confirmValueChange = {
-        if (it == SwipeToDismissBoxValue.EndToStart) onDelete()
-        it == SwipeToDismissBoxValue.EndToStart
-    })
+    val view = LocalView.current
+    val dismiss = rememberSwipeToDismissBoxState(
+        confirmValueChange = {
+            when (it) {
+                SwipeToDismissBoxValue.EndToStart -> onDelete()
+                SwipeToDismissBoxValue.StartToEnd -> onToggle()
+                SwipeToDismissBoxValue.Settled -> {}
+            }
+            // A row marked done springs back into place; a deleted one leaves.
+            it != SwipeToDismissBoxValue.StartToEnd
+        },
+        positionalThreshold = { it * 0.4f },
+    )
+    // Past the line, letting go changes the item. One tick each time the finger crosses it.
+    val armed = dismiss.targetValue != SwipeToDismissBoxValue.Settled
+    var wasArmed by remember { mutableStateOf(false) }
+    LaunchedEffect(armed) {
+        if (armed != wasArmed) haptic(view, light = true)
+        wasArmed = armed
+    }
     val shape = RoundedCornerShape(
         topStart = if (first) 12.dp else 0.dp, topEnd = if (first) 12.dp else 0.dp,
         bottomStart = if (last) 12.dp else 0.dp, bottomEnd = if (last) 12.dp else 0.dp,
@@ -449,71 +501,109 @@ private fun ItemRow(
     val colors = MaterialTheme.colorScheme
     SwipeToDismissBox(
         state = dismiss,
-        enableDismissFromStartToEnd = false,
-        backgroundContent = {
-            Row(
-                Modifier.fillMaxSize().background(colors.error, shape).padding(end = 20.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Filled.Delete, contentDescription = null, tint = colors.onError)
-                Spacer(Modifier.width(8.dp))
-                Text("Delete", color = colors.onError, fontWeight = FontWeight.SemiBold)
-            }
-        },
-        modifier = modifier.semantics {
-            customActions = buildList {
-                add(CustomAccessibilityAction("Delete") { onDelete(); true })
-                if (!item.overdue) {
-                    add(CustomAccessibilityAction("Move up") { onMoveBy(-1); true })
-                    add(CustomAccessibilityAction("Move down") { onMoveBy(1); true })
-                }
-            }
-        },
+        backgroundContent = { SwipeBackground(item, dismiss.dismissDirection, armed, shape) },
+        modifier = modifier,
     ) {
-        Surface(color = colors.surface, shape = shape, border = BorderStroke(1.dp, colors.outlineVariant)) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(start = 4.dp), verticalAlignment = Alignment.Top) {
-                // Long-press the grip to drag. Overdue rows have none, as on the web.
-                Box(Modifier.size(24.dp, 48.dp).then(if (item.overdue) Modifier else grip), contentAlignment = Alignment.Center) {
-                    if (!item.overdue) GripIcon(colors.outline)
-                }
-                CheckCircle(item, onToggle)
-                Column(
-                    Modifier.weight(1f).clickable(onClickLabel = "Edit", onClick = onOpen).padding(top = 12.dp, bottom = 12.dp, end = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        item.text,
-                        fontSize = 17.sp,
-                        color = if (item.done) colors.onSurfaceVariant else colors.onSurface,
-                        textDecoration = if (item.done) TextDecoration.LineThrough else null,
-                    )
-                    MetaLine(item, now)
-                }
+        Surface(
+            color = colors.surface,
+            shape = shape,
+            border = if (dragged) BorderStroke(2.dp, colors.primary) else BorderStroke(1.dp, colors.outlineVariant),
+        ) {
+            Column(
+                Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                    .clickable(onClickLabel = "Edit", onClick = onOpen)
+                    // After clickable, so it sees the touch first: a hold that lifts the row is not also a tap.
+                    .then(hold)
+                    .semantics {
+                        stateDescription = if (item.done) "Done" else "Not done"
+                        customActions = buildList {
+                            add(CustomAccessibilityAction(if (item.done) "Mark as not done" else "Mark as done") { onToggle(); true })
+                            if (!item.overdue) {
+                                add(CustomAccessibilityAction("Move up") { onMoveBy(-1); true })
+                                add(CustomAccessibilityAction("Move down") { onMoveBy(1); true })
+                            }
+                            add(CustomAccessibilityAction("Delete") { onDelete(); true })
+                        }
+                    }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    item.text,
+                    fontSize = 17.sp,
+                    color = if (item.done) colors.onSurfaceVariant else colors.onSurface,
+                    textDecoration = if (item.done) TextDecoration.LineThrough else null,
+                )
+                MetaLine(item, now)
             }
         }
     }
 }
 
+/** What shows under a row while it is swiped: blue "Done", gray "Not done", or red "Delete". */
 @Composable
-private fun CheckCircle(item: Item, onToggle: () -> Unit) {
+private fun SwipeBackground(item: Item, direction: SwipeToDismissBoxValue, armed: Boolean, shape: RoundedCornerShape) {
     val colors = MaterialTheme.colorScheme
-    val ring = if (item.overdue && !item.done) colors.error else colors.onSurfaceVariant
-    IconButton(
-        onClick = onToggle,
-        modifier = Modifier.size(48.dp).semantics {
-            stateDescription = if (item.done) "Done" else "Not done"
-        },
-    ) {
-        Box(
-            Modifier.size(24.dp)
-                .background(if (item.done) colors.onSurfaceVariant else Color.Transparent, CircleShape)
-                .border(2.dp, ring, CircleShape),
-            contentAlignment = Alignment.Center,
+    when (direction) {
+        SwipeToDismissBoxValue.Settled -> {}
+        SwipeToDismissBoxValue.EndToStart -> Row(
+            Modifier.fillMaxSize().background(colors.error, shape).padding(end = 20.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (item.done) Icon(Icons.Filled.Check, contentDescription = null, tint = colors.surface, modifier = Modifier.size(16.dp))
+            Icon(Icons.Filled.Delete, contentDescription = null, tint = colors.onError)
+            Spacer(Modifier.width(8.dp))
+            Text("Delete", color = colors.onError, fontWeight = FontWeight.SemiBold)
+        }
+        SwipeToDismissBoxValue.StartToEnd -> {
+            // Before the line a light shade, past it the full color.
+            val (fill, ink) = when {
+                item.done && armed -> colors.onSurfaceVariant to colors.surface
+                item.done -> colors.surfaceVariant to colors.onSurfaceVariant
+                armed -> colors.primary to colors.onPrimary
+                else -> colors.primaryContainer to colors.onPrimaryContainer
+            }
+            Row(
+                Modifier.fillMaxSize().background(fill, shape).padding(start = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val size = if (armed) 28.dp else 20.dp
+                if (item.done) UndoIcon(ink, size = size) else Icon(Icons.Filled.Check, contentDescription = null, tint = ink, modifier = Modifier.size(size))
+                Spacer(Modifier.width(8.dp))
+                Text(if (item.done) "Not done" else "Done", color = ink, fontWeight = FontWeight.Bold)
+            }
         }
     }
+}
+
+/** Shown above the list until the user closes it. */
+@Composable
+private fun GestureHint(onClose: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        color = colors.primaryContainer,
+        contentColor = colors.onPrimaryContainer,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+    ) {
+        Row(Modifier.padding(start = 14.dp, top = 12.dp, bottom = 12.dp, end = 4.dp), verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Swipe and hold", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text("Swipe a row right to mark it done, left to delete it. Hold a row to move it.", fontSize = 15.sp)
+            }
+            TextButton(onClick = onClose) { Text("Got it", color = colors.onPrimaryContainer, fontWeight = FontWeight.Bold) }
+        }
+    }
+}
+
+/** A short buzz: [light] for the swipe line, [rejected] for a row that cannot move. */
+private fun haptic(view: View, light: Boolean = false, rejected: Boolean = false) {
+    val kind = when {
+        light -> HapticFeedbackConstants.CLOCK_TICK
+        rejected && Build.VERSION.SDK_INT >= 30 -> HapticFeedbackConstants.REJECT
+        else -> HapticFeedbackConstants.LONG_PRESS
+    }
+    view.performHapticFeedback(kind)
 }
 
 @OptIn(ExperimentalLayoutApi::class)

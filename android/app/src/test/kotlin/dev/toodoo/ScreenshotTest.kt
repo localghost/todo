@@ -27,6 +27,7 @@ import dev.toodoo.ui.LabelPickerBody
 import dev.toodoo.ui.ListActions
 import dev.toodoo.ui.ListScreen
 import dev.toodoo.ui.ListState
+import dev.toodoo.ui.Pending
 import dev.toodoo.ui.PickerMode
 import dev.toodoo.ui.TimePickerBody
 import dev.toodoo.ui.TooDooTheme
@@ -76,8 +77,9 @@ class ScreenshotTest {
         override suspend fun add(text: String) = true
         override fun toggle(item: Item) {}
         override fun delete(item: Item) {}
-        override fun undoDelete() {}
-        override fun commitDelete(item: Item) {}
+        override fun undo() {}
+        override fun commit(pending: Pending) {}
+        override fun gestureHintSeen() {}
         override fun setFilter(label: Label?) {}
         override fun loadLabels() {}
         override fun openSheet(item: Item) {}
@@ -116,6 +118,10 @@ class ScreenshotTest {
     @Test
     fun list() = snap { ListScreen(screen(ListState(list = list))) }
 
+    // The first start after the update: the hint about swipe and hold.
+    @Test
+    fun listHint() = snap { ListScreen(screen(ListState(list = list, gestureHint = true))) }
+
     @Test
     fun listDark() = snap(dark = true) { ListScreen(screen(ListState(list = list))) }
 
@@ -130,13 +136,13 @@ class ScreenshotTest {
 
     @Test
     fun itemSheet() = snap {
-        ItemSheetBody(items[1], onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onDelete = {}, onDismiss = {})
+        ItemSheetBody(items[1], onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onToggleDone = {}, onDelete = {}, onDismiss = {})
     }
 
     // No date: "Date", and the time button is off.
     @Test
     fun itemSheetNoDate() = snap {
-        ItemSheetBody(items[2], onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onDelete = {}, onDismiss = {})
+        ItemSheetBody(items[2], onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onToggleDone = {}, onDelete = {}, onDismiss = {})
     }
 
     // A 360 dp phone and a date in another year, the longest date text: it must fit.
@@ -145,13 +151,13 @@ class ScreenshotTest {
         paparazzi.unsafeUpdateConfig(DeviceConfig.NEXUS_5)
         val nextYear = ZonedDateTime.now().plusYears(1).withHour(14).withMinute(30).toInstant().toString()
         snap {
-            ItemSheetBody(items[1].copy(dueAt = nextYear), onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onDelete = {}, onDismiss = {})
+            ItemSheetBody(items[1].copy(dueAt = nextYear), onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onToggleDone = {}, onDelete = {}, onDismiss = {})
         }
     }
 
     @Test
     fun itemSheetAllDay() = snap {
-        ItemSheetBody(items[3], onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onDelete = {}, onDismiss = {})
+        ItemSheetBody(items[3], onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onToggleDone = {}, onDelete = {}, onDismiss = {})
     }
 
     @OptIn(ExperimentalMaterial3Api::class)

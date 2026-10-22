@@ -21,9 +21,9 @@ User guide: https://toodoo.fly.dev/guide (no login needed; the text is in
   label's color circle to pick any color from a color wheel, and use its × to delete it. Point
   at a label on an item to remove it with its ×. Click a label to see only its items.
 - Times are shown in your browser's time zone.
-- An Android app with the same list: add, edit, check off, swipe to delete, drag order, due
-  dates, labels and the label filter, and reminders on the phone (also when the app is
-  closed), with Done and Postpone buttons. See [docs/android.md](docs/android.md).
+- An Android app with the same list: add, edit, swipe right to check off, swipe left to delete
+  (both with Undo), hold a row to drag it, due dates, labels and the label filter, and
+  reminders on the phone (also when the app is closed), with Done and Postpone buttons. See [docs/android.md](docs/android.md).
 
 ## Run it yourself
 

@@ -1,6 +1,7 @@
 package dev.toodoo.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -16,6 +17,7 @@ private val Context.sessionData by preferencesDataStore("session")
 private val SERVER = stringPreferencesKey("server")
 private val TOKEN = stringPreferencesKey("token")
 private val USERNAME = stringPreferencesKey("username")
+private val GESTURE_HINT_SEEN = booleanPreferencesKey("gesture_hint_seen")
 
 /** Keeps the session in the app's private storage (never in backups). */
 class SessionStore(private val context: Context) {
@@ -29,6 +31,13 @@ class SessionStore(private val context: Context) {
 
     /** The username of the last log-in, for the log-in screen. */
     val lastUsername: Flow<String> = context.sessionData.data.map { it[USERNAME].orEmpty() }
+
+    /** Whether the user closed the hint about swipe and hold on the list. */
+    val gestureHintSeen: Flow<Boolean> = context.sessionData.data.map { it[GESTURE_HINT_SEEN] == true }
+
+    suspend fun setGestureHintSeen() {
+        context.sessionData.edit { it[GESTURE_HINT_SEEN] = true }
+    }
 
     suspend fun save(s: Session) {
         context.sessionData.edit {

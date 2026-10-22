@@ -12,6 +12,7 @@ import dev.toodoo.data.Session
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -20,11 +21,19 @@ data class ListState(
     val refreshing: Boolean = false,
     val offline: Boolean = false, // the list is the cached one
     val message: String? = null, // shown once in a snackbar
-    val pendingDelete: Item? = null, // deleted on the phone, Undo still possible
+    val pending: Pending? = null, // changed on the phone, Undo still possible
     val filter: Label? = null, // only items with this label
     val labels: List<Label>? = null, // all labels, loaded when a picker opens
     val sheet: Item? = null, // the item open in the item sheet
+    val gestureHint: Boolean = false, // show the hint about swipe and hold
 )
+
+/**
+ * A change the list shows at once but sends when its snackbar goes away, so
+ * Undo needs no request: [item] deleted, or [item] (as it was) marked done
+ * or not done.
+ */
+data class Pending(val item: Item, val delete: Boolean)
 
 /**
  * The list screen. Every change is sent to the server and the list is loaded
@@ -42,8 +51,9 @@ interface ListActions {
     suspend fun add(text: String): Boolean
     fun toggle(item: Item)
     fun delete(item: Item)
-    fun undoDelete()
-    fun commitDelete(item: Item)
+    fun undo()
+    fun commit(pending: Pending)
+    fun gestureHintSeen()
     fun setFilter(label: Label?)
     fun loadLabels()
     fun openSheet(item: Item)
@@ -74,6 +84,10 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
         viewModelScope.launch {
             app.cache.load()?.let { cached -> _state.update { if (it.list == null) it.copy(list = cached) else it } }
         }
+        viewModelScope.launch {
+            val seen = app.sessions.gestureHintSeen.first()
+            _state.update { it.copy(gestureHint = !seen) }
+        }
         refresh()
         app.reminders.startBackgroundLoads()
     }
@@ -87,12 +101,12 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
         try {
             val filter = _state.value.filter
             val list = api.items(filter?.id)
-            val pending = _state.value.pendingDelete
+            val pending = _state.value.pending
             _state.update { s ->
                 // A filter on a label that is gone shows the whole list again (the server ignores it).
                 val f = if (s.filter?.id != filter?.id) s.filter else list.label
                 s.copy(
-                    list = list.withoutItem(pending), refreshing = false, offline = false, filter = f,
+                    list = list.with(pending), refreshing = false, offline = false, filter = f,
                     sheet = s.sheet?.let { open -> list.items.find { it.id == open.id } ?: open },
                 )
             }
@@ -124,28 +138,34 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
         }
     }
 
-    override fun toggle(item: Item) {
-        // Show the change at once; the reload brings the server's view.
-        _state.update { s -> s.copy(list = s.list?.replace(item.copy(done = !item.done))) }
-        change { api.setDone(item.id, !item.done) }
-    }
+    /** Marks the item done (or not done) on the phone; the server hears of it when the snackbar goes. */
+    override fun toggle(item: Item) = hold(Pending(item, delete = false))
 
     /** Takes the item off the list at once; the server delete waits for the snackbar. */
-    override fun delete(item: Item) {
-        _state.value.pendingDelete?.let { commitDelete(it) }
-        _state.update { it.copy(list = it.list.withoutItem(item), pendingDelete = item) }
+    override fun delete(item: Item) = hold(Pending(item, delete = true))
+
+    private fun hold(p: Pending) {
+        // One snackbar at a time: the change before this one goes now.
+        _state.value.pending?.let { commit(it) }
+        _state.update { it.copy(list = it.list.with(p), pending = p) }
     }
 
-    override fun undoDelete() {
-        _state.update { it.copy(pendingDelete = null) }
+    override fun undo() {
+        _state.update { it.copy(pending = null) }
         refresh()
     }
 
-    /** The snackbar went away without Undo: delete on the server. */
-    override fun commitDelete(item: Item) {
-        if (_state.value.sheet?.id == item.id) closeSheet()
-        _state.update { if (it.pendingDelete?.id == item.id) it.copy(pendingDelete = null) else it }
-        change { api.deleteItem(item.id) }
+    /** The snackbar went away without Undo: send the change. */
+    override fun commit(pending: Pending) {
+        val item = pending.item
+        if (pending.delete && _state.value.sheet?.id == item.id) closeSheet()
+        _state.update { if (it.pending == pending) it.copy(pending = null) else it }
+        change { if (pending.delete) api.deleteItem(item.id) else api.setDone(item.id, !item.done) }
+    }
+
+    override fun gestureHintSeen() {
+        _state.update { it.copy(gestureHint = false) }
+        viewModelScope.launch { app.sessions.setGestureHintSeen() }
     }
 
     /** Shows only the items with [label], or all with null. */
@@ -285,13 +305,22 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
     }
 }
 
-private fun ItemList?.withoutItem(item: Item?): ItemList? {
-    if (this == null || item == null || items.none { it.id == item.id }) return this
+/** The list as it looks with [p] done; a done item goes when done items are hidden. */
+internal fun ItemList?.with(p: Pending?): ItemList? {
+    if (this == null || p == null) return this
+    val item = items.find { it.id == p.item.id } ?: return this
+    if (p.delete) {
+        return copy(
+            items = items.filterNot { it.id == item.id },
+            open = if (item.done) open else open - 1,
+            done = if (item.done) done - 1 else done,
+        )
+    }
+    if (item.done != p.item.done) return this // the server has it already
+    val toggled = item.copy(done = !item.done)
     return copy(
-        items = items.filterNot { it.id == item.id },
-        open = if (item.done) open else open - 1,
-        done = if (item.done) done - 1 else done,
+        items = if (toggled.done && hideDone) items.filterNot { it.id == item.id } else items.map { if (it.id == item.id) toggled else it },
+        open = if (toggled.done) open - 1 else open + 1,
+        done = if (toggled.done) done + 1 else done - 1,
     )
 }
-
-private fun ItemList.replace(item: Item): ItemList = copy(items = items.map { if (it.id == item.id) item else it })
