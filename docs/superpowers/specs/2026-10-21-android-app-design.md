@@ -142,6 +142,8 @@ Times are UTC (RFC 3339). The phone shows them in its own zone and sends its zon
    - Swipe a row left to delete it, with "Undo" in a snackbar for 5 seconds (the delete is sent
      when the snackbar goes away). Pull down to reload.
    - Long-press the grip to drag a row. Overdue rows have no grip, as on the web.
+   - Proposed 2026-10-22: no check box and no grip; swipe right for done, hold a row to drag.
+     See `2026-10-22-android-gestures-design.md`.
 3. **Item sheet** (tap a row): a bottom sheet with the text field, "Due" (date and time pickers
    from Material 3, time typed or picked, "All day", "Clear"), "Labels" (chips with × and an
    "Add label" button), "Postpone" (5, 10, 15, 30 min, only for due items), and Delete.
