@@ -215,6 +215,11 @@ web, so a change on the phone shows in the browser and the other way round.
   done", and Delete. Tap "Date" to pick the day. Then tap the time button to pick the time on a 24-hour
   clock. The keyboard icon in the time picker lets you type the time instead. "All day" removes
   the time. Save sends the text and the due date.
+- **Labels for a new item:** when you tap the add field, a row of your labels shows between the
+  field and the keyboard. The labels with the most items come first; swipe the row to see more.
+  Tap a label to select it, and tap it again to clear it. "Add" gives the new item the selected
+  labels, then the row clears. With the label filter on, its label is already selected. To
+  create a new label, use the item sheet.
 - **Labels:** "Add label" in the sheet opens the label list: tap names to add or remove them,
   type a new name to create it, tap a color dot for the color wheel, and the × deletes a label.
   The tag button at the top shows only the items of one label.
@@ -228,6 +233,8 @@ web, so a change on the phone shows in the browser and the other way round.
 ![The item sheet](guide-images/android-itemSheet.png)
 
 ![The label list in the app](guide-images/android-labelPicker.png)
+
+![Label chips under the add field](guide-images/android-addLabels.png)
 
 ## Keys
 

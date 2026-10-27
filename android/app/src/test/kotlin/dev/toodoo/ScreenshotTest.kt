@@ -19,9 +19,11 @@ import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.NightMode
+import com.android.resources.ScreenOrientation
 import dev.toodoo.api.Item
 import dev.toodoo.api.ItemList
 import dev.toodoo.api.Label
+import dev.toodoo.ui.AddLabelRow
 import dev.toodoo.ui.ItemSheetBody
 import dev.toodoo.ui.LabelPickerBody
 import dev.toodoo.ui.ListActions
@@ -31,6 +33,7 @@ import dev.toodoo.ui.Pending
 import dev.toodoo.ui.PickerMode
 import dev.toodoo.ui.TimePickerBody
 import dev.toodoo.ui.TooDooTheme
+import dev.toodoo.ui.labelsByUse
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -74,7 +77,7 @@ class ScreenshotTest {
         override fun exactReminders() = true
         override fun messageShown() {}
         override fun refresh() {}
-        override suspend fun add(text: String) = true
+        override suspend fun add(text: String, labels: List<String>) = true
         override fun toggle(item: Item) {}
         override fun delete(item: Item) {}
         override fun undo() {}
@@ -96,8 +99,10 @@ class ScreenshotTest {
         override fun logOut() {}
     }
 
-    private fun snap(dark: Boolean = false, content: @Composable () -> Unit) {
-        if (dark) paparazzi.unsafeUpdateConfig(DeviceConfig.PIXEL_5.copy(nightMode = NightMode.NIGHT))
+    private fun snap(dark: Boolean = false, device: DeviceConfig? = null, content: @Composable () -> Unit) {
+        if (dark || device != null) {
+            paparazzi.unsafeUpdateConfig((device ?: DeviceConfig.PIXEL_5).copy(nightMode = if (dark) NightMode.NIGHT else NightMode.NOTNIGHT))
+        }
         paparazzi.snapshot {
             // The list screen asks for the notification permission through this.
             val registry = object : ActivityResultRegistryOwner {
@@ -175,6 +180,22 @@ class ScreenshotTest {
             TimePickerBody(rememberTimePickerState(14, 30, is24Hour = true), onOk = {}, onAllDay = {}, onDismiss = {}, startTyping = true)
         }
     }
+
+    // The chips under the add field while the keyboard is open (Paparazzi shows no keyboard).
+    private fun addLabels(dark: Boolean) {
+        // A strip as wide as the phone: 1080 x 260 px is 393 x 95 dp.
+        snap(dark, DeviceConfig.PIXEL_5.copy(screenHeight = 260, orientation = ScreenOrientation.LANDSCAPE)) {
+            Box(Modifier.padding(top = 16.dp)) {
+                AddLabelRow(labelsByUse(listOf(money, errands, health, home, work), filter = null), picked = listOf(home.id, health.id), onToggle = {})
+            }
+        }
+    }
+
+    @Test
+    fun addLabels() = addLabels(dark = false)
+
+    @Test
+    fun addLabelsDark() = addLabels(dark = true)
 
     @Test
     fun labelPicker() = snap {

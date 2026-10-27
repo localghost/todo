@@ -37,10 +37,12 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -90,6 +92,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
@@ -205,7 +208,7 @@ fun ListScreen(vm: ListActions) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
-        bottomBar = { AddBar(onAdd = vm::add) },
+        bottomBar = { AddBar(labels = state.labels, filter = state.filter, onOpen = vm::loadLabels, onAdd = vm::add) },
         snackbarHost = { SnackbarHost(snackbar) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
@@ -636,27 +639,43 @@ fun LabelChip(label: Label) {
     }
 }
 
+/**
+ * The add field. While the keyboard is open, a row of [labels] shows under it;
+ * the labels picked there go with the new item. With a [filter], its label is
+ * picked at the start, so the new item stays in the filtered list.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AddBar(onAdd: suspend (String) -> Boolean) {
+private fun AddBar(labels: List<Label>?, filter: Label?, onOpen: () -> Unit, onAdd: suspend (String, List<String>) -> Boolean) {
     var text by rememberSaveable { mutableStateOf("") }
+    var picked by rememberSaveable(filter?.id) { mutableStateOf(listOfNotNull(filter?.id)) }
+    var focused by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val shown = remember(labels, filter) { labelsByUse(labels.orEmpty(), filter) }
     val submit = {
         if (!busy) {
             busy = true
             val sent = text
+            // The filter's label can be picked before the label list has loaded.
+            val names = (shown + listOfNotNull(filter)).distinctBy { it.id }.filter { it.id in picked }.map { it.name }
             scope.launch {
-                // Text typed while the request ran stays in the field.
-                if (onAdd(sent) && text == sent) text = ""
+                // Text typed while the request ran stays in the field, and so do the picked labels.
+                if (onAdd(sent, names) && text == sent) {
+                    text = ""
+                    picked = listOfNotNull(filter?.id)
+                }
                 busy = false
             }
         }
     }
+    // The back key closes the keyboard but leaves the focus in the field, so check both.
+    val withLabels = focused && WindowInsets.isImeVisible && shown.isNotEmpty()
     Surface(color = MaterialTheme.colorScheme.background) {
-        Column {
+        Column(Modifier.navigationBarsPadding().imePadding()) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Row(
-                Modifier.fillMaxWidth().navigationBarsPadding().imePadding().padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 16.dp),
+                Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = if (withLabels) 8.dp else 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -668,10 +687,19 @@ private fun AddBar(onAdd: suspend (String) -> Boolean) {
                     shape = RoundedCornerShape(26.dp),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = { submit() }),
-                    modifier = Modifier.weight(1f).semantics { contentDescription = "New item" },
+                    modifier = Modifier.weight(1f).semantics { contentDescription = "New item" }.onFocusChanged {
+                        // The label counts change, so load them each time the field gets the focus.
+                        if (it.isFocused && !focused) onOpen()
+                        focused = it.isFocused
+                    },
                 )
                 FilledIconButton(onClick = { submit() }, enabled = !busy, modifier = Modifier.size(52.dp)) {
                     Icon(Icons.Filled.Add, contentDescription = "Add")
+                }
+            }
+            if (withLabels) {
+                AddLabelRow(shown, picked) { label ->
+                    picked = if (label.id in picked) picked - label.id else picked + label.id
                 }
             }
         }

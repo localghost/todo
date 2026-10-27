@@ -93,5 +93,5 @@ description = "Make the Android screenshots of the user guide again (renders on 
 dir = "android"
 run = [
   "./gradlew recordPaparazziDebug",
-  "for s in list itemSheet labelPicker; do cp app/src/test/snapshots/images/dev.toodoo_ScreenshotTest_$s.png ../docs/guide-images/android-$s.png; done",
+  "for s in list itemSheet labelPicker addLabels; do cp app/src/test/snapshots/images/dev.toodoo_ScreenshotTest_$s.png ../docs/guide-images/android-$s.png; done",
 ]

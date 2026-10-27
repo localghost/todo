@@ -48,7 +48,7 @@ interface ListActions {
     fun exactReminders(): Boolean
     fun messageShown()
     fun refresh()
-    suspend fun add(text: String): Boolean
+    suspend fun add(text: String, labels: List<String>): Boolean
     fun toggle(item: Item)
     fun delete(item: Item)
     fun undo()
@@ -122,14 +122,14 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
         }
     }
 
-    /** Adds an item. Returns false if the text was refused (the field keeps it). */
-    override suspend fun add(text: String): Boolean {
+    /** Adds an item with the [labels] (names). Returns false if the text was refused (the field keeps it). */
+    override suspend fun add(text: String, labels: List<String>): Boolean {
         if (text.isBlank()) {
             _state.update { it.copy(message = "Please type some text first.") }
             return false
         }
         return try {
-            api.addItem(text, listOfNotNull(_state.value.filter?.name))
+            api.addItem(text, labels)
             reload()
             true
         } catch (e: Exception) {
