@@ -143,7 +143,7 @@ fun LabelPickerBody(
         OutlinedTextField(
             value = query,
             onValueChange = onQuery,
-            placeholder = { Text("Search labels") },
+            placeholder = { Text("Search or create…") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { if (canCreate) create() }),
