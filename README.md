@@ -23,7 +23,8 @@ User guide: https://toodoo.fly.dev/guide (no login needed; the text is in
 - Times are shown in your browser's time zone.
 - An Android app with the same list: add, edit, swipe right to check off, swipe left to delete
   (both with Undo), hold a row to drag it, due dates, labels and the label filter, label chips
-  under the add field to label a new item at once, and
+  under the add field and in the item sheet to label an item with one tap, creating a label from
+  the label list at the top, and
   reminders on the phone (also when the app is closed), with Done and Postpone buttons. See [docs/android.md](docs/android.md).
 
 ## Run it yourself

@@ -52,40 +52,70 @@ func attachLabels(ctx context.Context, db execer, userID int64, items []todo.Ite
 // the user does not have yet. It returns todo.ErrTooManyLabels if the user
 // would get more than todo.MaxLabelsPerUser labels.
 func setItemLabels(ctx context.Context, tx *sql.Tx, userID, itemID int64, names []string, now time.Time) error {
-	if len(names) == 0 {
-		return nil
-	}
-	var count int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM labels WHERE user_id = ?`, userID).Scan(&count); err != nil {
-		return fmt.Errorf("save labels: %w", err)
-	}
 	for _, name := range names {
-		var labelID int64
-		err := tx.QueryRowContext(ctx, `SELECT id FROM labels WHERE user_id = ? AND name = ?`, userID, name).Scan(&labelID)
-		if errors.Is(err, sql.ErrNoRows) {
-			if count >= todo.MaxLabelsPerUser {
-				return todo.ErrTooManyLabels
-			}
-			color := todo.LabelColors[count%len(todo.LabelColors)]
-			res, err := tx.ExecContext(ctx,
-				`INSERT INTO labels (user_id, name, color, created_at) VALUES (?, ?, ?, ?)`,
-				userID, name, color, formatTime(now))
-			if err != nil {
-				return fmt.Errorf("save labels: %w", err)
-			}
-			if labelID, err = res.LastInsertId(); err != nil {
-				return fmt.Errorf("save labels: %w", err)
-			}
-			count++
-		} else if err != nil {
-			return fmt.Errorf("save labels: %w", err)
+		l, err := ensureLabel(ctx, tx, userID, name, "", now)
+		if err != nil {
+			return err
 		}
 		if _, err := tx.ExecContext(ctx,
-			`INSERT OR IGNORE INTO item_labels (item_id, label_id) VALUES (?, ?)`, itemID, labelID); err != nil {
+			`INSERT OR IGNORE INTO item_labels (item_id, label_id) VALUES (?, ?)`, itemID, l.ID); err != nil {
 			return fmt.Errorf("save labels: %w", err)
 		}
 	}
 	return nil
+}
+
+// ensureLabel returns the user's label name (ignoring case). If the user has
+// none, it makes one with color, or with the next fixed color if color is "".
+// It returns todo.ErrTooManyLabels if the user has todo.MaxLabelsPerUser labels.
+func ensureLabel(ctx context.Context, tx *sql.Tx, userID int64, name, color string, now time.Time) (todo.Label, error) {
+	l := todo.Label{UserID: userID}
+	err := tx.QueryRowContext(ctx, `SELECT id, name, color FROM labels WHERE user_id = ? AND name = ?`, userID, name).Scan(&l.ID, &l.Name, &l.Color)
+	if err == nil {
+		return l, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return todo.Label{}, fmt.Errorf("save labels: %w", err)
+	}
+	var count int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM labels WHERE user_id = ?`, userID).Scan(&count); err != nil {
+		return todo.Label{}, fmt.Errorf("save labels: %w", err)
+	}
+	if count >= todo.MaxLabelsPerUser {
+		return todo.Label{}, todo.ErrTooManyLabels
+	}
+	if color == "" {
+		color = todo.LabelColors[count%len(todo.LabelColors)]
+	}
+	res, err := tx.ExecContext(ctx,
+		`INSERT INTO labels (user_id, name, color, created_at) VALUES (?, ?, ?, ?)`,
+		userID, name, color, formatTime(now))
+	if err != nil {
+		return todo.Label{}, fmt.Errorf("save labels: %w", err)
+	}
+	if l.ID, err = res.LastInsertId(); err != nil {
+		return todo.Label{}, fmt.Errorf("save labels: %w", err)
+	}
+	l.Name, l.Color = name, color
+	return l, nil
+}
+
+// CreateLabel returns the user's label name, and makes it first if the user
+// has none of that name (ignoring case).
+func (s *Store) CreateLabel(ctx context.Context, userID int64, name, color string, now time.Time) (todo.Label, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return todo.Label{}, fmt.Errorf("create label: %w", err)
+	}
+	defer tx.Rollback()
+	l, err := ensureLabel(ctx, tx, userID, name, color, now)
+	if err != nil {
+		return todo.Label{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return todo.Label{}, fmt.Errorf("create label: %w", err)
+	}
+	return l, nil
 }
 
 func (s *Store) Labels(ctx context.Context, userID int64) ([]todo.Label, error) {

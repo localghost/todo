@@ -327,6 +327,8 @@ fun ListScreen(vm: ListActions) {
     }
 
     state.sheet?.let { item ->
+        // The chip row in the sheet needs all labels, with fresh counts.
+        LaunchedEffect(item.id) { vm.loadLabels() }
         ItemSheet(
             item = item,
             onSave = { text, due ->
@@ -340,8 +342,11 @@ fun ListScreen(vm: ListActions) {
                 ok
             },
             onPostpone = { vm.postpone(item, it) },
-            onRemoveLabel = { vm.removeLabel(item, it) },
-            onAddLabel = {
+            labels = state.labels,
+            onToggleLabel = { label ->
+                if (item.labels.any { it.id == label.id }) vm.removeLabel(item, label) else vm.addLabel(item, label.name)
+            },
+            onAllLabels = {
                 vm.loadLabels()
                 picker = PickerFor.Item
             },
@@ -374,7 +379,7 @@ fun ListScreen(vm: ListActions) {
                     vm.setFilter(label)
                 }
             },
-            onCreate = { name -> sheetItem?.let { vm.addLabel(it, name) } },
+            onCreate = { name -> if (mode is PickerMode.ForItem && sheetItem != null) vm.addLabel(sheetItem, name) else vm.createLabel(name) },
             onClearFilter = {
                 picker = null
                 vm.setFilter(null)
@@ -698,7 +703,7 @@ private fun AddBar(labels: List<Label>?, filter: Label?, onOpen: () -> Unit, onA
                 }
             }
             if (withLabels) {
-                AddLabelRow(shown, picked) { label ->
+                LabelChipRow(shown, picked, "Labels for the new item", Modifier.padding(bottom = 12.dp)) { label ->
                     picked = if (label.id in picked) picked - label.id else picked + label.id
                 }
             }

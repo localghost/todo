@@ -5,13 +5,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -54,11 +54,13 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.toodoo.api.Item
@@ -110,7 +112,7 @@ fun dueFields(item: Item, zone: ZoneId): Pair<LocalDate?, String> {
 /**
  * The item sheet (mockup "item sheet"): text, due date and time, postpone,
  * labels, mark as done and delete. Text and due date are sent with Save;
- * postpone and labels at once.
+ * postpone and labels at once. [labels] (all labels) is null while it loads.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,15 +120,16 @@ fun ItemSheet(
     item: Item,
     onSave: suspend (text: String?, due: Pair<String, String>?) -> Boolean,
     onPostpone: (Int) -> Unit,
-    onRemoveLabel: (Label) -> Unit,
-    onAddLabel: () -> Unit,
+    labels: List<Label>?,
+    onToggleLabel: (Label) -> Unit,
+    onAllLabels: () -> Unit,
     onToggleDone: () -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = MaterialTheme.colorScheme.surface) {
-        ItemSheetBody(item, onSave, onPostpone, onRemoveLabel, onAddLabel, onToggleDone, onDelete, onDismiss)
+        ItemSheetBody(item, onSave, onPostpone, labels, onToggleLabel, onAllLabels, onToggleDone, onDelete, onDismiss)
     }
 }
 
@@ -137,8 +140,9 @@ fun ItemSheetBody(
     item: Item,
     onSave: suspend (text: String?, due: Pair<String, String>?) -> Boolean,
     onPostpone: (Int) -> Unit,
-    onRemoveLabel: (Label) -> Unit,
-    onAddLabel: () -> Unit,
+    labels: List<Label>?,
+    onToggleLabel: (Label) -> Unit,
+    onAllLabels: () -> Unit,
     onToggleDone: () -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
@@ -232,22 +236,23 @@ fun ItemSheetBody(
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             label("Labels")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                item.labels.forEach { l -> RemovableChip(l) { onRemoveLabel(l) } }
-                Surface(
-                    onClick = onAddLabel,
-                    shape = RoundedCornerShape(18.dp),
-                    border = BorderStroke(1.dp, colors.outline),
-                    color = colors.surface,
-                    modifier = Modifier.height(36.dp),
-                ) {
-                    Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Icon(Icons.Filled.Add, contentDescription = null, tint = colors.primary, modifier = Modifier.size(16.dp))
-                        Text("Add label", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = colors.primary)
-                    }
-                }
+            // The item's labels when the sheet opened come first, and the order
+            // stays while it is open. Before all labels load, the item's own show.
+            val first = remember(item.id) { item.labels.map { it.id } }
+            LabelChipRow(
+                labels = labelsForItem(labels ?: item.labels, first),
+                picked = item.labels.map { it.id },
+                description = "Labels of the item",
+                modifier = Modifier.padding(top = 4.dp).bleed(20.dp),
+                sidePadding = 20.dp,
+                onToggle = onToggleLabel,
+            )
+            TextButton(onClick = onAllLabels, contentPadding = PaddingValues(horizontal = 8.dp), modifier = Modifier.offset(x = (-8).dp)) {
+                TagIcon(colors.primary, Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("All labels", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
         }
 
@@ -334,20 +339,9 @@ fun TimePickerBody(state: TimePickerState, onOk: () -> Unit, onAllDay: () -> Uni
     }
 }
 
-/** A label chip with a × that takes the label off the item. */
-@Composable
-private fun RemovableChip(label: Label, onRemove: () -> Unit) {
-    val shades = labelShades(label.color, androidx.compose.foundation.isSystemInDarkTheme())
-    val colors = MaterialTheme.colorScheme
-    val fill = shades?.let { hexColor("#%06x".format(it.fill)) } ?: colors.surfaceVariant
-    val border = shades?.let { hexColor("#%06x".format(it.border)) } ?: colors.outlineVariant
-    val ink = shades?.let { hexColor("#%06x".format(it.text)) } ?: colors.onSurfaceVariant
-    Surface(shape = RoundedCornerShape(18.dp), color = fill, border = BorderStroke(1.dp, border), modifier = Modifier.height(36.dp)) {
-        Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(label.name, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = ink)
-            IconButton(onClick = onRemove, modifier = Modifier.size(34.dp)) {
-                Icon(Icons.Filled.Close, contentDescription = "Remove ${label.name}", tint = ink, modifier = Modifier.size(14.dp))
-            }
-        }
-    }
+/** Lets a row reach [side] past the sheet's padding on both sides, so chips scroll to the edge. */
+private fun Modifier.bleed(side: Dp) = layout { measurable, constraints ->
+    val extra = (side * 2).roundToPx()
+    val placeable = measurable.measure(constraints.copy(minWidth = constraints.maxWidth + extra, maxWidth = constraints.maxWidth + extra))
+    layout(constraints.maxWidth, placeable.height) { placeable.place(-side.roundToPx(), 0) }
 }

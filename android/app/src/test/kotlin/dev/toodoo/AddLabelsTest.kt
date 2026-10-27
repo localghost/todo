@@ -2,6 +2,7 @@ package dev.toodoo
 
 import dev.toodoo.api.Label
 import dev.toodoo.ui.labelsByUse
+import dev.toodoo.ui.labelsForItem
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -40,5 +41,17 @@ class AddLabelsTest {
     fun filterMatchesById() {
         val filter = family.copy(items = null)
         assertEquals(listOf(family, work), labelsByUse(listOf(work, family), filter = filter))
+    }
+
+    // The item sheet: the item's labels first, in their order, then the rest by use.
+    @Test
+    fun itemLabelsFirst() {
+        assertEquals(listOf(urgent, family, work, home), labelsForItem(listOf(work, home, family, urgent), first = listOf(urgent.id, family.id)))
+    }
+
+    // An id of a label that is gone (deleted meanwhile) is skipped.
+    @Test
+    fun goneLabelSkipped() {
+        assertEquals(listOf(home, work), labelsForItem(listOf(work, home), first = listOf(99L, home.id)))
     }
 }

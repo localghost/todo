@@ -219,10 +219,14 @@ web, so a change on the phone shows in the browser and the other way round.
   field and the keyboard. The labels with the most items come first; swipe the row to see more.
   Tap a label to select it, and tap it again to clear it. "Add" gives the new item the selected
   labels, then the row clears. With the label filter on, its label is already selected. To
-  create a new label, use the item sheet.
-- **Labels:** "Add label" in the sheet opens the label list: tap names to add or remove them,
+  create a new label, use "All labels" in the item sheet or the label list from the top bar.
+- **Labels of an item:** the sheet shows a row of all your labels. The labels of the item come
+  first and are selected; the others follow, most used first. Tap a label to put it on the item
+  or take it off, at once (no Save). The order stays while the sheet is open.
+- **Labels:** "All labels" in the sheet opens the label list: tap names to add or remove them,
   type a new name to create it, tap a color dot for the color wheel, and the × deletes a label.
-  The tag button at the top shows only the items of one label.
+  The tag button at the top opens the same list to show only the items of one label. There you
+  can also create a label before any item has it: type its name and tap "Create".
 - **Reminders:** the phone reminds you when an item is due, also when the app is closed. The
   reminder has the buttons Done and Postpone 10 min. The app asks for permission to notify when
   you set your first due date. Without a connection the app shows the last list it loaded; changes

@@ -58,7 +58,7 @@ sealed interface PickerMode {
     /** Puts the label on the item, or takes it off; new names can be made. */
     data class ForItem(val itemText: String, val selected: Set<Long>) : PickerMode
 
-    /** Shows only the items with the label. */
+    /** Shows only the items with the label; new names can be made too, with no items. */
     data class Filter(val current: Label?) : PickerMode
 }
 
@@ -83,7 +83,7 @@ fun LabelPicker(
     var coloring by remember { mutableStateOf<Label?>(null) }
     var deleting by remember { mutableStateOf<Label?>(null) }
     val q = query.trim()
-    val canCreate = mode is PickerMode.ForItem && q.isNotEmpty() && labels != null && labels.none { it.name.equals(q, ignoreCase = true) }
+    val canCreate = q.isNotEmpty() && labels != null && labels.none { it.name.equals(q, ignoreCase = true) }
     val create = {
         onCreate(q)
         query = ""
@@ -137,7 +137,7 @@ fun LabelPickerBody(
     val colors = MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth().imePadding().padding(start = 12.dp, end = 12.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (mode is PickerMode.Filter) "Show items with label" else "Labels", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text("Labels", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             TextButton(onClick = onDismiss) { Text("Done", fontWeight = FontWeight.SemiBold) }
         }
         OutlinedTextField(
@@ -149,6 +149,9 @@ fun LabelPickerBody(
             keyboardActions = KeyboardActions(onDone = { if (canCreate) create() }),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
         )
+        if (mode is PickerMode.Filter) {
+            Text("Tap a label to show only its items.", fontSize = 14.sp, color = colors.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
+        }
         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
             if (mode is PickerMode.Filter && mode.current != null) {
                 item(key = "all") {
@@ -164,7 +167,7 @@ fun LabelPickerBody(
             if (labels != null && labels.isEmpty()) {
                 item(key = "none") {
                     Text(
-                        if (mode is PickerMode.ForItem) "No labels yet. Type a name to make one." else "No labels yet. Add one to an item first.",
+                        "No labels yet. Type a name to make one.",
                         color = colors.onSurfaceVariant,
                         modifier = Modifier.padding(16.dp),
                     )

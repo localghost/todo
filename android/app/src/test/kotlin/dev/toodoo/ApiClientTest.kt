@@ -45,6 +45,18 @@ class ApiClientTest {
     }
 
     @Test
+    fun createLabelSendsTheName() = runTest {
+        server.enqueue(MockResponse().setBody("""{"id":7,"name":"garden","color":"#e9bd16"}"""))
+        val label = client().createLabel("garden")
+        assertEquals(7L, label.id)
+        assertEquals("garden", label.name)
+        val req = server.takeRequest()
+        assertEquals("POST", req.method)
+        assertEquals("/api/v1/labels", req.path)
+        assertEquals("""{"name":"garden"}""", req.body.readUtf8())
+    }
+
+    @Test
     fun errorsCarryTheServerMessage() = runTest {
         server.enqueue(MockResponse().setResponseCode(422).setBody("""{"error":"bad_text","message":"Please type some text first."}"""))
         try {

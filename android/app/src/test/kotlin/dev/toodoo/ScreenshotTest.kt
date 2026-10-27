@@ -23,7 +23,7 @@ import com.android.resources.ScreenOrientation
 import dev.toodoo.api.Item
 import dev.toodoo.api.ItemList
 import dev.toodoo.api.Label
-import dev.toodoo.ui.AddLabelRow
+import dev.toodoo.ui.LabelChipRow
 import dev.toodoo.ui.ItemSheetBody
 import dev.toodoo.ui.LabelPickerBody
 import dev.toodoo.ui.ListActions
@@ -90,6 +90,7 @@ class ScreenshotTest {
         override suspend fun save(item: Item, text: String?, due: Pair<String, String>?) = true
         override fun postpone(item: Item, minutes: Int) {}
         override fun addLabel(item: Item, name: String) {}
+        override fun createLabel(name: String) {}
         override fun removeLabel(item: Item, label: Label) {}
         override fun setLabelColor(label: Label, color: String) {}
         override fun deleteLabel(label: Label) {}
@@ -120,6 +121,9 @@ class ScreenshotTest {
 
     private val list = ItemList(items, open = 5, done = 1, hideDone = false)
 
+    // All labels, as the item sheet loads them (counts as in the list above).
+    private val sheetLabels = listOf(home, work, money, errands, health)
+
     @Test
     fun list() = snap { ListScreen(screen(ListState(list = list))) }
 
@@ -141,13 +145,13 @@ class ScreenshotTest {
 
     @Test
     fun itemSheet() = snap {
-        ItemSheetBody(items[1], onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onToggleDone = {}, onDelete = {}, onDismiss = {})
+        ItemSheetBody(items[1], onSave = { _, _ -> true }, onPostpone = {}, labels = sheetLabels, onToggleLabel = {}, onAllLabels = {}, onToggleDone = {}, onDelete = {}, onDismiss = {})
     }
 
     // No date: "Date", and the time button is off.
     @Test
     fun itemSheetNoDate() = snap {
-        ItemSheetBody(items[2], onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onToggleDone = {}, onDelete = {}, onDismiss = {})
+        ItemSheetBody(items[2], onSave = { _, _ -> true }, onPostpone = {}, labels = sheetLabels, onToggleLabel = {}, onAllLabels = {}, onToggleDone = {}, onDelete = {}, onDismiss = {})
     }
 
     // A 360 dp phone and a date in another year, the longest date text: it must fit.
@@ -156,13 +160,13 @@ class ScreenshotTest {
         paparazzi.unsafeUpdateConfig(DeviceConfig.NEXUS_5)
         val nextYear = ZonedDateTime.now().plusYears(1).withHour(14).withMinute(30).toInstant().toString()
         snap {
-            ItemSheetBody(items[1].copy(dueAt = nextYear), onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onToggleDone = {}, onDelete = {}, onDismiss = {})
+            ItemSheetBody(items[1].copy(dueAt = nextYear), onSave = { _, _ -> true }, onPostpone = {}, labels = sheetLabels, onToggleLabel = {}, onAllLabels = {}, onToggleDone = {}, onDelete = {}, onDismiss = {})
         }
     }
 
     @Test
     fun itemSheetAllDay() = snap {
-        ItemSheetBody(items[3], onSave = { _, _ -> true }, onPostpone = {}, onRemoveLabel = {}, onAddLabel = {}, onToggleDone = {}, onDelete = {}, onDismiss = {})
+        ItemSheetBody(items[3], onSave = { _, _ -> true }, onPostpone = {}, labels = sheetLabels, onToggleLabel = {}, onAllLabels = {}, onToggleDone = {}, onDelete = {}, onDismiss = {})
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -186,7 +190,7 @@ class ScreenshotTest {
         // A strip as wide as the phone: 1080 x 260 px is 393 x 95 dp.
         snap(dark, DeviceConfig.PIXEL_5.copy(screenHeight = 260, orientation = ScreenOrientation.LANDSCAPE)) {
             Box(Modifier.padding(top = 16.dp)) {
-                AddLabelRow(labelsByUse(listOf(money, errands, health, home, work), filter = null), picked = listOf(home.id, health.id), onToggle = {})
+                LabelChipRow(labelsByUse(listOf(money, errands, health, home, work), filter = null), picked = listOf(home.id, health.id), "Labels for the new item", onToggle = {})
             }
         }
     }
@@ -203,6 +207,17 @@ class ScreenshotTest {
             labels = listOf(health, home, Label(6, "help desk", "#8A4410", 1)),
             mode = PickerMode.ForItem("Send invoice to Kowalski", setOf(home.id)),
             query = "he", onQuery = {}, onPick = {}, create = {}, canCreate = true,
+            onClearFilter = {}, onColor = {}, onDelete = {}, onDismiss = {},
+        )
+    }
+
+    // The list from the top bar can make a label too (with no items).
+    @Test
+    fun labelPickerFilterCreate() = snap {
+        LabelPickerBody(
+            labels = listOf(errands, health, home),
+            mode = PickerMode.Filter(null),
+            query = "garden", onQuery = {}, onPick = {}, create = {}, canCreate = true,
             onClearFilter = {}, onColor = {}, onDelete = {}, onDismiss = {},
         )
     }

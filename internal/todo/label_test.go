@@ -3,6 +3,7 @@ package todo_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -151,5 +152,56 @@ func TestAddLabelWithColor(t *testing.T) {
 		if l.Name == "home" && l.Color != todo.LabelColors[2] {
 			t.Fatalf("home color = %q, want %q", l.Color, todo.LabelColors[2])
 		}
+	}
+}
+
+func TestCreateLabel(t *testing.T) {
+	svc := newService(t)
+	ctx := context.Background()
+	work, err := svc.CreateLabel(ctx, 1, "  work ", "")
+	if err != nil || work.ID == 0 || work.Name != "work" || work.Color != todo.LabelColors[0] {
+		t.Fatalf("CreateLabel = %+v, %v", work, err)
+	}
+	// A new label with no item is in the list, with 0 items.
+	labels, err := svc.Labels(ctx, 1)
+	if err != nil || len(labels) != 1 || labels[0].ID != work.ID || labels[0].Items != 0 {
+		t.Fatalf("Labels = %+v, %v", labels, err)
+	}
+	// The same name in another case gives the label that exists, with its color.
+	again, err := svc.CreateLabel(ctx, 1, "WORK", "#000000")
+	if err != nil || again != work {
+		t.Fatalf("again = %+v, %v; want %+v", again, err, work)
+	}
+	// A new label gets the chosen color; a bad color gives the next fixed one.
+	if gym, err := svc.CreateLabel(ctx, 1, "gym", "#12AB34"); err != nil || gym.Color != "#12ab34" {
+		t.Fatalf("gym = %+v, %v", gym, err)
+	}
+	if home, err := svc.CreateLabel(ctx, 1, "home", "red"); err != nil || home.Color != todo.LabelColors[2] {
+		t.Fatalf("home = %+v, %v", home, err)
+	}
+	if _, err := svc.CreateLabel(ctx, 1, "  ", ""); !errors.Is(err, todo.ErrBadLabel) {
+		t.Fatalf("empty name: err = %v", err)
+	}
+	// An item can get the new label by its name.
+	it, _ := svc.AddItem(ctx, 1, todo.Input{Text: "Report"}, nil)
+	if it, err = svc.AddLabel(ctx, 1, it.ID, "Work", ""); err != nil || len(it.Labels) != 1 || it.Labels[0].ID != work.ID {
+		t.Fatalf("AddLabel = %+v, %v", it.Labels, err)
+	}
+}
+
+func TestCreateLabelLimit(t *testing.T) {
+	svc := newService(t)
+	ctx := context.Background()
+	for i := 0; i < todo.MaxLabelsPerUser; i++ {
+		if _, err := svc.CreateLabel(ctx, 1, fmt.Sprintf("l%d", i), ""); err != nil {
+			t.Fatalf("label %d: %v", i, err)
+		}
+	}
+	if _, err := svc.CreateLabel(ctx, 1, "one more", ""); !errors.Is(err, todo.ErrTooManyLabels) {
+		t.Fatalf("label 51: err = %v, want ErrTooManyLabels", err)
+	}
+	// A name that exists is still fine.
+	if _, err := svc.CreateLabel(ctx, 1, "L0", ""); err != nil {
+		t.Fatalf("existing name: %v", err)
 	}
 }

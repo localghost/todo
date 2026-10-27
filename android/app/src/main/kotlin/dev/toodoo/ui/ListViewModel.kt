@@ -61,6 +61,7 @@ interface ListActions {
     suspend fun save(item: Item, text: String?, due: Pair<String, String>?): Boolean
     fun postpone(item: Item, minutes: Int)
     fun addLabel(item: Item, name: String)
+    fun createLabel(name: String)
     fun removeLabel(item: Item, label: Label)
     fun setLabelColor(label: Label, color: String)
     fun deleteLabel(label: Label)
@@ -208,6 +209,13 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
     override fun addLabel(item: Item, name: String) = launchItemChange { api.addLabel(item.id, name) }
 
     override fun removeLabel(item: Item, label: Label) = launchItemChange { api.removeLabel(item.id, label.id) }
+
+    /** Makes a label with no items (the label list from the top bar). */
+    override fun createLabel(name: String) = change {
+        api.createLabel(name)
+        val labels = api.labels()
+        _state.update { it.copy(labels = labels) }
+    }
 
     override fun setLabelColor(label: Label, color: String) = change {
         api.setLabelColor(label.id, color)

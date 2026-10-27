@@ -99,6 +99,10 @@ class ApiClient(private val http: OkHttpClient, server: String, private val toke
 
     suspend fun labels(): List<Label> = json.decodeFromString(call("GET", "labels")!!)
 
+    /** Makes the label [name] with no items; a name that exists gives that label. */
+    suspend fun createLabel(name: String): Label =
+        json.decodeFromString(call("POST", "labels", buildJsonObject { put("name", name) })!!)
+
     suspend fun setLabelColor(labelId: Long, color: String) {
         call("PUT", "labels/$labelId/color", buildJsonObject { put("color", color) })
     }

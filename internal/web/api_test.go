@@ -363,6 +363,27 @@ func TestAPILabels(t *testing.T) {
 	}
 }
 
+func TestAPICreateLabel(t *testing.T) {
+	env := newTestEnv(t)
+	rec := apiDo(t, env, "POST", "/api/v1/labels", env.Token, `{"name":" garden ","color":"#112233"}`)
+	wantStatus(t, rec, http.StatusOK)
+	got := decode[jsonLabel](t, rec)
+	if got.ID == 0 || got.Name != "garden" || got.Color != "#112233" {
+		t.Fatalf("label = %+v", got)
+	}
+	// The same name gives the label that exists.
+	again := decode[jsonLabel](t, apiDo(t, env, "POST", "/api/v1/labels", env.Token, `{"name":"GARDEN"}`))
+	if again.ID != got.ID || again.Color != "#112233" {
+		t.Fatalf("again = %+v, want %+v", again, got)
+	}
+	labels := decode[[]jsonLabel](t, apiDo(t, env, "GET", "/api/v1/labels", env.Token, ""))
+	if len(labels) != 1 || labels[0].Items == nil || *labels[0].Items != 0 {
+		t.Fatalf("labels = %+v", labels)
+	}
+	wantError(t, apiDo(t, env, "POST", "/api/v1/labels", env.Token, `{"name":"  "}`), http.StatusUnprocessableEntity, "bad_label")
+	wantStatus(t, apiDo(t, env, "POST", "/api/v1/labels", "", `{"name":"x"}`), http.StatusUnauthorized)
+}
+
 func TestAPIClearDone(t *testing.T) {
 	env := newTestEnv(t)
 	ctx := context.Background()

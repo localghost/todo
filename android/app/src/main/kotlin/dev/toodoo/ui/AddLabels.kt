@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.toodoo.api.Label
@@ -42,15 +43,31 @@ fun labelsByUse(labels: List<Label>, filter: Label?): List<Label> =
     )
 
 /**
- * One row of label chips under the add field, scrolled to the side. A tap
- * selects a chip or clears it; the chips stay in their place.
+ * The order of the chips in the item sheet: the labels in [first] (the
+ * item's labels when the sheet opened) in their order, then the others by use.
+ */
+fun labelsForItem(labels: List<Label>, first: List<Long>): List<Label> {
+    val byId = labels.associateBy { it.id }
+    return first.mapNotNull { byId[it] } + labelsByUse(labels.filter { it.id !in first }, filter = null)
+}
+
+/**
+ * One row of label chips, scrolled to the side: under the add field and in
+ * the item sheet. A tap selects a chip or clears it; the chips stay in their place.
  */
 @Composable
-fun AddLabelRow(labels: List<Label>, picked: List<Long>, onToggle: (Label) -> Unit) {
+fun LabelChipRow(
+    labels: List<Label>,
+    picked: List<Long>,
+    description: String,
+    modifier: Modifier = Modifier,
+    sidePadding: Dp = 12.dp,
+    onToggle: (Label) -> Unit,
+) {
     LazyRow(
-        contentPadding = PaddingValues(horizontal = 12.dp),
+        contentPadding = PaddingValues(horizontal = sidePadding),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).semantics { contentDescription = "Labels for the new item" },
+        modifier = modifier.fillMaxWidth().semantics { contentDescription = description },
     ) {
         items(labels, key = { it.id }) { label -> PickChip(label, label.id in picked) { onToggle(label) } }
     }

@@ -82,6 +82,10 @@ type Store interface {
 	// SetLabelColor returns ErrNotFound if the user has no label id.
 	SetLabelColor(ctx context.Context, userID, id int64, color string) error
 	DeleteLabel(ctx context.Context, userID, id int64) error
+	// CreateLabel returns the user's label name, and makes it first, with
+	// color ("": the next fixed color), if the user has none of that name.
+	// ErrTooManyLabels.
+	CreateLabel(ctx context.Context, userID int64, name, color string, now time.Time) (Label, error)
 	// AddItemLabel puts the label name on the item in one transaction; it makes
 	// the label if the user has none of that name. A label the item has
 	// already changes nothing. ErrItemLabelsFull, ErrTooManyLabels, ErrNotFound.

@@ -35,6 +35,7 @@ func (s *server) apiRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/items/{id}/labels", s.apiProtect(s.apiAddLabel))
 	mux.Handle("DELETE /api/v1/items/{id}/labels/{label}", s.apiProtect(s.apiRemoveLabel))
 	mux.Handle("GET /api/v1/labels", s.apiProtect(s.apiLabels))
+	mux.Handle("POST /api/v1/labels", s.apiProtect(s.apiCreateLabel))
 	mux.Handle("PUT /api/v1/labels/{id}/color", s.apiProtect(s.apiSetLabelColor))
 	mux.Handle("DELETE /api/v1/labels/{id}", s.apiProtect(s.apiDeleteLabel))
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
@@ -407,6 +408,24 @@ func (s *server) apiLabels(w http.ResponseWriter, r *http.Request) {
 		out = append(out, a)
 	}
 	writeJSON(w, r, s, http.StatusOK, out)
+}
+
+// apiCreateLabel makes the label "name" with no items, or gives the label of
+// that name if it exists. "color" (optional) is the color of a new label.
+func (s *server) apiCreateLabel(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Name  string `json:"name"`
+		Color string `json:"color"`
+	}
+	if !readJSON(w, r, &in) {
+		return
+	}
+	l, err := s.svc.CreateLabel(r.Context(), userID(r), in.Name, in.Color)
+	if err != nil {
+		s.apiChangeError(w, r, err)
+		return
+	}
+	writeJSON(w, r, s, http.StatusOK, toAPILabel(l))
 }
 
 func (s *server) apiSetLabelColor(w http.ResponseWriter, r *http.Request) {

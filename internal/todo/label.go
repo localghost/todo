@@ -148,6 +148,21 @@ func (s *Service) DeleteLabel(ctx context.Context, userID, id int64) error {
 	return s.store.DeleteLabel(ctx, userID, id)
 }
 
+// CreateLabel makes a label with no items, with color if it is #rrggbb, else
+// with the next fixed color. A name the user has a label for already
+// (ignoring case) gives that label, unchanged.
+func (s *Service) CreateLabel(ctx context.Context, userID int64, name, color string) (Label, error) {
+	name, err := cleanLabelName(name)
+	if err != nil {
+		return Label{}, err
+	}
+	color, ok := CleanColor(color)
+	if !ok {
+		color = ""
+	}
+	return s.store.CreateLabel(ctx, userID, name, color, s.now())
+}
+
 // AddLabel puts one label on an item. A name the user has no label for
 // makes a new label, with color if it is #rrggbb, else with the next fixed
 // color. A label the item already has (ignoring case) changes nothing.
