@@ -211,6 +211,17 @@ class ScreenshotTest {
         )
     }
 
+    // The list from the top bar, as it opens: the placeholder and the hint.
+    @Test
+    fun labelPickerFilter() = snap {
+        LabelPickerBody(
+            labels = listOf(errands, health, home),
+            mode = PickerMode.Filter(null),
+            query = "", onQuery = {}, onPick = {}, create = {}, canCreate = false,
+            onClearFilter = {}, onColor = {}, onDelete = {}, onDismiss = {},
+        )
+    }
+
     // The list from the top bar can make a label too (with no items).
     @Test
     fun labelPickerFilterCreate() = snap {

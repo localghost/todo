@@ -223,10 +223,13 @@ web, so a change on the phone shows in the browser and the other way round.
 - **Labels of an item:** the sheet shows a row of all your labels. The labels of the item come
   first and are selected; the others follow, most used first. Tap a label to put it on the item
   or take it off, at once (no Save). The order stays while the sheet is open.
-- **Labels:** "All labels" in the sheet opens the label list: tap names to add or remove them,
-  type a new name to create it, tap a color dot for the color wheel, and the × deletes a label.
-  The tag button at the top opens the same list to show only the items of one label. There you
-  can also create a label before any item has it: type its name and tap "Create".
+- **Labels:** "All labels" in the sheet and the tag button at the top open the same list,
+  "Labels". Type in the field "Search or create…" to find a label. If no label has that name,
+  "Create" makes it. From the top bar you can create a label before any item has it. Tap a color
+  dot for the color wheel. The × deletes a label.
+- **Show only the items of one label:** open "Labels" with the tag button at the top. The text
+  under the field says "Tap a label to show only its items." Tap a label to do that. From "All
+  labels" in the sheet, a tap on a label adds it to the item or removes it.
 - **Reminders:** the phone reminds you when an item is due, also when the app is closed. The
   reminder has the buttons Done and Postpone 10 min. The app asks for permission to notify when
   you set your first due date. Without a connection the app shows the last list it loaded; changes
@@ -236,7 +239,9 @@ web, so a change on the phone shows in the browser and the other way round.
 
 ![The item sheet](guide-images/android-itemSheet.png)
 
-![The label list in the app](guide-images/android-labelPicker.png)
+![The label list from the item sheet](guide-images/android-labelPicker.png)
+
+![The label list from the top bar](guide-images/android-labelPickerFilter.png)
 
 ![Label chips under the add field](guide-images/android-addLabels.png)
 
