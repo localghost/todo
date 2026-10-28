@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 chrome=${CHROME:-$(ls ~/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell 2>/dev/null | tail -1)}
 [ -x "$chrome" ] || { echo "headless Chromium not found; set CHROME" >&2; exit 1; }
 ls ../app/build/play-screens/play{1,2,3,4,5}*.png >/dev/null ||
-  { echo "no app screens: run ./gradlew testDebugUnitTest --tests 'dev.toodoo.PlayScreenshotTest' first" >&2; exit 1; }
+  { echo "no app screens: run ./gradlew testDebugUnitTest --tests 'com.codeleet.toodoo.PlayScreenshotTest' first" >&2; exit 1; }
 page="file://$PWD/graphics.html"
 shoot() { # name width height hash
   "$chrome" --no-sandbox --hide-scrollbars --allow-file-access-from-files --virtual-time-budget=5000 \

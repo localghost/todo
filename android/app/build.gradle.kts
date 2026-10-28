@@ -16,11 +16,11 @@ val keystore = rootProject.file("keystore.properties").takeIf { it.exists() }?.l
 }
 
 android {
-    namespace = "dev.toodoo"
+    namespace = "com.codeleet.toodoo"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "dev.toodoo"
+        applicationId = "com.codeleet.toodoo"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

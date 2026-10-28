@@ -24,7 +24,7 @@ Privacy policy: https://toodoo.fly.dev/privacy (the text is in
   label's color circle to pick any color from a color wheel, and use its × to delete it. Point
   at a label on an item to remove it with its ×. Click a label to see only its items.
 - Times are shown in your browser's time zone.
-- An Android app on Google Play (https://play.google.com/store/apps/details?id=dev.toodoo) with the same list: add, edit, swipe right to check off, swipe left to delete
+- An Android app on Google Play (https://play.google.com/store/apps/details?id=com.codeleet.toodoo) with the same list: add, edit, swipe right to check off, swipe left to delete
   (both with Undo), hold a row to drag it, due dates, labels and the label filter, label chips
   under the add field and in the item sheet to label an item with one tap, creating a label from
   the label list at the top, and

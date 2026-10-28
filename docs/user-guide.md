@@ -208,7 +208,7 @@ There is also an app for Android phones (Android 8.0 and newer). It shows the sa
 web, so a change on the phone shows in the browser and the other way round.
 
 - **Install:** get the app from Google Play:
-  https://play.google.com/store/apps/details?id=dev.toodoo
+  https://play.google.com/store/apps/details?id=com.codeleet.toodoo
 - **Log in** with your username and password. You stay logged in while you open the app at
   least every two weeks. Sign-up, the password change and deleting the account are on the web;
   the menu's "Account (web)" opens that page.

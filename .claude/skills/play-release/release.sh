@@ -128,7 +128,8 @@ finish() {
   echo "== commit, tag, push"
   git add -u
   git add "$notes_dir/$version.txt"
-  git commit -q -F - <<EOF
+  # A release again of the same version can have nothing new to commit; the tag still goes on HEAD.
+  git diff --cached --quiet || git commit -q -F - <<EOF
 release(android): $version
 
 versionCode $code. Release notes: $notes_dir/$version.txt

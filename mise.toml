@@ -84,7 +84,7 @@ run = "./gradlew test"
 description = "Make the Google Play feature graphic and screenshots in android/play (needs headless Chromium and ImageMagick)"
 dir = "android"
 run = [
-  "./gradlew testDebugUnitTest --tests 'dev.toodoo.PlayScreenshotTest'",
+  "./gradlew testDebugUnitTest --tests 'com.codeleet.toodoo.PlayScreenshotTest'",
   "play/make.sh",
 ]
 
@@ -107,5 +107,5 @@ description = "Make the Android screenshots of the user guide again (renders on 
 dir = "android"
 run = [
   "./gradlew recordPaparazziDebug",
-  "for s in list itemSheet labelPicker labelPickerFilter addLabelsKeyboard; do cp app/src/test/snapshots/images/dev.toodoo_ScreenshotTest_$s.png ../docs/guide-images/android-$s.png; done",
+  "for s in list itemSheet labelPicker labelPickerFilter addLabelsKeyboard; do cp app/src/test/snapshots/images/com.codeleet.toodoo_ScreenshotTest_$s.png ../docs/guide-images/android-$s.png; done",
 ]

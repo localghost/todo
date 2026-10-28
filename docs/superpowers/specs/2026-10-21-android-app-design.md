@@ -175,7 +175,7 @@ The app uses the label colors from the server and makes the chip shades with the
 ```
 android/
   settings.gradle.kts, build.gradle.kts, gradlew, gradle/   Gradle wrapper and version catalog
-  app/src/main/kotlin/dev/toodoo/
+  app/src/main/kotlin/com/codeleet/toodoo/
     api/        ApiClient (OkHttp + kotlinx.serialization), the JSON types
     data/       TodoRepository, the token store (DataStore), the cached list (a JSON file)
     ui/         LoginScreen, ListScreen, ItemSheet, LabelPicker, ColorWheel, theme
@@ -188,7 +188,7 @@ android/
 - Few libraries: OkHttp, kotlinx.serialization, DataStore, Compose. No Retrofit, no Room, no
   Firebase, no dependency-injection framework.
 - The token stays in the app's private storage and is left out of Android backups.
-- Package name `dev.toodoo` (any name you like; it cannot change once installed by others).
+- Package name `com.codeleet.toodoo` (any name you like; it cannot change once installed by others).
 
 ## 5. Docs
 
@@ -234,4 +234,4 @@ Each step is a commit on main, and steps 1 to 3 already give a usable app.
 2. `android/` in this repo, or a new repo?
 3. Token renewal (stay logged in while you use the app), or log in again every 30 days?
 4. Phone reminders on their own (recommended), or "notify once across devices"?
-5. Any package name or app name other than `dev.toodoo` / "TooDoo"?
+5. Any package name or app name other than `com.codeleet.toodoo` / "TooDoo"?

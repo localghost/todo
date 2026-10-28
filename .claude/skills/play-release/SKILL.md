@@ -33,7 +33,7 @@ folder does the fixed steps. You write the release notes and the guide text.
 4. Update the user guide, `docs/user-guide.md`, section "Android app":
    - Each user-visible change in the commits has a short, correct description.
    - The "Install" bullet says that the app is on Google Play:
-     https://play.google.com/store/apps/details?id=dev.toodoo
+     https://play.google.com/store/apps/details?id=com.codeleet.toodoo
    - If a screen that a guide image shows has changed, run `mise run android:shots`. Keep only the
      images that really changed; restore images that changed only their dates with `git checkout`.
    - If a feature changed, keep the README list "What it does" right (project CLAUDE.md).
