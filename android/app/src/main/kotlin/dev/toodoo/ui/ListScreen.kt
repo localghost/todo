@@ -106,6 +106,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.toodoo.api.ApiClient
 import dev.toodoo.api.Item
 import dev.toodoo.api.Label
 import java.time.ZonedDateTime
@@ -203,6 +204,10 @@ fun ListScreen(vm: ListActions, addBarPreview: AddBarPreview? = null) {
                             DropdownMenuItem(text = { Text("Account (web)") }, onClick = {
                                 menuOpen = false
                                 openWeb("/account")
+                            })
+                            DropdownMenuItem(text = { Text("Privacy policy") }, onClick = {
+                                menuOpen = false
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ApiClient.PRIVACY_POLICY)))
                             })
                             HorizontalDivider()
                             DropdownMenuItem(text = { Text("Log out ${vm.username}") }, onClick = {

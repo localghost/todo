@@ -41,6 +41,9 @@ import dev.toodoo.ui.LabelPickerBody
 import dev.toodoo.ui.ListActions
 import dev.toodoo.ui.ListScreen
 import dev.toodoo.ui.ListState
+import dev.toodoo.ui.LoginActions
+import dev.toodoo.ui.LoginScreen
+import dev.toodoo.ui.LoginState
 import dev.toodoo.ui.Pending
 import dev.toodoo.ui.PickerMode
 import dev.toodoo.ui.TimePickerBody
@@ -135,6 +138,19 @@ class ScreenshotTest {
 
     // All labels, as the item sheet loads them (counts as in the list above).
     private val sheetLabels = listOf(home, work, money, errands, health)
+
+    // The login screen, with the link to the privacy policy under the sign-up
+    // link (canvas page 17, "link to the privacy policy", option A).
+    @Test
+    fun login() = snap {
+        LoginScreen(object : LoginActions {
+            override val state = MutableStateFlow(LoginState(username = "zbyszek", server = "https://toodoo.fly.dev"))
+            override fun setUsername(v: String) {}
+            override fun setPassword(v: String) {}
+            override fun setServer(v: String) {}
+            override fun logIn() {}
+        })
+    }
 
     @Test
     fun list() = snap { ListScreen(screen(ListState(list = list))) }

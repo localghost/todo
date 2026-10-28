@@ -27,6 +27,14 @@ class ApiClientTest {
     private fun client(token: String? = "tok") =
         ApiClient(OkHttpClient(), server.url("/").toString().replace("localhost", "127.0.0.1"), token)
 
+    // The app links the policy of the default server (canvas page 17, "link to the
+    // privacy policy", option A), also when it uses another server.
+    @Test
+    fun privacyPolicyIsOnTheDefaultServer() {
+        assertEquals(ApiClient.DEFAULT_SERVER + "/privacy", ApiClient.PRIVACY_POLICY)
+        assertTrue(ApiClient.PRIVACY_POLICY.startsWith("https://"))
+    }
+
     @Test
     fun itemsSendsTokenAndZoneAndParses() = runTest {
         // The shape the Go server writes (internal/web/api.go).

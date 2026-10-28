@@ -49,7 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.toodoo.api.ApiClient
 
 @Composable
-fun LoginScreen(vm: LoginViewModel) {
+fun LoginScreen(vm: LoginActions) {
     val state by vm.state.collectAsStateWithLifecycle()
     var showPassword by rememberSaveable { mutableStateOf(false) }
     var showServer by rememberSaveable { mutableStateOf(false) }
@@ -127,6 +127,9 @@ fun LoginScreen(vm: LoginViewModel) {
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("No account? Sign up on the web", textAlign = TextAlign.Center)
+        }
+        TextButton(onClick = { uri.openUri(ApiClient.PRIVACY_POLICY) }, modifier = Modifier.fillMaxWidth()) {
+            Text("Privacy policy", textAlign = TextAlign.Center)
         }
     }
 }

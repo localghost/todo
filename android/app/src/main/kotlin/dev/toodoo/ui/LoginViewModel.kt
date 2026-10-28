@@ -21,9 +21,18 @@ data class LoginState(
     val error: String? = null,
 )
 
-class LoginViewModel(private val app: TooDooApp) : ViewModel() {
+/** What the login screen needs; the screenshot tests give a fake. */
+interface LoginActions {
+    val state: StateFlow<LoginState>
+    fun setUsername(v: String)
+    fun setPassword(v: String)
+    fun setServer(v: String)
+    fun logIn()
+}
+
+class LoginViewModel(private val app: TooDooApp) : ViewModel(), LoginActions {
     private val _state = MutableStateFlow(LoginState())
-    val state: StateFlow<LoginState> = _state
+    override val state: StateFlow<LoginState> = _state
 
     init {
         viewModelScope.launch {
@@ -33,11 +42,11 @@ class LoginViewModel(private val app: TooDooApp) : ViewModel() {
         }
     }
 
-    fun setUsername(v: String) = _state.update { it.copy(username = v, error = null) }
-    fun setPassword(v: String) = _state.update { it.copy(password = v, error = null) }
-    fun setServer(v: String) = _state.update { it.copy(server = v, error = null) }
+    override fun setUsername(v: String) = _state.update { it.copy(username = v, error = null) }
+    override fun setPassword(v: String) = _state.update { it.copy(password = v, error = null) }
+    override fun setServer(v: String) = _state.update { it.copy(server = v, error = null) }
 
-    fun logIn() {
+    override fun logIn() {
         val s = _state.value
         if (s.busy) return
         if (s.username.isBlank() || s.password.isEmpty()) {

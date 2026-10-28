@@ -152,6 +152,9 @@ class ApiClient(private val http: OkHttpClient, server: String, private val toke
     companion object {
         const val DEFAULT_SERVER = "https://toodoo.fly.dev"
 
+        /** The privacy policy of [DEFAULT_SERVER]; the app links it whatever server it uses. */
+        const val PRIVACY_POLICY = "$DEFAULT_SERVER/privacy"
+
         /**
          * Returns the server address as a URL, or null if it is not allowed:
          * only https, except plain http to the emulator's host and this phone

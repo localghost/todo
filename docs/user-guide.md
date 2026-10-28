@@ -212,6 +212,8 @@ web, so a change on the phone shows in the browser and the other way round.
 - **Log in** with your username and password. You stay logged in while you open the app at
   least every two weeks. Sign-up, the password change and deleting the account are on the web;
   the menu's "Account (web)" opens that page.
+- **Privacy policy:** "Privacy policy" on the login screen and in the menu (⋮) opens
+  https://toodoo.fly.dev/privacy in the browser.
 - **The list:** swipe a row to the right to mark it done (on a done row, the same swipe marks it
   not done again). Swipe a row to the left to delete it. Both show Undo for a few seconds, and
   the change is saved when Undo goes away. Hold a row still for half a second until it lifts,
