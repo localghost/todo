@@ -12,9 +12,9 @@ folder does the fixed steps. You write the release notes and the guide text.
 
 ## Steps
 
-1. Work in a new worktree from `origin/main` (the user's rule):
-   `git fetch origin && git worktree add ../todo-worktrees/release-<YYYY-MM-DD> -b release-<YYYY-MM-DD> origin/main`,
-   then work in that folder.
+1. Work in a new worktree from the local `main` (the user's rule):
+   `git worktree add ../todo-worktrees/release-<YYYY-MM-DD> -b release-<YYYY-MM-DD> main`,
+   then work in that folder. (`prepare` stops if it does not contain `origin/main`.)
 2. Run `bash .claude/skills/play-release/release.sh prepare $ARGUMENTS`.
    - An argument is a version (`1.2.0`) or `patch`, `minor`, `major`.
    - Without one: a `feat` commit in `android/` since the last tag means `minor`, else `patch`.
@@ -49,7 +49,7 @@ folder does the fixed steps. You write the release notes and the guide text.
 
 | Mistake | Fix |
 |---------|-----|
-| Starting from an old branch | `prepare` stops if HEAD does not contain `origin/main`; start from a fresh worktree. |
+| Starting from an old branch | `prepare` stops if HEAD does not contain `origin/main`; pull `main`, then start a fresh worktree. |
 | Notes over 500 characters, or without the `<en-US>` lines | `finish` stops; shorten or fix the file and run `finish` again. |
 | A test fails in `finish` | Nothing is committed yet. Fix the cause, then run `finish` again. |
 | Running `prepare` twice | The second run raises the version again. If the first run worked, go on with step 3. |
