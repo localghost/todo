@@ -80,6 +80,14 @@ description = "Run the Android app's unit tests"
 dir = "android"
 run = "./gradlew test"
 
+[tasks."play:graphics"]
+description = "Make the Google Play feature graphic and screenshots in android/play (needs headless Chromium and ImageMagick)"
+dir = "android"
+run = [
+  "./gradlew testDebugUnitTest --tests 'dev.toodoo.PlayScreenshotTest'",
+  "play/make.sh",
+]
+
 # With android/keystore.properties (docs/android.md) this makes the signed
 # android/app/build/outputs/apk/release/toodoo.apk; without it, the debug APK
 # android/app/build/outputs/apk/debug/toodoo-debug.apk.

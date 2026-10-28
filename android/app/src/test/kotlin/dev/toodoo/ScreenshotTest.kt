@@ -57,26 +57,24 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * Renders the screens on the JVM (Paparazzi), like the mockups on page
- * "17 · Android app". `./gradlew recordPaparazziDebug` writes the images to
- * app/src/test/snapshots/.
+ * The data and the screens that the screenshot tests share: [ScreenshotTest]
+ * for the guide and [PlayScreenshotTest] for Google Play.
  */
-class ScreenshotTest {
-    @get:Rule
-    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5, maxPercentDifference = 0.1)
+abstract class Screens {
+    abstract val paparazzi: Paparazzi
 
-    private val home = Label(1, "home", "#38c75d", 6)
-    private val work = Label(2, "work", "#2555da", 4)
-    private val money = Label(3, "money", "#e9bd16", 2)
-    private val errands = Label(4, "errands", "#e07a1f", 1)
-    private val health = Label(5, "health", "#2ed1c8", 3)
+    protected val home = Label(1, "home", "#38c75d", 6)
+    protected val work = Label(2, "work", "#2555da", 4)
+    protected val money = Label(3, "money", "#e9bd16", 2)
+    protected val errands = Label(4, "errands", "#e07a1f", 1)
+    protected val health = Label(5, "health", "#2ed1c8", 3)
 
-    private fun at(daysFromToday: Long, hour: Int, minute: Int = 0): String {
+    protected fun at(daysFromToday: Long, hour: Int, minute: Int = 0): String {
         val zone = ZoneId.systemDefault()
         return ZonedDateTime.of(LocalDate.now(zone).plusDays(daysFromToday).atTime(hour, minute), zone).toInstant().toString()
     }
 
-    private val items = listOf(
+    protected val items = listOf(
         Item(10, "Pay rent", false, dueAt = at(-1, 18), overdue = true, labels = listOf(home)),
         Item(11, "Send invoice to Kowalski", false, dueAt = at(0, 14, 30), labels = listOf(money, work)),
         Item(12, "Buy batteries and light bulbs", false, labels = listOf(errands, home)),
@@ -85,7 +83,7 @@ class ScreenshotTest {
         Item(15, "Call the bank about the card", true, labels = listOf(money)),
     )
 
-    private fun screen(state: ListState) = object : ListActions {
+    protected fun screen(state: ListState) = object : ListActions {
         override val state = MutableStateFlow(state)
         override val username = "zbyszek"
         override val server = "https://toodoo.fly.dev"
@@ -115,7 +113,7 @@ class ScreenshotTest {
         override fun logOut() {}
     }
 
-    private fun snap(dark: Boolean = false, device: DeviceConfig? = null, content: @Composable () -> Unit) {
+    protected fun snap(dark: Boolean = false, device: DeviceConfig? = null, content: @Composable () -> Unit) {
         if (dark || device != null) {
             paparazzi.unsafeUpdateConfig((device ?: DeviceConfig.PIXEL_5).copy(nightMode = if (dark) NightMode.NIGHT else NightMode.NOTNIGHT))
         }
@@ -134,10 +132,50 @@ class ScreenshotTest {
         }
     }
 
-    private val list = ItemList(items, open = 5, done = 1, hideDone = false)
+    protected val list = ItemList(items, open = 5, done = 1, hideDone = false)
 
     // All labels, as the item sheet loads them (counts as in the list above).
-    private val sheetLabels = listOf(home, work, money, errands, health)
+    protected val sheetLabels = listOf(home, work, money, errands, health)
+
+    /** A plain keyboard, like the one Android shows; only a picture. */
+    @Composable
+    protected fun Keyboard() {
+        val rows = listOf("qwertyuiop", "asdfghjkl", "⇧zxcvbnm⌫").map { r -> r.map { it.toString() } } +
+            listOf(listOf("?123", ",", " ", ".", "↵"))
+        Column(
+            Modifier.fillMaxWidth().background(Color(0xFFE8EAED)).padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            rows.forEachIndexed { i, keys ->
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = if (i == 1) 18.dp else 0.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    keys.forEach { k ->
+                        val wide = k.length > 1 || k in listOf("⇧", "⌫")
+                        val weight = when (k) { " " -> 5f; "?123", "↵" -> 1.6f; else -> if (wide) 1.4f else 1f }
+                        val fill = if (wide || k == "," || k == ".") Color(0xFFD3D6DB) else Color.White
+                        Box(
+                            Modifier.weight(weight).height(46.dp).clip(RoundedCornerShape(6.dp)).background(if (k == "↵") Color(0xFF2450C7) else fill),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(k, fontSize = if (k.length > 1) 15.sp else 21.sp, color = if (k == "↵") Color.White else Color(0xFF1F1F1F))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Renders the screens on the JVM (Paparazzi), like the mockups on page
+ * "17 · Android app". `./gradlew recordPaparazziDebug` writes the images to
+ * app/src/test/snapshots/.
+ */
+class ScreenshotTest : Screens() {
+    @get:Rule
+    override val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5, maxPercentDifference = 0.1)
 
     // The login screen, with the link to the privacy policy under the sign-up
     // link (canvas page 17, "link to the privacy policy", option A).
@@ -235,36 +273,6 @@ class ScreenshotTest {
                 )
             }
             Keyboard()
-        }
-    }
-
-    /** A plain keyboard, like the one Android shows; only a picture. */
-    @Composable
-    private fun Keyboard() {
-        val rows = listOf("qwertyuiop", "asdfghjkl", "⇧zxcvbnm⌫").map { r -> r.map { it.toString() } } +
-            listOf(listOf("?123", ",", " ", ".", "↵"))
-        Column(
-            Modifier.fillMaxWidth().background(Color(0xFFE8EAED)).padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            rows.forEachIndexed { i, keys ->
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = if (i == 1) 18.dp else 0.dp),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    keys.forEach { k ->
-                        val wide = k.length > 1 || k in listOf("⇧", "⌫")
-                        val weight = when (k) { " " -> 5f; "?123", "↵" -> 1.6f; else -> if (wide) 1.4f else 1f }
-                        val fill = if (wide || k == "," || k == ".") Color(0xFFD3D6DB) else Color.White
-                        Box(
-                            Modifier.weight(weight).height(46.dp).clip(RoundedCornerShape(6.dp)).background(if (k == "↵") Color(0xFF2450C7) else fill),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(k, fontSize = if (k.length > 1) 15.sp else 21.sp, color = if (k == "↵") Color.White else Color(0xFF1F1F1F))
-                        }
-                    }
-                }
-            }
         }
     }
 

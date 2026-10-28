@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- The Google Play graphics (canvas page "17 · Android app", "Google Play graphics":
+     feature graphic option B, screenshots option A). make.sh opens this page once per
+     graphic: #feature is the feature graphic, #1 to #5 are the screenshots. The app
+     screens come from PlayScreenshotTest (app/build/play-screens/). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;700&display=swap">
+<style>
+html, body { margin: 0; background: #2450C7; font-family: 'Source Sans 3', sans-serif; color: #FFFFFF; overflow: hidden; }
+.feature { position: relative; width: 1024px; height: 500px; overflow: hidden; }
+.feature .text { position: absolute; left: 70px; top: 0; bottom: 0; width: 520px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+.feature .name { font-size: 80px; font-weight: 700; line-height: 1; letter-spacing: -0.01em; }
+.feature .line { font-size: 32px; line-height: 1.25; color: #E3E9FA; }
+.feature .phone { position: absolute; right: 90px; top: 56px; width: 300px; height: 520px; box-sizing: border-box; border: 9px solid #1F1E1B; border-bottom: 0; border-radius: 40px 40px 0 0; overflow: hidden; background: #F4F3EF; transform: rotate(-4deg); }
+.shot { width: 1080px; height: 1920px; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+.shot .cap { height: 384px; box-sizing: border-box; padding: 72px 72px 0; display: flex; align-items: center; text-align: center; font-size: 76px; font-weight: 700; line-height: 1.2; }
+.shot .phone { width: 824px; flex-grow: 1; margin-top: 16px; box-sizing: border-box; border: 24px solid #1F1E1B; border-bottom: 0; border-radius: 104px 104px 0 0; overflow: hidden; background: #F4F3EF; }
+img { display: block; width: 100%; }
+</style>
+</head>
+<body>
+<script>
+const screens = "../app/build/play-screens/";
+const shots = [
+  ["Your list, on the phone and on the web", "play1List"],
+  ["Swipe right for done, left to delete", "play2Swipe"],
+  ["Due dates, reminders and labels", "play3ItemSheet"],
+  ["Add labels with one tap", "play4AddLabels"],
+  ["See only the items of one label", "play5LabelFilter"],
+];
+const which = location.hash.slice(1);
+if (which === "feature") {
+  document.body.innerHTML = `<div class="feature">
+    <div class="text"><span class="name">TooDoo</span><span class="line">A simple to-do list with due dates, reminders and labels</span></div>
+    <div class="phone"><img src="${screens}play1List.png" alt=""></div></div>`;
+} else {
+  const [caption, screen] = shots[Number(which) - 1];
+  document.body.innerHTML = `<div class="shot"><div class="cap">${caption}</div>
+    <div class="phone"><img src="${screens}${screen}.png" alt=""></div></div>`;
+}
+</script>
+</body>
+</html>

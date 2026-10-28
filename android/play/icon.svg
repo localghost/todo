@@ -1,0 +1,6 @@
+<!-- The Google Play icon: the launcher icon (res/drawable/ic_launcher_foreground.xml on
+     the color "brand") as a full square. Google adds the rounded corners. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 108 108">
+  <rect width="108" height="108" fill="#2450C7"/>
+  <path d="M37,55.5L49,67.5L72,42" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

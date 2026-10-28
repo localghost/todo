@@ -73,3 +73,16 @@ the two have different keys.
 The log-in screen has the server address under "Server". It is `https://toodoo.fly.dev` unless
 you change it. Only `https://` addresses work, except `http://10.0.2.2` (the computer, seen from
 the emulator) and `http://127.0.0.1`.
+
+## 7. Google Play
+
+- The store icon is `android/play/icon-512.png` (512 × 512, 32-bit PNG). It is the launcher icon
+  as a full square, because Google adds the rounded corners. The source is `android/play/icon.svg`.
+  To make the PNG again:
+  `convert -background none -density 1200 android/play/icon.svg -resize 512x512 PNG32:android/play/icon-512.png`
+- The feature graphic (`android/play/feature-graphic.png`, 1024 × 500) and the phone screenshots
+  (`android/play/screenshot-1.png` to `screenshot-5.png`, 1080 × 1920) are 24-bit PNG files. To make
+  them again: `mise run play:graphics`. The Paparazzi test `PlayScreenshotTest` renders the app
+  screens at full size to `android/app/build/play-screens/`. Then `android/play/make.sh` adds the
+  captions and the phone frame (`android/play/graphics.html`) with headless Chromium. The dates in
+  the screens are relative to today, so they change each time.
