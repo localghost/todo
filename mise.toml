@@ -96,6 +96,12 @@ description = "Build the Android app (release APK with a key, else debug)"
 dir = "android"
 run = "if [ -f keystore.properties ]; then ./gradlew assembleRelease; else ./gradlew assembleDebug; fi"
 
+# The signed Android App Bundle for Google Play; it needs android/keystore.properties.
+[tasks."android:bundle"]
+description = "Build the signed Android App Bundle (.aab) for Google Play"
+dir = "android"
+run = "if [ -f keystore.properties ]; then ./gradlew bundleRelease; else echo 'android/keystore.properties is missing: Google Play needs a signed bundle (docs/android.md, section 3)' >&2; exit 1; fi"
+
 [tasks."android:shots"]
 description = "Make the Android screenshots of the user guide again (renders on the JVM, no phone needed)"
 dir = "android"

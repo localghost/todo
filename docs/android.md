@@ -7,10 +7,10 @@ It talks to the server's JSON API under `/api/v1`. The design is in
 ## 1. What you need
 
 - Java 17 or newer.
-- The Android SDK with `platforms;android-35` and `build-tools;35.0.0`. Android Studio brings
+- The Android SDK with `platforms;android-36` and `build-tools;36.0.0`. Android Studio brings
   both. Without Android Studio, install the
   [command-line tools](https://developer.android.com/studio#command-line-tools-only) and run
-  `sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"`.
+  `sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"`.
 - Tell Gradle where the SDK is: set `ANDROID_HOME`, or write `sdk.dir=/path/to/sdk` into
   `android/local.properties` (git ignores it).
 
@@ -20,14 +20,20 @@ It talks to the server's JSON API under `/api/v1`. The design is in
 |------|---------|
 | Unit tests | `mise run android:test` |
 | Build the APK | `mise run android:build` |
+| Build the bundle for Google Play | `mise run android:bundle` |
 | Make the guide's Android screenshots again | `mise run android:shots` |
 
 `android:build` makes a signed release APK when there is a release key (section 3):
 `android/app/build/outputs/apk/release/toodoo.apk`, about 2 MB. Without a key it makes the debug
 APK `android/app/build/outputs/apk/debug/toodoo-debug.apk`, which is fine for your own phone.
 
+`android:bundle` makes the signed Android App Bundle that Google Play needs:
+`android/app/build/outputs/bundle/release/app-release.aab`. It needs the release key (section 3).
+
 The screenshot tests (`ScreenshotTest.kt`) render the screens on the computer with
-[Paparazzi](https://github.com/cashapp/paparazzi), so they need no phone or emulator.
+[Paparazzi](https://github.com/cashapp/paparazzi), so they need no phone or emulator. Paparazzi
+is a 2.0.0 alpha, because 1.3.5 does not work with API 36. Its renderer fails on the time input
+(`timeInput`), so that test is ignored for now.
 
 ## 3. The release key
 
@@ -86,3 +92,6 @@ the emulator) and `http://127.0.0.1`.
   screens at full size to `android/app/build/play-screens/`. Then `android/play/make.sh` adds the
   captions and the phone frame (`android/play/graphics.html`) with headless Chromium. The dates in
   the screens are relative to today, so they change each time.
+- Before each new upload, raise `versionCode` in `android/app/build.gradle.kts` by 1. Google Play
+  takes each `versionCode` only once. `versionName` uses semantic versioning (for example `1.0.1`),
+  and users see it on Google Play.
