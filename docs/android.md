@@ -83,6 +83,10 @@ the emulator) and `http://127.0.0.1`.
 
 ## 7. Google Play
 
+- To release a new version, ask Claude Code for `/play-release [version|patch|minor|major]`
+  (`.claude/skills/play-release/`). It sets the version, writes the release notes
+  (`android/play/release-notes/<version>.txt`), updates the user guide, builds the signed bundle,
+  commits, tags `android-v<version>` and pushes. Then upload the bundle in the Play Console.
 - The store icon is `android/play/icon-512.png` (512 × 512, 32-bit PNG). It is the launcher icon
   as a full square, because Google adds the rounded corners. The source is `android/play/icon.svg`.
   To make the PNG again:
