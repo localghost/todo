@@ -1,0 +1,9 @@
+<en-US>
+The first release of TooDoo on Google Play.
+• Your to-do list on the phone and on the web
+• Swipe right for done, left to delete, with Undo
+• Hold a row and drag it to change the order
+• Due dates and reminders, with Done and Postpone
+• Labels with colors: pick them with one tap, and see only the items of one label
+• A link to the privacy policy in the app
+</en-US>
