@@ -5,7 +5,18 @@ import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,6 +34,7 @@ import com.android.resources.ScreenOrientation
 import dev.toodoo.api.Item
 import dev.toodoo.api.ItemList
 import dev.toodoo.api.Label
+import dev.toodoo.ui.AddBarPreview
 import dev.toodoo.ui.LabelChipRow
 import dev.toodoo.ui.ItemSheetBody
 import dev.toodoo.ui.LabelPickerBody
@@ -191,6 +203,51 @@ class ScreenshotTest {
         snap(dark, DeviceConfig.PIXEL_5.copy(screenHeight = 260, orientation = ScreenOrientation.LANDSCAPE)) {
             Box(Modifier.padding(top = 16.dp)) {
                 LabelChipRow(labelsByUse(listOf(money, errands, health, home, work), filter = null), picked = listOf(home.id, health.id), "Labels for the new item", onToggle = {})
+            }
+        }
+    }
+
+    // The whole screen while an item is added: the row of labels between the
+    // add field and the keyboard (the guide image). The keyboard is drawn here.
+    @Test
+    fun addLabelsKeyboard() = snap {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f)) {
+                ListScreen(
+                    screen(ListState(list = list, labels = sheetLabels)),
+                    AddBarPreview("Buy vitamins", listOf(home.id, health.id)),
+                )
+            }
+            Keyboard()
+        }
+    }
+
+    /** A plain keyboard, like the one Android shows; only a picture. */
+    @Composable
+    private fun Keyboard() {
+        val rows = listOf("qwertyuiop", "asdfghjkl", "⇧zxcvbnm⌫").map { r -> r.map { it.toString() } } +
+            listOf(listOf("?123", ",", " ", ".", "↵"))
+        Column(
+            Modifier.fillMaxWidth().background(Color(0xFFE8EAED)).padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            rows.forEachIndexed { i, keys ->
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = if (i == 1) 18.dp else 0.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    keys.forEach { k ->
+                        val wide = k.length > 1 || k in listOf("⇧", "⌫")
+                        val weight = when (k) { " " -> 5f; "?123", "↵" -> 1.6f; else -> if (wide) 1.4f else 1f }
+                        val fill = if (wide || k == "," || k == ".") Color(0xFFD3D6DB) else Color.White
+                        Box(
+                            Modifier.weight(weight).height(46.dp).clip(RoundedCornerShape(6.dp)).background(if (k == "↵") Color(0xFF2450C7) else fill),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(k, fontSize = if (k.length > 1) 15.sp else 21.sp, color = if (k == "↵") Color.White else Color(0xFF1F1F1F))
+                        }
+                    }
+                }
             }
         }
     }

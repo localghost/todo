@@ -243,7 +243,7 @@ web, so a change on the phone shows in the browser and the other way round.
 
 ![The label list from the top bar](guide-images/android-labelPickerFilter.png "the label list from the tag button at the top. A tap on a label shows only its items.")
 
-![Label chips under the add field](guide-images/android-addLabels.png "the row of labels under the add field while the keyboard is open. “home” and “health” are selected.")
+![Adding an item with labels](guide-images/android-addLabelsKeyboard.png "the Android app while you add an item. The keyboard is open, and the row of labels is between the add field and the keyboard. “home” and “health” are selected.")
 
 ## Keys
 

@@ -111,9 +111,16 @@ import dev.toodoo.api.Label
 import java.time.ZonedDateTime
 import kotlinx.coroutines.launch
 
+/**
+ * The add field as if the keyboard were open, with [text] typed and the
+ * labels [picked]. Only for the screenshots of the guide: they have no real
+ * keyboard, so the row of labels would not show.
+ */
+data class AddBarPreview(val text: String, val picked: List<Long>)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListScreen(vm: ListActions) {
+fun ListScreen(vm: ListActions, addBarPreview: AddBarPreview? = null) {
     val state by vm.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var menuOpen by remember { mutableStateOf(false) }
@@ -208,7 +215,7 @@ fun ListScreen(vm: ListActions) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
-        bottomBar = { AddBar(labels = state.labels, filter = state.filter, onOpen = vm::loadLabels, onAdd = vm::add) },
+        bottomBar = { AddBar(labels = state.labels, filter = state.filter, onOpen = vm::loadLabels, onAdd = vm::add, preview = addBarPreview) },
         snackbarHost = { SnackbarHost(snackbar) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
@@ -651,9 +658,15 @@ fun LabelChip(label: Label) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AddBar(labels: List<Label>?, filter: Label?, onOpen: () -> Unit, onAdd: suspend (String, List<String>) -> Boolean) {
-    var text by rememberSaveable { mutableStateOf("") }
-    var picked by rememberSaveable(filter?.id) { mutableStateOf(listOfNotNull(filter?.id)) }
+private fun AddBar(
+    labels: List<Label>?,
+    filter: Label?,
+    onOpen: () -> Unit,
+    onAdd: suspend (String, List<String>) -> Boolean,
+    preview: AddBarPreview? = null,
+) {
+    var text by rememberSaveable { mutableStateOf(preview?.text ?: "") }
+    var picked by rememberSaveable(filter?.id) { mutableStateOf(preview?.picked ?: listOfNotNull(filter?.id)) }
     var focused by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -675,7 +688,7 @@ private fun AddBar(labels: List<Label>?, filter: Label?, onOpen: () -> Unit, onA
         }
     }
     // The back key closes the keyboard but leaves the focus in the field, so check both.
-    val withLabels = focused && WindowInsets.isImeVisible && shown.isNotEmpty()
+    val withLabels = (preview != null || focused && WindowInsets.isImeVisible) && shown.isNotEmpty()
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(Modifier.navigationBarsPadding().imePadding()) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
