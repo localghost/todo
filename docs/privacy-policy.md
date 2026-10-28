@@ -131,9 +131,9 @@ Osobowych (UODO), ul. Stawki 2, 00-193 Warszawa, https://uodo.gov.pl
 
 ## Age
 
-You must be 16 or older to use toodoo.
+You must be 13 or older to use toodoo.
 
-We do not knowingly store data about children under 16. If you think that a child under 16 has an
+We do not knowingly store data about children under 13. If you think that a child under 13 has an
 account, send us an email, and we will delete the account.
 
 ## Security
