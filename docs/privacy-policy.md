@@ -1,97 +1,152 @@
-**Privacy Policy**
+# Privacy policy
 
-This privacy policy applies to the toodoo app for mobile devices and web browsers, together with any related services operated by Zbigniew Kostrzewa (collectively, the "Application"). Zbigniew Kostrzewa is hereby referred to as the "Service Provider".
+This policy is effective from 2026-10-28.
 
-**Information Collection and Use**
+This policy tells you what data toodoo stores about you, why, and for how long. It also tells you
+what your rights are.
 
-The Application collects information when you download and use it. This information may include information such as
+## Who is responsible
 
-*   Your device's Internet Protocol address
-*   The pages of the Application that you visit, the time and date of your visit, the time spent on those pages
-*   The time spent on the Application
-*   your operating system you use
+Zbigniew Kostrzewa, Poland, is responsible for your data (the "controller" in the GDPR). In this
+policy, "we" means Zbigniew Kostrzewa.
 
-**Cookies and tracking technologies**
+Contact: zkostrzewa.dev@gmail.com
 
-The Application or its third-party SDKs may use cookies, SDKs, pixels, and similar technologies to support functionality, analytics, or service delivery. Where required by applicable law, the Service Provider will obtain consent before using non-essential tracking technologies.
+This policy covers:
 
-**Your Rights**
+- the web app at https://toodoo.fly.dev
+- the toodoo Android app, when it connects to https://toodoo.fly.dev
 
-You may request access to, correction of, or deletion of your personal data held by the Service Provider. To exercise these rights, or to withdraw consent where processing is based on consent, contact the Service Provider at zkostrzewa.dev@gmail.com.
+The Android app can also connect to a server that another person runs. In that case, the person who
+runs that server is responsible for the data on it, and this policy does not cover it.
 
-**Your California privacy rights (CCPA/CPRA)**
+## Summary
 
-If you are a California resident, you have the right to know what personal information is collected, the right to delete personal information, the right to opt out of the sale or sharing of personal information, and the right to non-discrimination for exercising these rights. To exercise your CCPA/CPRA rights, contact the Service Provider at zkostrzewa.dev@gmail.com.
+- We store only what the app needs to work: your account, your items and your labels.
+- We do not ask for your email address or your real name.
+- We do not show ads, and we do not track you.
+- We do not use analytics or crash reporting.
+- We do not sell your data, and we do not send you emails.
+- You can delete your account and all your data at any time.
 
-The Service Provider may use the information you provide to send important information, required notices, and, where permitted by law, marketing communications.
+## What data we store, and why
 
-For a better experience while using the Application, the Service Provider may require you to provide certain personally identifiable information. The information the Service Provider requests will be retained and used as described in this privacy policy.
+| Data | Why we store it | Legal basis (GDPR) | How long |
+| --- | --- | --- | --- |
+| Your username | To identify your account and to log you in | Art. 6(1)(b): we need it to give you the service | Until you delete your account |
+| A hash of your password (made with Argon2id) | To check your password when you log in. We never store the password itself. | Art. 6(1)(b) | Until you delete your account |
+| The time your account was made | To manage accounts | Art. 6(1)(b) | Until you delete your account |
+| Your items: the text, done or not, the order, the due date, when you made and changed them, when a reminder was sent | To show and keep your list | Art. 6(1)(b) | Until you delete the item or your account |
+| Your labels: the name and the color | To show and keep your labels | Art. 6(1)(b) | Until you delete the label or your account |
+| Sessions: a hash of your log-in token, and when it starts and ends | To keep you logged in | Art. 6(1)(b) | 12 hours. With "Keep me logged in", or in the Android app: 30 days, renewed when you use the app. We delete ended sessions every hour. |
+| Your IP address, in the memory of the server | To limit the number of log-in and sign-up attempts, which protects accounts from attacks | Art. 6(1)(f): our interest in a safe service | 15 minutes to 1 hour. It is lost when the server restarts. |
+| Your IP address in the server log, only when the server blocks a log-in or a sign-up | To find and stop attacks | Art. 6(1)(f) | As long as Fly.io keeps its logs (see "Who else gets your data") |
 
-**Third Party Access**
+You must give a username and a password to use toodoo. Without them, we cannot make an account for you.
 
-Only aggregated, anonymized data is periodically transmitted to external services to aid the Service Provider in improving the Application and their service. The Service Provider may share your information with third parties in the ways that are described in this privacy statement.
+We do not use your data for profiling. We do not make automated decisions about you.
 
-**International Data Transfers**
+## Cookies
 
-The Service Provider or its third-party service providers may transfer personal data to countries outside your country of residence, including outside the European Economic Area (EEA). Where applicable law requires safeguards for international transfers, the Service Provider will use appropriate mechanisms.
+The web app uses only two cookies. Both are needed for the app to work, so we do not ask for your
+consent:
 
-*   Standard Contractual Clauses (SCCs) approved by the European Commission
-*   Adequacy decisions or other legally recognized transfer mechanisms
-*   Your consent, where required and legally permitted
+- The session cookie keeps you logged in. It ends when your session ends.
+- The `todo_tz` cookie holds the time zone of your browser, for example `Europe/Warsaw`. The server
+  uses it to show due dates in your time. It stays for 1 year.
 
-Data protection laws in other countries may differ from those in your jurisdiction. Where required by law, the Service Provider will apply appropriate safeguards and obtain any consent required for the transfer.
+We do not use cookies for ads, analytics or tracking.
 
-The Service Provider may disclose User Provided and Automatically Collected Information:
+## Data on your phone (Android app)
 
-*   as required by law, such as to comply with a subpoena, or similar legal process;
-*   when they believe in good faith that disclosure is necessary to protect their rights, protect your safety or the safety of others, investigate fraud, or respond to a government request;
-*   with their trusted services providers who work on their behalf, do not have an independent use of the information the Service Provider discloses to them, and have agreed to adhere to the rules set forth in this privacy statement.
+The Android app stores these on your phone, in storage that only the app can read:
 
-**Opt-Out Rights**
+- the server address, your username and your log-in token
+- a copy of your last list, so that you can see it without a network connection
 
-You can stop further collection of information from your mobile device or computer by uninstalling the Application. Uninstalling will stop the Application from collecting data from your device, but it does not automatically delete information that has already been transmitted to the Service Provider or to third parties.
+When you log out, the app deletes the token and the copy of your list. When you uninstall the app,
+Android deletes all of this data.
 
-You can stop further collection of information from your device by ceasing to use the website. Ceasing to use will stop the website from collecting data from your device, but it does not automatically delete information that has already been transmitted to the Service Provider or to third parties.
+The app turns off Android backups, so this data does not go to a cloud backup.
 
-To request deletion of your personal data, to withdraw consent, or to exercise any of your rights, contact the Service Provider at zkostrzewa.dev@gmail.com.
+The app asks for these permissions:
 
-**Data Retention Policy**
+- internet, to connect to the server
+- notifications, alarms and "run at start-up", to show reminders for your due dates
 
-The Service Provider retains personal data based on its necessity for the stated purposes:
+The phone makes the reminders itself. No push service gets your data.
 
-*   User Provided Data: Retained for the duration of your use of the Application plus 12 months thereafter, unless longer retention is required by law
-*   Automatically Collected Data: Retained for up to 24 months from collection, unless longer retention is required for legal compliance
-*   Aggregated and Anonymized Data: Retained indefinitely as it no longer identifies you
-*   Data required for legal compliance: Retained as long as required by applicable law
+If you install the app from Google Play, Google gets data about the installation. The Google Play
+privacy policy covers this data, not this policy.
 
-You may request deletion of your personal data, subject to any legal obligation to retain it. If you want the Service Provider to delete User Provided Data submitted through the Application, please contact them at zkostrzewa.dev@gmail.com. Please note that some User Provided Data may be required for the Application to function properly.
+## Who else gets your data
 
-**Children**
+- Fly.io, Inc. (USA) runs the servers. The database is in Frankfurt, Germany. Fly.io handles every
+  request to toodoo, with your IP address, and stores the server log. Fly.io makes a copy of the
+  database each day and keeps each copy for 5 days. Fly.io works for us and only on our
+  instructions (a "processor" in the GDPR).
+- Google (Google Fonts). The log-in, sign-up and account pages and the user guide load fonts from
+  fonts.googleapis.com. So your browser sends your IP address and browser details to Google. The
+  legal basis is Art. 6(1)(f): our interest in a page that is easy to read. You can find more at
+  https://policies.google.com/privacy
 
-The Application is not intended for children under 13 years of age, or such higher age as required by applicable law. The Service Provider does not knowingly solicit data from children or market the Application to them.
+Fly.io and Google are companies in the USA. So your data can go to the USA. Google takes part in the
+EU-U.S. Data Privacy Framework. The data processing terms of Fly.io use the Standard Contractual
+Clauses of the European Commission.
 
-The Service Provider does not knowingly collect personally identifiable information from children. The Service Provider encourages all children to never submit any personally identifiable information through the Application and/or Services. The Service Provider encourages parents and legal guardians to monitor their children's Internet usage and to help enforce this Policy by instructing their children never to provide personally identifiable information through the Application and/or Services without their permission. If you have reason to believe that a child has provided personally identifiable information to the Service Provider through the Application and/or Services, please contact the Service Provider so that they will be able to take the necessary actions. If you are under 13 years of age, your parent or guardian must provide consent on your behalf where permitted by law.
+We do not give your data to anyone else. The only exception is when a law or a court order tells us
+to.
 
-**Security**
+## How long we keep your data
 
-The Service Provider is concerned about safeguarding the confidentiality of your information. The Service Provider provides physical, electronic, and procedural safeguards to protect information the Service Provider processes and maintains.
+We keep your account, items and labels until you delete them. The table above shows the time for
+each type of data.
 
-**Data Breach Notification**
+When you delete your account, we delete your username, password hash, items, labels and sessions at
+once. The daily copies of the database still hold the data for up to 5 more days. After that, the
+data is gone.
 
-If a data breach occurs that affects your personal data, the Service Provider will notify you in accordance with applicable legal requirements, including, where required, providing information about the nature of the breach and the steps being taken to address it.
+## Your rights
 
-**Changes**
+Under the GDPR, you have these rights:
 
-The Service Provider may update this Privacy Policy from time to time. The Service Provider will notify you of material changes by posting the updated Privacy Policy with an effective date. Where required by law, the Service Provider will seek your consent to material changes before they take effect.
+- to get a copy of your data (access)
+- to correct your data
+- to delete your data
+- to limit how we use your data (restriction)
+- to get your data in a common format that a computer can read (portability)
+- to object when we use your data because of our interest (Art. 6(1)(f))
 
-Previous versions of this Privacy Policy will be maintained and made available upon request by contacting the Service Provider at zkostrzewa.dev@gmail.com.
+You can change your items, labels and password yourself in the app.
 
-This privacy policy is effective as of 2026-10-28
+You can delete your account yourself. Log in at https://toodoo.fly.dev, open "Account", and select
+"Delete my account and all items". In the Android app, there is no delete button yet. You can use
+the web app, or send us an email.
 
-**Your Consent**
+For all other rights, send an email to zkostrzewa.dev@gmail.com and give your username. We answer
+within 1 month.
 
-Where processing is based on consent, you provide that consent by affirmatively opting in to the relevant feature or action. You may withdraw consent at any time without affecting processing carried out before withdrawal. Processing based on other lawful bases is carried out as described above.
+You can also complain to the Polish data protection authority: Prezes Urzędu Ochrony Danych
+Osobowych (UODO), ul. Stawki 2, 00-193 Warszawa, https://uodo.gov.pl
 
-**Contact Us**
+## Age
 
-If you have any questions regarding privacy while using the Application, or have questions about the practices, please contact the Service Provider via email at zkostrzewa.dev@gmail.com.
+You must be 16 or older to use toodoo.
+
+We do not knowingly store data about children under 16. If you think that a child under 16 has an
+account, send us an email, and we will delete the account.
+
+## Security
+
+- We store only a hash of your password (Argon2id), never the password itself.
+- We store only a hash of your log-in token, never the token itself.
+- The app works only over HTTPS, so your data is encrypted on the network.
+- The session cookie is not visible to scripts on the page, and it goes only over HTTPS.
+
+If a data breach puts your rights at risk, we will tell UODO, as the GDPR requires. We do not have
+your email address. So if the breach puts your rights at high risk, we will tell you with a notice
+on https://toodoo.fly.dev
+
+## Changes to this policy
+
+If we change this policy, we will put the new text here with a new date at the top.
