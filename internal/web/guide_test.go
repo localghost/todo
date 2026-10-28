@@ -132,7 +132,7 @@ func TestGuideLinks(t *testing.T) {
 	env := newTestEnv(t, web.WithGuide(docs.Guide))
 	assertContains(t, do(t, env.H, "GET", "/", nil, nil).Body.String(), ` · <a href="/guide">Help</a> · <a href="/account">Account</a>`)
 	for _, path := range []string{"/login", "/signup"} {
-		assertContains(t, do(t, env.H, "GET", path, nil, anon).Body.String(), `<p class="auth-foot">New here? <a href="/guide">Read the user guide</a></p>`)
+		assertContains(t, do(t, env.H, "GET", path, nil, anon).Body.String(), `<p class="auth-foot">New here? <a href="/guide">Read the user guide</a> · `)
 	}
 	assertContains(t, do(t, env.H, "GET", "/account", nil, nil).Body.String(), `<a href="/">← Back to my list</a> · <a href="/guide">User guide</a>`)
 }

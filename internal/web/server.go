@@ -33,8 +33,9 @@ var staticFS embed.FS
 type server struct {
 	svc            *todo.Service
 	accounts       *auth.Service
-	guideFS        fs.FS              // user-guide.md and guide-images/; nil means no guide
+	guideFS        fs.FS              // user-guide.md, privacy-policy.md and guide-images/; nil means no guide
 	guide          *guideView         // rendered from guideFS in New
+	privacy        *guideView         // rendered from guideFS in New; nil if it has no privacy-policy.md
 	base           *template.Template // parsed once, never executed; cloned per zone
 	views          sync.Map           // zone name → *template.Template bound to that zone
 	zones          sync.Map           // todo_tz cookie value → *time.Location
@@ -112,12 +113,23 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Op
 		if s.guide, err = renderGuide(md); err != nil {
 			return nil, err
 		}
+		md, err = fs.ReadFile(s.guideFS, "privacy-policy.md")
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+		case err != nil:
+			return nil, err
+		default:
+			if s.privacy, err = renderGuide(md); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", noDirListing(http.FileServerFS(staticFS)))
 	mux.HandleFunc("GET /guide", s.guidePage)
 	mux.Handle("GET /guide-images/", s.guideImages())
+	mux.HandleFunc("GET /privacy", s.privacyPage)
 	mux.HandleFunc("GET /login", s.loginPage)
 	mux.HandleFunc("POST /login", s.login)
 	mux.HandleFunc("GET /signup", s.signupPage)
@@ -221,7 +233,7 @@ func securityHeaders(next http.Handler) http.Handler {
 		}
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/static/"):
-		case r.URL.Path == "/guide" || strings.HasPrefix(r.URL.Path, "/guide-images/"):
+		case r.URL.Path == "/guide" || r.URL.Path == "/privacy" || strings.HasPrefix(r.URL.Path, "/guide-images/"):
 			h.Set("Cache-Control", "public, max-age=3600") // the same for everyone
 		default:
 			// Private data: the browser must not keep it (for example for Back after logout).

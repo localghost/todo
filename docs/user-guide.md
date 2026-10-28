@@ -22,7 +22,7 @@ There is no email address. If you forget your password, ask the admin of the app
    ends the oldest one.
 3. Click **Log in**.
 
-![The login page](guide-images/login.png "the login page with the fields Username and Password, the box “Keep me logged in”, and the link to Sign up.")
+![The login page](guide-images/login.png "the login page with the fields Username and Password, the box “Keep me logged in”, the link to Sign up, and the links to the user guide and the privacy policy.")
 
 To log out, click **Log out** at the top right of your list.
 
@@ -40,6 +40,9 @@ Click **Account** at the top right of your list. On the Account page you can:
 If you use only the Android app, delete your toodoo account on the web: log in at
 https://toodoo.fly.dev, click **Account**, and type your username to confirm. The Android app
 has no delete button.
+
+The privacy policy at https://toodoo.fly.dev/privacy tells you which data the app stores, why,
+and for how long. The login, sign-up and Account pages link to it.
 
 ## Items
 

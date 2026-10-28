@@ -18,11 +18,12 @@ import (
 )
 
 // WithGuide serves the user guide from fsys: user-guide.md at /guide and the
-// PNG files in guide-images/ at /guide-images/. Without it, both answer 404.
+// PNG files in guide-images/ at /guide-images/. If fsys has
+// privacy-policy.md, it serves that at /privacy. Without it, all answer 404.
 func WithGuide(fsys fs.FS) Option { return func(s *server) { s.guideFS = fsys } }
 
-// guideView is the user guide, rendered once at start (canvas page 2,
-// "user guide at /guide").
+// guideView is the user guide or the privacy policy, rendered once at start
+// (canvas page 2, "user guide at /guide" and "privacy policy at /privacy").
 type guideView struct {
 	Intro    template.HTML  // the title and the text before the first section
 	Sections []guideSection // the level-2 headings, for the contents list
@@ -106,7 +107,24 @@ func (s *server) guidePage(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	s.render(w, r, http.StatusOK, part{"guide", s.guide})
+	s.render(w, r, http.StatusOK, part{"guide", docPage{"User guide", s.guide, s.privacy != nil}})
+}
+
+// docPage is the data of the guide template: a page from docs/.
+type docPage struct {
+	Title       string
+	Doc         *guideView
+	PrivacyLink bool // a link to /privacy in the top line
+}
+
+// privacyPage shows the privacy policy (canvas page 2, "privacy policy at
+// /privacy", option A). It needs no session.
+func (s *server) privacyPage(w http.ResponseWriter, r *http.Request) {
+	if s.privacy == nil {
+		http.NotFound(w, r)
+		return
+	}
+	s.render(w, r, http.StatusOK, part{"guide", docPage{"Privacy policy", s.privacy, false}})
 }
 
 // guideImages serves the screenshots of the guide: PNG files only, no folder
