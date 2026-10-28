@@ -22,7 +22,7 @@ There is no email address. If you forget your password, ask the admin of the app
    ends the oldest one.
 3. Click **Log in**.
 
-![The login page](guide-images/login.png)
+![The login page](guide-images/login.png "the login page with the fields Username and Password, the box “Keep me logged in”, and the link to Sign up.")
 
 To log out, click **Log out** at the top right of your list.
 
@@ -38,7 +38,7 @@ Click **Account** at the top right of your list. On the Account page you can:
 
 ## Items
 
-![The list with items, due dates and labels](guide-images/list.png)
+![The list with items, due dates and labels](guide-images/list.png "the list with five items. The first item is overdue and has the postpone buttons. The last item is done.")
 
 ### Add an item
 
@@ -56,7 +56,7 @@ add field.
 2. Change the text.
 3. Press Enter to save, or Esc to cancel. If you click somewhere else, the app saves the text.
 
-![An item in edit mode](guide-images/edit.png)
+![An item in edit mode](guide-images/edit.png "the item “Water the plants” in edit mode. Under the field is the hint “Enter to save · Esc to cancel”.")
 
 ### Check off and delete
 
@@ -71,7 +71,7 @@ add field.
   number of done items changes before you click **Delete** (for example in another tab), the
   app deletes nothing and asks again with the new number.
 
-![The question of Clear done](guide-images/clear-done.png)
+![The question of Clear done](guide-images/clear-done.png "the question after a click on Clear done. “Delete 1 item” deletes the done items. Cancel keeps them.")
 
 ## Order of the items
 
@@ -92,7 +92,7 @@ Each item has a small calendar icon under its text.
    The app uses the 24-hour clock.
 4. Click **Save**.
 
-![The due date pop-up](guide-images/due-popup.png)
+![The due date pop-up](guide-images/due-popup.png "the due date pop-up of the item “Send the invoice”, with the day, the time 10:00, Save and Remove date.")
 
 - If you leave the time empty, the item is due all day.
 - To change a date, click the calendar icon or the due date text.
@@ -122,7 +122,7 @@ site in your browser settings.
 An overdue item shows the buttons **+5 min**, **+10 min**, **+15 min** and **+30 min**. Click one
 to move the due time to that many minutes from now.
 
-![An overdue item with the postpone buttons](guide-images/overdue.png)
+![An overdue item with the postpone buttons](guide-images/overdue.png "an overdue item. The red text shows since when it is overdue. Under it are the four postpone buttons.")
 
 ## Labels
 
@@ -136,7 +136,7 @@ Labels such as "work" or "home" put your items into groups. Each label has a col
 4. The list stays open, so you can click more names. Press Esc or click outside the list to close
    it.
 
-![The label list](guide-images/label-list.png)
+![The label list](guide-images/label-list.png "the label list of the item “Send the invoice”. The item has the label “work”, so “work” has a check.")
 
 To find a label, type a part of its name in the search field at the top of the list.
 
@@ -158,7 +158,7 @@ click its ×. On a phone the × always shows.
    how strong it is. You can also use the arrow keys.
 3. Click **Done** to save the color, or **Cancel** to keep the old color.
 
-![The color wheel](guide-images/color-wheel.png)
+![The color wheel](guide-images/color-wheel.png "the color wheel of the label “work”. The small circle is the current color. Preview shows the label with it.")
 
 ### Delete a label
 
@@ -168,7 +168,7 @@ click its ×. On a phone the × always shows.
 
 The app removes the label from all items. The items stay.
 
-![The question before a label is deleted](guide-images/label-delete.png)
+![The question before a label is deleted](guide-images/label-delete.png "the question before the label “urgent” is deleted. One item has this label. The item stays.")
 
 ### Show only the items of one label
 
@@ -177,7 +177,7 @@ shows "Label: name". A new item that you add here gets this label.
 
 To see all items again, click the × next to "Label: name".
 
-![The list with only the items of one label](guide-images/filter.png)
+![The list with only the items of one label](guide-images/filter.png "only the items with the label “work”. “Label: work” has an × that shows all items again.")
 
 ### Limits
 
@@ -192,7 +192,7 @@ The app works in the browser of a phone. On a touch screen:
 - The calendar icon, the + and the × on a label always show, and they are larger.
 - The × to delete a label in the label list always shows.
 
-![The list on a phone](guide-images/phone.png)
+![The list on a phone](guide-images/phone.png "the list in the browser of a phone, 375 pixels wide. The × on each label always shows.")
 
 ## Android app
 
@@ -235,15 +235,15 @@ web, so a change on the phone shows in the browser and the other way round.
   you set your first due date. Without a connection the app shows the last list it loaded; changes
   need the connection.
 
-![The list in the Android app](guide-images/android-list.png)
+![The list in the Android app](guide-images/android-list.png "the list in the Android app, with five open items and one done item. The tag button at the top opens the label list.")
 
-![The item sheet](guide-images/android-itemSheet.png)
+![The item sheet](guide-images/android-itemSheet.png "the item sheet of “Send invoice to Kowalski”. The labels “money” and “work” are selected, and the others follow.")
 
-![The label list from the item sheet](guide-images/android-labelPicker.png)
+![The label list from the item sheet](guide-images/android-labelPicker.png "the label list from “All labels” in the item sheet. The search “he” finds two labels, and “Create” can make “he”.")
 
-![The label list from the top bar](guide-images/android-labelPickerFilter.png)
+![The label list from the top bar](guide-images/android-labelPickerFilter.png "the label list from the tag button at the top. A tap on a label shows only its items.")
 
-![Label chips under the add field](guide-images/android-addLabels.png)
+![Label chips under the add field](guide-images/android-addLabels.png "the row of labels under the add field while the keyboard is open. “home” and “health” are selected.")
 
 ## Keys
 

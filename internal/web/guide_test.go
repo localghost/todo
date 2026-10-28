@@ -44,7 +44,7 @@ func TestGuideImages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	links := regexp.MustCompile(`\]\((guide-images/[^)]+\.png)\)`).FindAllStringSubmatch(string(md), -1)
+	links := regexp.MustCompile(`\]\((guide-images/[^)\s]+\.png)`).FindAllStringSubmatch(string(md), -1)
 	if len(links) < 8 {
 		t.Fatalf("the guide links %d images, want at least 8", len(links))
 	}
@@ -68,6 +68,35 @@ func TestGuideDropsRawHTML(t *testing.T) {
 	body := do(t, env.H, "GET", "/guide", nil, anon).Body.String()
 	assertNotContains(t, body, "<script>alert", "<b>bold</b>")
 	assertContains(t, body, `<h2 id="a">A</h2>`)
+}
+
+// An image alone in a paragraph, with a title, becomes a figure: the title is
+// the caption above the image (canvas page 2, "centered screenshots",
+// option B). An image with no title stays as it is.
+func TestGuideFigures(t *testing.T) {
+	md := "# User guide\n\n## A\n\n![The list](guide-images/list.png \"the list with two items\")\n\n" +
+		"![Plain](guide-images/plain.png)\n\n![Bold](guide-images/bold.png \"a <b>bold</b> word\")\n"
+	env := newTestEnv(t, web.WithGuide(fstest.MapFS{"user-guide.md": {Data: []byte(md)}}))
+	body := do(t, env.H, "GET", "/guide", nil, anon).Body.String()
+	assertContains(t, body,
+		"<figure>\n<figcaption><b>Screenshot:</b> the list with two items</figcaption>\n"+
+			`<img src="guide-images/list.png" alt="The list">`+"\n</figure>",
+		`<p><img src="guide-images/plain.png" alt="Plain"></p>`,
+		"<figcaption><b>Screenshot:</b> a &lt;b&gt;bold&lt;/b&gt; word</figcaption>")
+	assertNotContains(t, body, `title="the list`)
+}
+
+// Each screenshot in the guide has a caption (the image title).
+func TestGuideImagesHaveCaptions(t *testing.T) {
+	md, err := fs.ReadFile(docs.Guide, "user-guide.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range regexp.MustCompile(`!\[[^\]]*\]\([^)]*\)`).FindAllString(string(md), -1) {
+		if !regexp.MustCompile(`\.png "[^"]+"\)$`).MatchString(l) {
+			t.Errorf("no caption: %s", l)
+		}
+	}
 }
 
 // The guide is public, so the browser may keep it for an hour. The CSP is

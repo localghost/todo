@@ -466,9 +466,15 @@ main.guide { display: block; max-width: 760px; font-size: 17px; line-height: 1.5
 .guide li { margin: 2px 0; }
 .guide code { font-size: 15px; padding: 1px 5px; border-radius: 4px; background: var(--card); border: 1px solid var(--line); }
 .guide img {
-  display: block; max-width: 100%; height: auto; margin: 8px 0 18px;
+  display: block; max-width: 100%; height: auto; margin: 8px auto 18px;
   border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 1px 2px rgba(31, 30, 27, 0.06);
 }
+/* A screenshot with its caption above it, both centered (canvas page 2,
+   "centered screenshots", option B). */
+.guide figure { margin: 8px 0 20px; text-align: center; }
+.guide figcaption { max-width: 520px; margin: 0 auto 8px; font-size: 15px; line-height: 1.45; color: var(--muted); }
+.guide figcaption b { color: var(--ink); }
+.guide figure img { margin: 0 auto; }
 .guide table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 15px; background: var(--card); }
 .guide th, .guide td { text-align: left; vertical-align: top; padding: 7px 10px; border: 1px solid var(--line); }
 .guide th { background: var(--ground); font-weight: 700; }

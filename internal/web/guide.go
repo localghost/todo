@@ -12,7 +12,9 @@ import (
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
 )
 
 // WithGuide serves the user guide from fsys: user-guide.md at /guide and the
@@ -35,10 +37,21 @@ type guideSection struct {
 // renderGuide turns the Markdown guide into HTML. Raw HTML in the Markdown is
 // not rendered (goldmark's default), so the guide cannot add scripts.
 func renderGuide(md []byte) (*guideView, error) {
-	gm := goldmark.New(goldmark.WithExtensions(extension.GFM), goldmark.WithParserOptions(parser.WithAutoHeadingID()))
+	gm := goldmark.New(goldmark.WithExtensions(extension.GFM), goldmark.WithParserOptions(parser.WithAutoHeadingID()),
+		goldmark.WithRendererOptions(renderer.WithNodeRenderers(util.Prioritized(figureRenderer{}, 100))))
 	doc := gm.Parser().Parse(text.NewReader(md))
 	v := &guideView{}
 	for n := doc.FirstChild(); n != nil; n = n.NextSibling() {
+		if p, ok := n.(*ast.Paragraph); ok && p.ChildCount() == 1 {
+			if img, ok := p.FirstChild().(*ast.Image); ok && len(img.Title) > 0 {
+				f := &figure{Caption: img.Title}
+				img.Title = nil
+				p.RemoveChild(p, img)
+				f.AppendChild(f, img)
+				doc.ReplaceChild(doc, p, f)
+				n = f
+			}
+		}
 		if h, ok := n.(*ast.Heading); ok && h.Level == 2 {
 			id, _ := h.AttributeString("id")
 			idBytes, _ := id.([]byte)
@@ -56,6 +69,35 @@ func renderGuide(md []byte) (*guideView, error) {
 	}
 	v.Intro, v.Body = template.HTML(html[:cut]), template.HTML(html[cut:])
 	return v, nil
+}
+
+// figure is a screenshot with its caption: an image alone in a paragraph,
+// with a title (canvas page 2, "centered screenshots", option B). The title
+// is the caption, above the image.
+type figure struct {
+	ast.BaseBlock
+	Caption []byte
+}
+
+var kindFigure = ast.NewNodeKind("Figure")
+
+func (f *figure) Kind() ast.NodeKind { return kindFigure }
+
+func (f *figure) Dump(source []byte, level int) { ast.DumpHelper(f, source, level, nil, nil) }
+
+type figureRenderer struct{}
+
+func (figureRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+	reg.Register(kindFigure, func(w util.BufWriter, _ []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if entering {
+			_, _ = w.WriteString("<figure>\n<figcaption><b>Screenshot:</b> ")
+			_, _ = w.Write(util.EscapeHTML(n.(*figure).Caption))
+			_, _ = w.WriteString("</figcaption>\n")
+		} else {
+			_, _ = w.WriteString("\n</figure>\n")
+		}
+		return ast.WalkContinue, nil
+	})
 }
 
 // guidePage shows the user guide. It needs no session.
