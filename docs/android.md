@@ -28,7 +28,8 @@ It talks to the server's JSON API under `/api/v1`. The design is in
 APK `android/app/build/outputs/apk/debug/toodoo-debug.apk`, which is fine for your own phone.
 
 `android:bundle` makes the signed Android App Bundle that Google Play needs:
-`android/app/build/outputs/bundle/release/app-release.aab`. It needs the release key (section 3).
+`android/app/build/outputs/play/toodoo-<versionName>.aab`, for example `toodoo-1.0.0.aab`. It needs
+the release key (section 3).
 
 The screenshot tests (`ScreenshotTest.kt`) render the screens on the computer with
 [Paparazzi](https://github.com/cashapp/paparazzi), so they need no phone or emulator. Paparazzi

@@ -90,3 +90,12 @@ dependencies {
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.coroutines.test)
 }
+
+// The bundle for Google Play gets the version in its name:
+// build/outputs/play/toodoo-<versionName>.aab (docs/android.md).
+val playBundle = tasks.register<Copy>("playBundle") {
+    from(layout.buildDirectory.file("outputs/bundle/release/app-release.aab"))
+    into(layout.buildDirectory.dir("outputs/play"))
+    rename { "toodoo-${android.defaultConfig.versionName}.aab" }
+}
+tasks.matching { it.name == "bundleRelease" }.configureEach { finalizedBy(playBundle) }
