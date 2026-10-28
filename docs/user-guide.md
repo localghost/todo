@@ -33,8 +33,13 @@ Click **Account** at the top right of your list. On the Account page you can:
 - Change your password. You must type your current password first. After the change, the app
   logs you out on your other devices. After 5 wrong current passwords, wait 15 minutes before
   you try again.
-- Delete your account. Type your username to confirm. This deletes all your items, and you
-  cannot undo it.
+- Delete your account. Type your username to confirm. This deletes your username, your
+  password, all your items and labels, and all your logins at once. You cannot undo it. The
+  daily backups of the server keep this data for up to 5 more days. After that, it is gone.
+
+If you use only the Android app, delete your toodoo account on the web: log in at
+https://toodoo.fly.dev, click **Account**, and type your username to confirm. The Android app
+has no delete button.
 
 ## Items
 
