@@ -38,7 +38,7 @@ func TestDraftDueDate(t *testing.T) {
 
 	// "clear" (the × in the date button) takes the date away.
 	rec = do(t, env.H, "POST", "/new/due", url.Values{"due_date": {"2099-03-04"}, "clear": {"1"}}, htmxHeaders)
-	assertContains(t, rec.Body.String(), ">Due date</button>", `name="due_date" value=""`)
+	assertContains(t, rec.Body.String(), `class="icon-btn draft-due"`, `name="due_date" value=""`)
 	assertNotContains(t, rec.Body.String(), `class="pill-x"`, "due-set")
 }
 
@@ -61,6 +61,10 @@ func TestDraftLabels(t *testing.T) {
 	assertContains(t, rec.Body.String(), fmt.Sprintf(`name="labels" value="%d,%d"`, work, home), `<span class="chip-name">home</span>`)
 	rec = do(t, env.H, "POST", "/new/labels", url.Values{"labels": {fmt.Sprint(work)}, "name": {"garden"}, "color": {"#112233"}}, htmxHeaders)
 	assertContains(t, rec.Body.String(), `<span class="chip-name">garden</span>`, `data-color="#112233"`)
+	// As on a row: the labels first, then the +.
+	if i, j := strings.Index(rec.Body.String(), `<span class="chip-name">garden</span>`), strings.Index(rec.Body.String(), `id="label-add-0"`); i < 0 || j < i {
+		t.Fatalf("the + must come after the labels (label at %d, + at %d)", i, j)
+	}
 
 	// Take one off; the due date stays.
 	rec = do(t, env.H, "POST", "/new/labels", url.Values{"labels": {fmt.Sprintf("%d,%d", work, home)}, "remove": {fmt.Sprint(work)}, "due_date": {"2099-03-04"}}, htmxHeaders)

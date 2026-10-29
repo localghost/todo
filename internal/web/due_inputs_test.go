@@ -21,8 +21,10 @@ func TestAddFormHasDueAndLabelButtons(t *testing.T) {
 	assertContains(t, body, `<div id="add-extras" class="add-extras"`,
 		`<input type="hidden" form="add-form" name="due_date" value="">`,
 		`<input type="hidden" form="add-form" name="labels" value="">`,
-		`id="due-add-0" class="pill draft-due"`, `data-picker="/new/due?due_date=&amp;due_time="`, ">Due date</button>",
-		`id="label-add-0" class="pill draft-label"`, `data-picker="/new/labels?labels="`, ">Label</button>")
+		`id="due-add-0" class="icon-btn draft-due" aria-label="Set the due date of the new item"`, `data-picker="/new/due?due_date=&amp;due_time="`,
+		`id="label-add-0" class="icon-btn draft-label" aria-label="Add a label to the new item"`, `data-picker="/new/labels?labels="`)
+	// Icons only, as on the rows (canvas page 10, "icons only under the add field", option B).
+	assertNotContains(t, body, ">Due date</button>", ">Label</button>")
 }
 
 // POST /items reads the due date of #add-extras. A new item that is not
@@ -38,7 +40,7 @@ func TestAddWithDueDate(t *testing.T) {
 		t.Errorf("HX-Retarget = %q, want none (the row is added at the end)", got)
 	}
 	// The buttons start again: no due date.
-	assertContains(t, rec.Body.String(), `<div id="add-extras" class="add-extras" role="group" aria-label="Due date and labels of the new item" hx-swap-oob="true">`, ">Due date</button>")
+	assertContains(t, rec.Body.String(), `<div id="add-extras" class="add-extras" role="group" aria-label="Due date and labels of the new item" hx-swap-oob="true">`, `class="icon-btn draft-due"`)
 	got, _ := svc.Get(context.Background(), 1, 1)
 	if got.Text != "Call the dentist" || got.DueAt == nil || got.DueAllDay {
 		t.Fatalf("stored %+v, want the text and a due time", got)

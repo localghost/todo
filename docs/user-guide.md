@@ -51,15 +51,15 @@ and for how long. The login, sign-up and Account pages link to it.
 ### Add an item
 
 1. Type the task in the field "What needs to be done?".
-2. If you want a due date, click **Due date** under the field. Pick the day and, if you want, the
-   time, then click **Save**. The button shows the date. To remove the date, point at the
-   button and click the × that shows in it.
-3. If you want labels, click **Label** under the field. Click a label name to select it, or type
-   a new name to create a label. The selected labels show next to the button, each with an ×.
+2. If you want a due date, click the calendar icon under the field. Pick the day and, if you
+   want, the time, then click **Save**. In place of the icon, a button shows the date. To remove
+   the date, point at that button and click the × that shows in it.
+3. If you want labels, click the **+** under the field. Click a label name to select it, or type
+   a new name to create a label. The selected labels show before the +, each with an ×.
 4. Press Enter or click **Add**. The item goes to the end of the list. If its due date has
    already passed, it goes to the top. The date and the labels under the field then clear.
 
-![The add field with a due date and two labels](guide-images/add-form.png "the add field with the text “Pay the rent”. Under it, the due date button shows “Tomorrow, 10:00”, and the labels “home” and “urgent” are selected.")
+![The add field with a due date and two labels](guide-images/add-form.png "the add field with the text “Pay the rent”. Under it, the due date button shows “Tomorrow, 10:00”, then the selected labels “home” and “urgent”, then the +.")
 
 An item text has at most 500 characters. You can have at most 5,000 items, done or not.
 
@@ -213,8 +213,8 @@ The app works in the browser of a phone. On a touch screen:
 
 - The calendar icon and the + of an item are larger, and the × on a date or a label always
   shows.
-- The **Due date** and **Label** buttons under the add field are taller, and the × in the due
-  date button always shows.
+- The calendar icon and the + under the add field are larger, and the × in the due date button
+  always shows.
 - On the Labels page, the × of a label and the color circles are larger.
 
 ![The list on a phone](guide-images/phone.png "the list in the browser of a phone, 375 pixels wide. The × on each label always shows.")

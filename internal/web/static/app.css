@@ -409,13 +409,15 @@ button.sw:focus-visible, .picker-name:focus-visible, .picker-back:focus-visible,
   .due-picker .due-line input { font-size: 16px; }
   .due-save, .due-remove { min-height: 44px; font-size: 16px; }
 }
-/* The due date and labels of a new item, under the add field (canvas page
-   "10 · Due date", "calendar and + under the add field", option B): outlined
-   buttons like "Hide done", with 18 px icons. Picked labels are chips whose
-   × always shows. A picked date fills its button, and the button holds an ×
-   that shows on hover or focus, like the × of a label ("× inside the due
-   date button", option A); a touch screen always shows it. The pop-ups are
-   the ones of a row. */
+/* The due date and labels of a new item, under the add field. The line
+   works like the line of a row (canvas page "10 · Due date", "icons only
+   under the add field", option B): a calendar icon (18 px) or, once picked,
+   the date as a filled button whose × shows on hover or focus ("× inside
+   the due date button", option A; a touch screen always shows it); the
+   picked labels as chips whose × always shows; then the + (16 px). The
+   icons have no text and no border, in 36 px click areas (44 px on a touch
+   screen), gray, blue under the pointer and while their pop-up is open. The
+   pop-ups are the ones of a row. */
 .add-extras { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: -8px; }
 .pill {
   display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px 0 10px;
@@ -424,7 +426,15 @@ button.sw:focus-visible, .picker-name:focus-visible, .picker-back:focus-visible,
 }
 .pill:hover, .pill[aria-expanded="true"] { border-color: var(--accent); }
 .pill[aria-expanded="true"] { background: #EEF2FC; }
-.pill:focus-visible, .pill-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pill:focus-visible, .pill-x:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.icon-btn {
+  width: 36px; height: 36px; padding: 0; border: none; border-radius: 8px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; color: #8C8A84; background: none;
+}
+.icon-btn svg { width: 18px; height: 18px; }
+.icon-btn.draft-label svg { width: 16px; height: 16px; }
+.icon-btn:hover, .icon-btn[aria-expanded="true"] { color: var(--accent); }
+.icon-btn[aria-expanded="true"] { background: #EEF2FC; }
 .due-set {
   align-items: center; min-height: 36px; box-sizing: border-box; border-radius: 999px;
   background: #EEF2FC; border: 1px solid #C9D6F5; color: var(--accent-dark);
@@ -444,6 +454,9 @@ button.sw:focus-visible, .picker-name:focus-visible, .picker-back:focus-visible,
 .add-extras .chip-x { width: 16px; margin: -2px -4px -2px 3px; opacity: 1; }
 @media (hover: none) {
   .pill, .due-set { min-height: 44px; }
+  .icon-btn { width: 44px; height: 44px; }
+  .icon-btn svg { width: 20px; height: 20px; }
+  .icon-btn.draft-label svg { width: 18px; height: 18px; }
   .due-set .draft-due { min-height: 42px; }
   .pill-x, .due-set .pill-x { width: 30px; height: 30px; margin: 0 6px 0 -8px; opacity: 1; }
   .add-extras .chip-x { width: 22px; height: 22px; margin: -6px -7px -6px 1px; }

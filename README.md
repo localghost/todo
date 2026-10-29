@@ -13,8 +13,8 @@ Privacy policy: https://toodoo.fly.dev/privacy (the text is in
 ## What it does
 
 - Add, edit, check off and delete items. Hide the done ones, or clear them all at once.
-- Give a new item its due date and labels with the "Due date" and "Label" buttons under the
-  add field.
+- Give a new item its due date and labels with the calendar icon and the + under the add
+  field, as on each item.
 - Give an item a due date and time with the calendar icon on each item. The date then shows
   as a chip, and its × removes it. Type the time as digits: 1430 becomes 14:30. The
   browser can remind you, and you can postpone by 5, 10, 15 or 30 minutes.

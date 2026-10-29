@@ -664,17 +664,24 @@ document.addEventListener("click", (e) => {
 // focus a pressed button, so the field would blur and focusout would close
 // the pop-up before the click. A press on the pop-up's own button keeps the
 // focus, so its click can close the pop-up.
+// A press on any pop-up button keeps the focus where it is, too: a focused
+// date chip shows its ×, and if the focus left it, the chip would get
+// narrower and move the next button away under the pointer before the
+// click. The pop-up then puts the focus into its own field.
 document.addEventListener("mousedown", (e) => {
+  const button = popupButton(e.target);
   if (!picker) {
+    if (button) e.preventDefault();
     return;
   }
   if (picker.contains(e.target)) {
     if (!e.target.closest(isDuePicker() ? "input" : ".picker-search")) {
       e.preventDefault();
     }
-  } else if (popupButton(e.target) === pickerButton) {
+  } else if (button === pickerButton) {
     e.preventDefault();
   } else {
+    if (button) e.preventDefault();
     closePicker(false);
   }
 });
