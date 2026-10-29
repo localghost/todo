@@ -4,6 +4,9 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -147,4 +150,80 @@ func TestSortDueCSS(t *testing.T) {
 	assertContains(t, css, `#list-section[data-sort-due="true"] :is(.grip, .grip-space) { display: none; }`,
 		".sort-hint { margin: 2px 0 8px; font-size: 13px; color: var(--muted); }",
 		".toolbar-right { display: flex; flex-wrap: wrap; gap: 8px; }")
+}
+
+// sortSlideHarness runs app.js with fake rows. A "Sort by due date" answer
+// moves row 2 above row 1 and the checkboxes 28 px to the left; the rows
+// slide from their old places (canvas page "14 · Overdue at the top",
+// "transition between the two orders", option A).
+const sortSlideHarness = `
+const src = require("fs").readFileSync(process.argv[2], "utf8");
+const handlers = {};
+let reduce = false;
+const anims = [];
+const rect = (o) => ({ getBoundingClientRect: () => ({ top: o.top, left: o.left }) });
+function makeRow(id, top, left) {
+  const check = Object.assign(rect({ top, left }), { animate: (k) => { anims.push(id + " check " + JSON.stringify(k[0])); return { finished: Promise.resolve() }; } });
+  const col = { animate: (k) => { anims.push(id + " text " + JSON.stringify(k[0])); return { finished: Promise.resolve() }; } };
+  const row = { id, top, check, col,
+    getBoundingClientRect: () => ({ top: row.top, left: 0 }),
+    querySelector: (s) => s === ".check" ? check : null,
+    querySelectorAll: (s) => s === ".check, .text-col" ? [check, col] : [],
+    animate: (k) => { anims.push(id + " row " + JSON.stringify(k[0])); return { finished: Promise.resolve() }; } };
+  return row;
+}
+let rows = [makeRow("item-1", 100, 40), makeRow("item-2", 160, 40)];
+const items = {};
+const button = { classList: { contains: (c) => c === "sort-due" }, focus: () => {} };
+const document = {
+  addEventListener: (name, fn) => (handlers[name] = handlers[name] || []).push(fn),
+  getElementById: (id) => id === "items" ? items : null,
+  querySelector: (s) => s === ".sort-due" ? button : null,
+  querySelectorAll: (s) => s === "#items > li.item" ? rows : [],
+  activeElement: null, body: {},
+};
+const window = { matchMedia: () => ({ matches: reduce }), getComputedStyle: (el) => ({ backgroundColor: el === items ? "rgb(255, 255, 255)" : "" }) };
+const fire = (name, elt) => (handlers[name] || []).forEach((fn) => fn({ detail: { requestConfig: { elt }, target: { id: "list-section" }, elt } }));
+new Function("document", "window", "navigator", "fetch", "setInterval", "setTimeout", "clearTimeout", "htmx",
+  src)(document, window, {}, () => new Promise(() => {}), () => 0, () => 0, () => {}, { ajax: () => {} });
+function sortClick(elt) {
+  anims.length = 0;
+  fire("htmx:beforeSwap", elt);
+  rows = [makeRow("item-2", 100, 12), makeRow("item-1", 160, 12)];
+  fire("htmx:afterSwap", elt);
+}
+(async () => {
+  sortClick(button);
+  console.log(JSON.stringify({ name: "sort", anims: anims.slice() }));
+  sortClick({ classList: { contains: () => false } });
+  console.log(JSON.stringify({ name: "other request", anims: anims.length }));
+  reduce = true;
+  sortClick(button);
+  console.log(JSON.stringify({ name: "reduced motion", anims: anims.length }));
+})();
+`
+
+func TestAppJSSlidesRowsAfterSort(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is not installed")
+	}
+	harness := filepath.Join(t.TempDir(), "harness.js")
+	if err := os.WriteFile(harness, []byte(sortSlideHarness), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command(node, harness, "static/app.js").CombinedOutput()
+	if err != nil {
+		t.Fatalf("node: %v\n%s", err, out)
+	}
+	want := `{"name":"sort","anims":[` +
+		`"item-2 row {\"transform\":\"translateY(60px)\",\"backgroundColor\":\"rgb(255, 255, 255)\"}",` +
+		`"item-2 check {\"transform\":\"translateX(28px)\"}","item-2 text {\"transform\":\"translateX(28px)\"}",` +
+		`"item-1 row {\"transform\":\"translateY(-60px)\",\"backgroundColor\":\"rgb(255, 255, 255)\"}",` +
+		`"item-1 check {\"transform\":\"translateX(28px)\"}","item-1 text {\"transform\":\"translateX(28px)\"}"]}` + "\n" +
+		`{"name":"other request","anims":0}` + "\n" +
+		`{"name":"reduced motion","anims":0}`
+	if got := strings.TrimSpace(string(out)); got != want {
+		t.Fatalf("got\n%s\nwant\n%s", got, want)
+	}
 }

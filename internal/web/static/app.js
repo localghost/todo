@@ -371,14 +371,85 @@ document.addEventListener("htmx:oobAfterSwap", () => {
   }
 });
 
-// After "Sort by due date" or "Sort by hand" the list comes back new; the
-// focus goes to the new button, so a keyboard user stays in the toolbar.
-document.addEventListener("htmx:afterSwap", (e) => {
+// After "Sort by due date" or "Sort by hand" the list comes back new. Each
+// row slides from its old place to its new one, the checkbox and the text
+// slide into the place of the grip column, and the grips and the gray line
+// fade in (canvas page "14 · Overdue at the top", "transition between the
+// two orders", option A). With "reduce motion" the list changes at once.
+// The focus goes to the new button, so a keyboard user stays in the toolbar.
+const SLIDE_MS = 300;
+const SLIDE_EASE = "cubic-bezier(0.2, 0.7, 0.3, 1)";
+let sortBefore = null; // row id -> { top, left } before the swap
+
+function isSortRequest(e) {
   const elt = e.detail.requestConfig && e.detail.requestConfig.elt;
-  if (elt && elt.classList && elt.classList.contains("sort-due")) {
-    const button = document.querySelector(".sort-due");
-    if (button) button.focus();
+  return !!(elt && elt.classList && elt.classList.contains("sort-due"));
+}
+
+function reduceMotion() {
+  return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+}
+
+// rowPlaces returns the top of each row and the left of its checkbox.
+function rowPlaces() {
+  const places = new Map();
+  document.querySelectorAll("#items > li.item").forEach((row) => {
+    const check = row.querySelector(".check");
+    places.set(row.id, { top: row.getBoundingClientRect().top, left: check ? check.getBoundingClientRect().left : 0 });
+  });
+  return places;
+}
+
+// slideRows plays the move from the places in before to the current ones.
+// A moving row gets the background of the list, so it hides a row that it
+// passes over. (A class on #items would not stay: htmx puts the attributes
+// of the new list back after the swap.)
+function slideRows(before) {
+  const list = document.getElementById("items");
+  const card = list && window.getComputedStyle ? window.getComputedStyle(list).backgroundColor : "";
+  const options = { duration: SLIDE_MS, easing: SLIDE_EASE };
+  const slide = (el, from) => el.animate([{ transform: from }, { transform: "none" }], options);
+  document.querySelectorAll("#items > li.item").forEach((row) => {
+    const old = before.get(row.id);
+    if (!old) {
+      return;
+    }
+    const dy = Math.round(old.top - row.getBoundingClientRect().top);
+    const check = row.querySelector(".check");
+    const dx = check ? Math.round(old.left - check.getBoundingClientRect().left) : 0;
+    if (dy !== 0) {
+      const from = `translateY(${dy}px)`;
+      row.animate([{ transform: from, backgroundColor: card }, { transform: "none", backgroundColor: card }], options);
+    }
+    if (dx !== 0) {
+      row.querySelectorAll(".check, .text-col").forEach((el) => slide(el, `translateX(${dx}px)`));
+    }
+    const grip = row.querySelector(".grip svg");
+    if (grip) {
+      grip.animate([{ opacity: 0 }, { opacity: 0 }, { opacity: 1 }], { duration: SLIDE_MS });
+    }
+  });
+  const hint = document.querySelector(".sort-hint");
+  if (hint) {
+    hint.animate([{ opacity: 0 }, { opacity: 1 }], { duration: SLIDE_MS });
   }
+}
+
+document.addEventListener("htmx:beforeSwap", (e) => {
+  sortBefore = isSortRequest(e) && !reduceMotion() ? rowPlaces() : null;
+});
+document.addEventListener("htmx:afterSwap", (e) => {
+  if (!isSortRequest(e)) {
+    return;
+  }
+  // htmx sends this event before the browser paints the new list, so the
+  // rows never show at their new places first.
+  if (sortBefore) {
+    slideRows(sortBefore);
+    sortBefore = null;
+  }
+  const button = document.querySelector(".sort-due");
+  if (button) button.focus();
 });
 
 // 13. Pop-ups on a row: the label list under the + (canvas page "16 ·
