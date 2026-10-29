@@ -19,7 +19,7 @@ func TestPrivacyIsPublic(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	assertContains(t, body, "<title>Privacy policy – Todo</title>", `<h1 id="privacy-policy">Privacy policy</h1>`,
+	assertContains(t, body, "<title>Privacy policy – TooDoo</title>", `<h1 id="privacy-policy">Privacy policy</h1>`,
 		`<a href="/">Open the app →</a>`, `<p id="guide-toc-title">Contents</p>`,
 		`<li><a href="#who-is-responsible">Who is responsible</a></li>`, `<h2 id="your-rights">Your rights</h2>`,
 		"<table>", "zkostrzewa.dev@gmail.com")

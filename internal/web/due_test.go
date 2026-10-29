@@ -71,11 +71,11 @@ func TestNotifyText(t *testing.T) {
 		title, want string
 	}{
 		{"one minute late", todo.Item{DueAt: at(2026, 10, 1, 14, 0)}, *at(2026, 10, 1, 14, 1),
-			"Todo: due now", "Due today, 14:00"},
+			"TooDoo: due now", "Due today, 14:00"},
 		{"one day late", todo.Item{DueAt: at(2026, 9, 30, 14, 0)}, *at(2026, 10, 1, 14, 40),
-			"Todo: overdue", "Overdue since yesterday, 14:00"},
+			"TooDoo: overdue", "Overdue since yesterday, 14:00"},
 		{"all-day, claimed at 10:00 on its day", todo.Item{DueAt: at(2026, 10, 1, 9, 0), DueAllDay: true}, *at(2026, 10, 1, 10, 0),
-			"Todo: due now", "Due today"},
+			"TooDoo: due now", "Due today"},
 	}
 	for _, c := range cases {
 		title, due := notifyText(c.item, c.now)

@@ -1,4 +1,4 @@
-# Todo
+# TooDoo
 
 A small todo list for the browser. Everyone has their own account and their own list.
 

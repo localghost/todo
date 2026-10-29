@@ -35,7 +35,8 @@ func TestLoginPage(t *testing.T) {
 	env := newTestEnv(t)
 	body := do(t, env.H, "GET", "/login", nil, anon).Body.String()
 	assertContains(t, body, `<form method="post" action="/login"`, `name="username"`, `name="password"`,
-		`type="password"`, `name="keep"`, "Keep me logged in", "Log in", `href="/signup"`, "No account yet?")
+		`type="password"`, `name="keep"`, "Keep me logged in", "Log in", `href="/signup"`, "No account yet?",
+		"<title>Log in – TooDoo</title>", `<p class="auth-brand">TooDoo</p>`)
 	rec := do(t, env.H, "GET", "/login", nil, nil) // with the tester's cookie
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/" {
 		t.Fatalf("GET /login while logged in: %d %q, want 303 /", rec.Code, rec.Header().Get("Location"))
@@ -126,7 +127,7 @@ func TestLogout(t *testing.T) {
 func TestHeaderShowsUserAndLogout(t *testing.T) {
 	env := newTestEnv(t)
 	body := do(t, env.H, "GET", "/", nil, nil).Body.String()
-	assertContains(t, body, "Signed in as <strong>tester</strong>", `<a href="/account">Account</a>`,
+	assertContains(t, body, "<title>TooDoo</title>", "<h1>TooDoo</h1>", "Signed in as <strong>tester</strong>", `<a href="/account">Account</a>`,
 		`<form method="post" action="/logout" class="inline-form">`, `<button type="submit" class="link-button">Log out</button>`)
 }
 

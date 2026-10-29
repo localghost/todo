@@ -27,7 +27,7 @@ func TestClaimReturnsDueItemsOnce(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("JSON: %v\n%s", err, rec.Body.String())
 	}
-	if len(got) != 1 || got[0].Text != "Call the dentist" || got[0].Title != "Todo: overdue" || got[0].Due != "Overdue since 1 Jan 2020, 08:00" {
+	if len(got) != 1 || got[0].Text != "Call the dentist" || got[0].Title != "TooDoo: overdue" || got[0].Due != "Overdue since 1 Jan 2020, 08:00" {
 		t.Fatalf("claimed = %+v", got)
 	}
 	if again := do(t, h, "POST", "/notifications/claim", nil, htmxHeaders).Body.String(); again != "[]\n" {

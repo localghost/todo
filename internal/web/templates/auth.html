@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.}} – Todo</title>
+<title>{{.}} – TooDoo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
 <link rel="stylesheet" href="/static/app.css">
@@ -14,7 +14,7 @@
 
 {{define "login"}}{{template "auth-head" "Log in"}}
 <main class="auth-wrap">
-<p class="auth-brand">Todo</p>
+<p class="auth-brand">TooDoo</p>
 <div class="auth-card">
 <h1>Log in</h1>
 {{if .Notice}}<div class="alert ok" role="status">{{.Notice}}</div>{{end}}
@@ -37,7 +37,7 @@
 
 {{define "signup"}}{{template "auth-head" "Sign up"}}
 <main class="auth-wrap">
-<p class="auth-brand">Todo</p>
+<p class="auth-brand">TooDoo</p>
 <div class="auth-card">
 <h1>Create an account</h1>
 {{if .Error}}<div class="alert" role="alert">{{.Error}}</div>{{end}}

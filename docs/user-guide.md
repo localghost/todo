@@ -1,6 +1,6 @@
 # User guide
 
-Todo is a small todo list for the browser. This guide shows how to use it: items, due dates,
+TooDoo is a small to-do list for the browser. This guide shows how to use it: items, due dates,
 reminders and labels. Open the app at https://toodoo.fly.dev.
 
 ## Get started

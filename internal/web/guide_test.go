@@ -21,7 +21,7 @@ func TestGuideIsPublic(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	assertContains(t, body, "<title>User guide – Todo</title>", `<h1 id="user-guide">User guide</h1>`,
+	assertContains(t, body, "<title>User guide – TooDoo</title>", `<h1 id="user-guide">User guide</h1>`,
 		`<a href="/">Open the app →</a>`, `<p id="guide-toc-title">Contents</p>`)
 	for _, s := range []struct{ id, title string }{
 		{"get-started", "Get started"}, {"items", "Items"}, {"order-of-the-items", "Order of the items"},

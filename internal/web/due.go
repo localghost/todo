@@ -80,7 +80,7 @@ const lateAfter = 5 * time.Minute
 func notifyText(it todo.Item, now time.Time) (title, due string) {
 	label := dueLabel(it, now)
 	if label.Overdue && now.Sub(*it.DueAt) > lateAfter {
-		return "Todo: overdue", label.Text
+		return "TooDoo: overdue", label.Text
 	}
-	return "Todo: due now", dueText(it, now)
+	return "TooDoo: due now", dueText(it, now)
 }
