@@ -143,7 +143,7 @@ func TestGuideCoversTheFeatures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertContains(t, string(md), "**Hide done**", "**Clear done**", "calendar icon", "`1430`", "+5 min",
+	assertContains(t, string(md), "**Hide done**", "**Clear done**", "**Due date**", "`1430`", "+5 min",
 		"notification", "grip (⋮⋮)", "arrow", "Overdue items", "color wheel", "**Delete**",
 		"Show only the items of one label", "time zone")
 }
