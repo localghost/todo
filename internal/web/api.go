@@ -222,7 +222,8 @@ func (s *server) apiSettings(w http.ResponseWriter, r *http.Request) {
 // apiItems answers the list as the web shows it: overdue items first, done
 // items left out if the user hides them, and only ?label= items if given.
 func (s *server) apiItems(w http.ResponseWriter, r *http.Request) {
-	lv, err := s.listView(r, currentUser(r).HideDone)
+	// The Android app drags items, so it always gets the hand-made order.
+	lv, err := s.listViewOrder(r, currentUser(r).HideDone, false)
 	if err != nil {
 		s.apiServerError(w, r, err)
 		return

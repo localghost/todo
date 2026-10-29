@@ -360,14 +360,24 @@ document.addEventListener("htmx:afterSwap", () => {
   keptEdit = null;
 });
 
-// 12. Another tab may have changed "hide done". A row answer brings the
-// current toolbar; if its state differs from the list on this page, load the
-// list again, so the page does not show a mix of both states.
+// 12. Another tab may have changed "hide done" or the order. A row answer
+// brings the current toolbar; if its state differs from the list on this
+// page, load the list again, so the page does not show a mix of both states.
 document.addEventListener("htmx:oobAfterSwap", () => {
   const toolbar = document.getElementById("toolbar");
   const section = document.getElementById("list-section");
-  if (toolbar && section && toolbar.dataset.hideDone !== section.dataset.hideDone) {
+  if (toolbar && section && (toolbar.dataset.hideDone !== section.dataset.hideDone || toolbar.dataset.sortDue !== section.dataset.sortDue)) {
     htmx.ajax("GET", "/", { target: "#list-section", swap: "outerHTML" });
+  }
+});
+
+// After "Sort by due date" or "Sort by hand" the list comes back new; the
+// focus goes to the new button, so a keyboard user stays in the toolbar.
+document.addEventListener("htmx:afterSwap", (e) => {
+  const elt = e.detail.requestConfig && e.detail.requestConfig.elt;
+  if (elt && elt.classList && elt.classList.contains("sort-due")) {
+    const button = document.querySelector(".sort-due");
+    if (button) button.focus();
   }
 });
 

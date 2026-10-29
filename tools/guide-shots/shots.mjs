@@ -149,6 +149,18 @@ async function desktop() {
     await p.move(990, 890);
     await sleep(200);
     await p.shot(out("filter.png"), ["main"], 0);
+
+    // The list in due date order, then back to the hand-made order, so the
+    // phone shot shows the list as at the start.
+    await p.goto(BASE + "/");
+    await p.click(".sort-due");
+    await p.waitFor("document.getElementById('list-section').dataset.sortDue === 'true'");
+    await p.move(990, 890);
+    await p.eval("document.activeElement.blur()");
+    await sleep(200);
+    await p.shot(out("sort-due.png"), ["#toolbar", ".sort-hint", "#items"]);
+    await p.click(".sort-due");
+    await p.waitFor("document.getElementById('list-section').dataset.sortDue === 'false'");
     return p.logs;
   } finally {
     p.close();

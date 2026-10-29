@@ -465,7 +465,13 @@ button.sw:focus-visible, .picker-name:focus-visible, .picker-back:focus-visible,
 
 .toolbar { flex-wrap: wrap; }
 .toolbar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.toolbar-right { display: flex; gap: 8px; }
+.toolbar-right { display: flex; flex-wrap: wrap; gap: 8px; }
+/* The order of the list (canvas page "14 · Overdue at the top", board "sort
+   the list by due date", option A). In due date order the grips are hidden:
+   no drag and no arrow keys, and the space stays, so the rows do not move.
+   A gray line under the toolbar tells how to drag again. */
+#list-section[data-sort-due="true"] .grip { visibility: hidden; }
+.sort-hint { margin: 2px 0 8px; font-size: 13px; color: var(--muted); }
 /* "Clear done" (canvas page "3 · Done hidden"): gray, so it is quieter than
    the blue filter; red on hover and while its question is open. */
 .filter.clear-done { color: var(--muted); }

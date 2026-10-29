@@ -57,7 +57,7 @@ func (s *server) setItemDue(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.serverError(w, r, err)
 	default:
-		if placeChanged(old, item, s.nowFor(r)) {
+		if placeChanged(old, item, s.nowFor(r), currentUser(r).SortDue) {
 			s.renderList(w, r, currentUser(r).HideDone)
 			return
 		}

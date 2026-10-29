@@ -16,6 +16,7 @@ type listView struct {
 	Done     int
 	Total    int
 	HideDone bool
+	SortDue  bool // due date order; the hand-made order otherwise
 	OOB      bool // render toolbar and empty state as htmx out-of-band swaps
 	HasDue   bool // an open item has a due date
 	// NextOverdue is the Unix time in ms when the next open item becomes
@@ -75,9 +76,15 @@ type pageView struct {
 	Username string
 }
 
-// listView loads the list of the request's user: overdue items first, most
-// overdue first, in the browser's zone.
+// listView loads the list of the request's user in the user's order:
+// overdue items first, most overdue first, in the browser's zone.
 func (s *server) listView(r *http.Request, hideDone bool) (listView, error) {
+	return s.listViewOrder(r, hideDone, currentUser(r).SortDue)
+}
+
+// listViewOrder is listView in due date order (sortDue) or in the hand-made
+// order.
+func (s *server) listViewOrder(r *http.Request, hideDone, sortDue bool) (listView, error) {
 	ctx, userID, now := r.Context(), userID(r), s.nowFor(r)
 	filter, err := s.labelFilter(r)
 	if err != nil {
@@ -95,8 +102,12 @@ func (s *server) listView(r *http.Request, hideDone bool) (listView, error) {
 	if err != nil {
 		return listView{}, err
 	}
-	items = todo.OverdueFirst(items, now)
-	lv := listView{Items: items, Open: open, Done: done, Total: open + done, HideDone: hideDone, Filter: filter}
+	if sortDue {
+		items = todo.DueOrder(items, now)
+	} else {
+		items = todo.OverdueFirst(items, now)
+	}
+	lv := listView{Items: items, Open: open, Done: done, Total: open + done, HideDone: hideDone, SortDue: sortDue, Filter: filter}
 	if next, ok := todo.NextOverdue(items, now); ok {
 		lv.NextOverdue = next.UnixMilli()
 	}

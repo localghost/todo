@@ -5,13 +5,21 @@ import (
 	"time"
 )
 
-// overdueFrom returns the moment the item becomes overdue, in now's zone:
-// the due moment for a timed item, the start of the next day for an all-day item.
+// overdueFrom returns the moment the open item becomes overdue, in now's zone.
 func (it Item) overdueFrom(now time.Time) (time.Time, bool) {
-	if it.Done || it.DueAt == nil {
+	if it.Done {
 		return time.Time{}, false
 	}
-	d := it.DueAt.In(now.Location())
+	return it.dueEnd(now.Location())
+}
+
+// dueEnd returns the end of the item's due time in loc, done or not: the due
+// moment for a timed item, the start of the next day for an all-day item.
+func (it Item) dueEnd(loc *time.Location) (time.Time, bool) {
+	if it.DueAt == nil {
+		return time.Time{}, false
+	}
+	d := it.DueAt.In(loc)
 	if it.DueAllDay {
 		y, m, day := d.Date()
 		next := time.Date(y, m, day+1, 0, 0, 0, 0, d.Location())

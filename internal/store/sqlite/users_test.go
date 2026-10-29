@@ -274,3 +274,70 @@ func TestUserQueriesReadHideDone(t *testing.T) {
 		t.Fatalf("UserByName = %+v, %v; want HideDone", u, err)
 	}
 }
+
+func TestSetSortDue(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	s.CreateSession(ctx, auth.Session{TokenHash: "h", UserID: 1, CreatedAt: t0, ExpiresAt: t0.Add(time.Hour)})
+	if _, u, _ := s.SessionUser(ctx, "h", t0); u.SortDue {
+		t.Fatal("a new user has SortDue")
+	}
+	if err := s.SetSortDue(ctx, 1, true); err != nil {
+		t.Fatalf("SetSortDue: %v", err)
+	}
+	if _, u, err := s.SessionUser(ctx, "h", t0); err != nil || !u.SortDue || u.HideDone {
+		t.Fatalf("SessionUser = %+v, %v; want SortDue only", u, err)
+	}
+	if u, err := s.UserByName(ctx, "alice"); err != nil || !u.SortDue {
+		t.Fatalf("UserByName = %+v, %v; want SortDue", u, err)
+	}
+	if err := s.SetSortDue(ctx, 1, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, u, _ := s.SessionUser(ctx, "h", t0); u.SortDue {
+		t.Fatal("SortDue still true after SetSortDue(false)")
+	}
+	if err := s.SetSortDue(ctx, 999, true); !errors.Is(err, auth.ErrNoUser) {
+		t.Fatalf("unknown user: %v, want ErrNoUser", err)
+	}
+}
+
+// A version 5 file gets the column sort_due, off for each user.
+func TestMigrateV5ToV6AddsSortDue(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v5.db")
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateUser(context.Background(), "alice", "x", t0); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	// Turn the file back into version 5.
+	db, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{`ALTER TABLE users DROP COLUMN sort_due`, `PRAGMA user_version = 5`} {
+		if _, err := db.Exec(stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+	db.Close()
+
+	s, err = sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("Open v5: %v", err)
+	}
+	defer s.Close()
+	if v := userVersion(t, path); v != 6 {
+		t.Fatalf("user_version = %d, want 6", v)
+	}
+	u, err := s.UserByName(context.Background(), "alice")
+	if err != nil || u.SortDue {
+		t.Fatalf("user after migration = %+v, %v", u, err)
+	}
+	if err := s.SetSortDue(context.Background(), u.ID, true); err != nil {
+		t.Fatalf("SetSortDue after migration: %v", err)
+	}
+}

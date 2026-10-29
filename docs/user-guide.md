@@ -91,12 +91,34 @@ add field.
 
 ## Order of the items
 
+You put the items in order by hand:
+
 - Drag an item by its grip (⋮⋮) on the left to a new place.
 - With the keyboard: press Tab until the grip has the focus, then press the up arrow or the down
   arrow.
 
 Overdue items always stay at the top. You cannot move them, and you cannot move other items
 above them.
+
+### Sort by due date
+
+Click **Sort by due date** above the list. The order is then:
+
+1. The overdue items, the most overdue first.
+2. The other items with a due date, the nearest date first. An item that is due all day comes
+   after the items with a time on that day.
+3. The items without a due date.
+
+Items with the same due date, and the items without a due date, keep your order. Done items keep
+their place in this order too.
+
+In this order the grips go away, and you cannot drag items. A gray line under the buttons tells
+you this. A new item, or an item with a new due date, goes to its place at once.
+
+Click **Sort by hand** to go back. Your order by hand is still there. The app remembers your
+choice, also on your other computers.
+
+![The list sorted by due date](guide-images/sort-due.png "the list sorted by due date. The item due in 3 days is now above the item without a date, and the rows have no grips.")
 
 ## Due dates
 

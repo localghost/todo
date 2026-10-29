@@ -160,6 +160,7 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Op
 	mux.Handle("PUT /items/{id}/due", s.protect(s.setItemDue))
 	mux.Handle("POST /notifications/claim", s.protect(s.claimNotifications))
 	mux.Handle("POST /settings/hide-done", s.protect(s.setHideDone))
+	mux.Handle("POST /settings/sort-due", s.protect(s.setSortDue))
 	mux.Handle("GET /labels", s.protect(s.labelsPage))
 	mux.Handle("POST /labels", s.protect(s.createLabel))
 	mux.Handle("PUT /labels/{id}/color", s.protect(s.setLabelColor))

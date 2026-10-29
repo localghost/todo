@@ -20,12 +20,12 @@ func isUniqueViolation(err error) bool {
 	return errors.As(err, &coded) && coded.Code() == sqliteConstraintUnique
 }
 
-const userCols = `id, username, password_hash, created_at, hide_done`
+const userCols = `id, username, password_hash, created_at, hide_done, sort_due`
 
 func scanUser(r scanner) (auth.User, error) {
 	var u auth.User
 	var created string
-	if err := r.Scan(&u.ID, &u.Username, &u.PasswordHash, &created, &u.HideDone); err != nil {
+	if err := r.Scan(&u.ID, &u.Username, &u.PasswordHash, &created, &u.HideDone, &u.SortDue); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return auth.User{}, auth.ErrNoUser
 		}
@@ -84,6 +84,11 @@ func (s *Store) SetHideDone(ctx context.Context, id int64, hide bool) error {
 	return s.changeUser(ctx, `UPDATE users SET hide_done = ? WHERE id = ?`, hide, id)
 }
 
+// SetSortDue saves whether the user's list is in due date order.
+func (s *Store) SetSortDue(ctx context.Context, id int64, sortDue bool) error {
+	return s.changeUser(ctx, `UPDATE users SET sort_due = ? WHERE id = ?`, sortDue, id)
+}
+
 func (s *Store) DeleteUser(ctx context.Context, id int64) error {
 	return s.changeUser(ctx, `DELETE FROM users WHERE id = ?`, id)
 }
@@ -116,14 +121,14 @@ func (s *Store) CreateSession(ctx context.Context, sess auth.Session) error {
 func (s *Store) SessionUser(ctx context.Context, tokenHash string, now time.Time) (auth.Session, auth.User, error) {
 	row := s.db.QueryRowContext(ctx,
 		`SELECT s.token_hash, s.user_id, s.created_at, s.expires_at, s.persistent,
-		        u.id, u.username, u.password_hash, u.created_at, u.hide_done
+		        u.id, u.username, u.password_hash, u.created_at, u.hide_done, u.sort_due
 		 FROM sessions s JOIN users u ON u.id = s.user_id
 		 WHERE s.token_hash = ? AND s.expires_at > ?`, tokenHash, fixedTime(now))
 	var sess auth.Session
 	var u auth.User
 	var sCreated, sExpires, uCreated string
 	err := row.Scan(&sess.TokenHash, &sess.UserID, &sCreated, &sExpires, &sess.Persistent,
-		&u.ID, &u.Username, &u.PasswordHash, &uCreated, &u.HideDone)
+		&u.ID, &u.Username, &u.PasswordHash, &uCreated, &u.HideDone, &u.SortDue)
 	if errors.Is(err, sql.ErrNoRows) {
 		return auth.Session{}, auth.User{}, auth.ErrNoSession
 	}

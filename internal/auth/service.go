@@ -228,3 +228,8 @@ func (s *Service) ResetPassword(ctx context.Context, username string) (string, e
 func (s *Service) SetHideDone(ctx context.Context, userID int64, hide bool) error {
 	return s.store.SetHideDone(ctx, userID, hide)
 }
+
+// SetSortDue saves whether the user's list is in due date order.
+func (s *Service) SetSortDue(ctx context.Context, userID int64, sortDue bool) error {
+	return s.store.SetSortDue(ctx, userID, sortDue)
+}

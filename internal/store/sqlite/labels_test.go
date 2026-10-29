@@ -202,7 +202,7 @@ func TestMigrateV3ToV4KeepsItems(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, stmt := range []string{`DROP TABLE item_labels`, `DROP TABLE labels`, `PRAGMA user_version = 3`} {
+	for _, stmt := range []string{`DROP TABLE item_labels`, `DROP TABLE labels`, `ALTER TABLE users DROP COLUMN sort_due`, `PRAGMA user_version = 3`} {
 		if _, err := db.Exec(stmt); err != nil {
 			t.Fatalf("%s: %v", stmt, err)
 		}
@@ -214,8 +214,8 @@ func TestMigrateV3ToV4KeepsItems(t *testing.T) {
 		t.Fatalf("Open v3: %v", err)
 	}
 	defer s.Close()
-	if v := userVersion(t, path); v != 5 {
-		t.Fatalf("user_version = %d, want 5", v)
+	if v := userVersion(t, path); v != 6 {
+		t.Fatalf("user_version = %d, want 6", v)
 	}
 	items, err := s.List(context.Background(), 1, false)
 	if err != nil || len(items) != 1 || items[0].Text != "Keep me" || len(items[0].Labels) != 0 {
@@ -248,6 +248,7 @@ func TestMigrateV4ToV5TurnsColorNamesIntoHex(t *testing.T) {
 		`UPDATE labels SET color = 'blue' WHERE name = 'work'`,
 		`UPDATE labels SET color = 'yellow' WHERE name = 'home'`,
 		`UPDATE labels SET color = '#123456' WHERE name = 'own'`,
+		`ALTER TABLE users DROP COLUMN sort_due`,
 		`PRAGMA user_version = 4`,
 	} {
 		if _, err := db.Exec(stmt); err != nil {
@@ -261,8 +262,8 @@ func TestMigrateV4ToV5TurnsColorNamesIntoHex(t *testing.T) {
 		t.Fatalf("Open v4: %v", err)
 	}
 	defer s.Close()
-	if v := userVersion(t, path); v != 5 {
-		t.Fatalf("user_version = %d, want 5", v)
+	if v := userVersion(t, path); v != 6 {
+		t.Fatalf("user_version = %d, want 6", v)
 	}
 	labels, err := s.Labels(context.Background(), 1)
 	if err != nil {

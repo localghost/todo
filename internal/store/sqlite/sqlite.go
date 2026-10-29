@@ -20,7 +20,7 @@ import (
 const itemCols = `id, user_id, text, done, position, created_at, updated_at, due_at, due_all_day, notified_at`
 
 // currentVersion is the schema version this code writes (PRAGMA user_version).
-const currentVersion = 5
+const currentVersion = 6
 
 // schemaV2 is the schema since user accounts (PRAGMA user_version = 2).
 var schemaV2 = []string{
@@ -106,7 +106,10 @@ func migrate(db *sql.DB, opts Options) error {
 		if err := migrateToV4(db, max(version, 3)); err != nil {
 			return err
 		}
-		return migrateToV5(db, max(version, 4))
+		if err := migrateToV5(db, max(version, 4)); err != nil {
+			return err
+		}
+		return migrateToV6(db, max(version, 5))
 	}
 	tables, err := userTables(db)
 	if err != nil {
@@ -163,7 +166,10 @@ func migrate(db *sql.DB, opts Options) error {
 	if err := migrateToV4(db, 3); err != nil {
 		return err
 	}
-	return migrateToV5(db, 4)
+	if err := migrateToV5(db, 4); err != nil {
+		return err
+	}
+	return migrateToV6(db, 5)
 }
 
 // migrateToV3 adds the per-user setting hide_done (schema version 3).
@@ -244,6 +250,27 @@ func migrateToV5(db *sql.DB, version int) error {
 			WHEN 'purple' THEN '#6b44bb'
 			ELSE color END`,
 		`PRAGMA user_version = 5`,
+	} {
+		if _, err := tx.Exec(stmt); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// migrateToV6 adds the per-user setting sort_due (schema version 6).
+func migrateToV6(db *sql.DB, version int) error {
+	if version >= 6 {
+		return nil
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, stmt := range []string{
+		`ALTER TABLE users ADD COLUMN sort_due INTEGER NOT NULL DEFAULT 0`,
+		`PRAGMA user_version = 6`,
 	} {
 		if _, err := tx.Exec(stmt); err != nil {
 			return err
