@@ -139,12 +139,12 @@ func TestAPIItemsKeepHandOrder(t *testing.T) {
 	}
 }
 
-// In due date order the grips are hidden: no drag, no arrow keys, and the
-// rows keep their place. The toolbar buttons wrap on a narrow screen.
+// In due date order the grips and their column go away: no drag, no arrow keys, and the
+// checkbox moves to the left. The toolbar buttons wrap on a narrow screen.
 func TestSortDueCSS(t *testing.T) {
 	env := newTestEnv(t)
 	css := do(t, env.H, "GET", "/static/app.css", nil, nil).Body.String()
-	assertContains(t, css, `#list-section[data-sort-due="true"] .grip { visibility: hidden; }`,
+	assertContains(t, css, `#list-section[data-sort-due="true"] :is(.grip, .grip-space) { display: none; }`,
 		".sort-hint { margin: 2px 0 8px; font-size: 13px; color: var(--muted); }",
 		".toolbar-right { display: flex; flex-wrap: wrap; gap: 8px; }")
 }
