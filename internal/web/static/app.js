@@ -379,8 +379,10 @@ document.addEventListener("htmx:oobAfterSwap", () => {
 // The label list shows all labels. A click on a name adds or takes off that
 // label; the server answers with the row, and the list moves into the new
 // row and loads again, so it stays open. Typing narrows the list; a name
-// that matches no label offers "Create …". A line's circle shows the color
-// wheel in the pop-up; the × asks, then deletes the label.
+// that matches no label offers "Create …", whose circle chooses the new
+// label's color with the wheel. Colors and deletes of labels are on the
+// Labels page ("Manage labels…" at the end of the list; board "Labels page
+// again", option P2).
 // The due date pop-up is a form: Enter saves and Tab moves inside it. The
 // due text opens it too.
 let picker = null; // the open pop-up
@@ -391,7 +393,7 @@ let carrySearch = null; // the search field of a list that loads again
 let carryColor = null; // the new label's color that a list keeps when it loads again
 let focusIfGone = null; // the id to focus if the row of the open list goes away
 let wheel = null; // the wheel of the open label list (wheel.js)
-let colorEdit = null; // { swatch, label, old } while the wheel view is open
+let colorEdit = null; // { swatch, old } while the wheel view is open
 
 function isDuePicker() {
   return picker !== null && picker.classList.contains("due-picker");
@@ -421,7 +423,7 @@ function popupButton(target) {
 // not save goes back.
 function resetPicker() {
   if (colorEdit) {
-    paintLabel(colorEdit, colorEdit.old);
+    colorEdit.swatch.dataset.color = colorEdit.old;
     colorEdit = null;
   }
   picker = null;
@@ -598,65 +600,21 @@ function toggleLabel(line) {
   }
 }
 
-function smallButton(text, cls, data) {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = cls;
-  b.setAttribute(data, "");
-  b.textContent = text;
-  return b;
-}
-
-// askDelete turns a line into the question whether to delete its label.
-function askDelete(line) {
-  const n = Number(line.dataset.items);
-  const p = document.createElement("p");
-  p.textContent = "Delete “" + line.dataset.name + "”? " +
-    (n === 0 ? "No items use it." : "It comes off " + n + (n === 1 ? " item" : " items") + ". The items stay.");
-  const yes = smallButton("Delete", "btn-small danger-solid", "data-ask-delete");
-  const buttons = document.createElement("div");
-  buttons.className = "confirm-buttons";
-  buttons.append(yes, smallButton("Cancel", "btn-small", "data-ask-cancel"));
-  const ask = document.createElement("div");
-  ask.className = "picker-ask";
-  ask.setAttribute("role", "alert");
-  ask.append(p, buttons);
-  line.classList.add("asking");
-  line.append(ask);
-  yes.focus();
-}
-
-function closeAsk(line) {
-  line.classList.remove("asking");
-  line.querySelector(".picker-ask").remove();
-  line.querySelector(".picker-x").focus();
-}
-
-// paintLabel shows color on all chips and circles of the edited label, or on
-// the circle of the new label.
-function paintLabel(edit, color) {
-  if (edit.label) {
-    document.querySelectorAll('[data-label="' + edit.label + '"][data-color]').forEach((el) => { el.dataset.color = color; });
-  } else {
-    edit.swatch.dataset.color = color;
-  }
-}
-
+// The circle of the Create line chooses the new label's color with the wheel,
+// in place of the list. Colors of the other labels change on the Labels page.
 function previewColor(color) {
   if (!colorEdit) {
     return;
   }
   picker.querySelector(".picker-color .chip").dataset.color = color;
-  paintLabel(colorEdit, color);
+  colorEdit.swatch.dataset.color = color;
 }
 
 // openColor shows the wheel in place of the list.
 function openColor(swatch, line) {
-  const isNew = line.classList.contains("picker-create");
-  colorEdit = { swatch, label: isNew ? "" : line.dataset.label, old: swatch.dataset.color };
+  colorEdit = { swatch, old: swatch.dataset.color };
   const view = picker.querySelector(".picker-color");
-  view.querySelector(".picker-color-title").textContent =
-    (isNew ? "Color of the new label “" : "Color of “") + line.dataset.name + "”";
+  view.querySelector(".picker-color-title").textContent = "Color of the new label “" + line.dataset.name + "”";
   const chip = view.querySelector(".chip");
   chip.textContent = line.dataset.name;
   chip.dataset.color = colorEdit.old;
@@ -666,35 +624,17 @@ function openColor(swatch, line) {
   view.querySelector(".wheel").focus();
 }
 
-// endColor goes back to the list. keep saves the color: a label's color at
-// once, the new label's color when the label is created.
+// endColor goes back to the list. keep keeps the color for the new label,
+// which gets it when it is created.
 function endColor(keep) {
   const edit = colorEdit;
   colorEdit = null;
   const color = keep ? wheel.color() : edit.old;
-  paintLabel(edit, color);
-  if (!edit.label) {
-    picker.dataset.newColor = color;
-  } else if (keep && color !== edit.old) {
-    saveColor(edit, color);
-  }
+  edit.swatch.dataset.color = color;
+  picker.dataset.newColor = color;
   picker.querySelector(".picker-color").hidden = true;
   picker.querySelector(".picker-main").hidden = false;
   edit.swatch.focus();
-}
-
-function saveColor(edit, color) {
-  // HX-Request makes an ended session answer 401, not a redirect to the
-  // login page, which fetch would follow and see as a success.
-  fetch("/labels/" + edit.label + "/color", { method: "PUT", headers: { "HX-Request": "true" }, body: new URLSearchParams({ color }) })
-    .then((res) => {
-      if (res.status !== 204) throw new Error("status " + res.status);
-    })
-    .catch(() => {
-      paintLabel(edit, edit.old);
-      const line = document.getElementById("error");
-      if (line) line.textContent = "The color was not saved. Try again.";
-    });
 }
 
 document.addEventListener("click", (e) => {
@@ -714,10 +654,7 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("[data-color-done]")) endColor(true);
   else if (e.target.closest("[data-color-cancel]")) endColor(false);
   else if (!line) return;
-  else if (e.target.closest("[data-ask-delete]")) sendForList("DELETE", "/labels/" + line.dataset.label, { target: "#list-section", swap: "outerHTML" }, true);
-  else if (e.target.closest("[data-ask-cancel]")) closeAsk(line);
-  else if (e.target.closest(".picker-x")) askDelete(line);
-  else if (e.target.closest(".sw")) openColor(e.target.closest(".sw"), line);
+  else if (e.target.closest("button.sw")) openColor(e.target.closest("button.sw"), line);
   else if (e.target.closest(".picker-name")) toggleLabel(line);
 });
 
@@ -765,9 +702,7 @@ document.addEventListener("keydown", (e) => {
   }
   if (e.key === "Escape") {
     e.preventDefault();
-    const asking = e.target.closest(".picker-opt.asking");
-    if (asking) closeAsk(asking);
-    else closePicker(true);
+    closePicker(true);
     return;
   }
   const names = labelLines().map((l) => l.querySelector(".picker-name"));

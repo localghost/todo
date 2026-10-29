@@ -129,17 +129,21 @@ async function desktop() {
     await openPicker(p, "#label-add-2", ready);
     await p.shot(out("label-list.png"), ["#item-2", "#picker-2"]);
 
-    await p.click(`#picker-2 .picker-opt[data-name=${q("work")}] .sw`);
+    // The Labels page: at rest, the color wheel of "work", the question
+    // before "urgent" is deleted.
+    await p.goto(BASE + "/labels");
+    await p.move(990, 890);
+    await sleep(200);
+    await p.shot(out("labels-page.png"), ["main"], 0);
+    await p.click(`.lp-line[data-name=${q("work")}] .sw`);
     await p.waitFor("document.activeElement.matches('.wheel')");
-    await p.shot(out("color-wheel.png"), ["#item-2", "#picker-2"]);
+    await p.shot(out("color-wheel.png"), [`.lp-line[data-name=${q("work")}]`]);
     await p.key("Escape");
+    await p.click(`.lp-line[data-name=${q("urgent")}] .lp-x`);
+    await p.waitFor("!!document.querySelector('.lp-ask [data-ask-delete]')");
+    await p.shot(out("label-delete.png"), [`.lp-line[data-name=${q("urgent")}]`, ".lp-ask"]);
 
-    await openPicker(p, "#label-add-2", ready);
-    await p.hover(`#picker-2 .picker-opt[data-name=${q("urgent")}]`);
-    await p.click(`#picker-2 .picker-opt[data-name=${q("urgent")}] .picker-x`);
-    await p.waitFor("!!document.querySelector('#picker-2 [data-ask-delete]')");
-    await p.shot(out("label-delete.png"), ["#item-2", "#picker-2"]);
-
+    await p.goto(BASE + "/");
     const work = await p.eval(`document.querySelector('#item-2 .chip[data-label] a').getAttribute('href')`);
     await p.goto(BASE + work);
     await p.move(990, 890);

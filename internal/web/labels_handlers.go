@@ -29,21 +29,14 @@ func (s *server) setLabelColor(w http.ResponseWriter, r *http.Request) {
 }
 
 // deleteLabel deletes a label: it comes off all items, the items stay. The
-// answer is the list section. If the list is filtered by that label, the
-// page goes to the full list instead.
+// answer is the section of the Labels page; a label that is already gone
+// (deleted in another tab) answers 404 with the section as it is now.
 func (s *server) deleteLabel(w http.ResponseWriter, r *http.Request) {
 	id, ok := parseID(r)
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	filter, err := s.labelFilter(r)
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	// A label that is already gone (deleted in another tab) answers 404 with
-	// the list as it is now, so the page does not lose its items.
 	status := http.StatusOK
 	if err := s.svc.DeleteLabel(r.Context(), userID(r), id); errors.Is(err, todo.ErrNotFound) {
 		status = http.StatusNotFound
@@ -51,17 +44,12 @@ func (s *server) deleteLabel(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	if filter != nil && filter.ID == id {
-		w.Header().Set("HX-Redirect", "/")
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-	lv, err := s.listView(r, currentUser(r).HideDone)
+	v, err := s.labelsView(r)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
-	s.render(w, r, status, part{"list", lv})
+	s.render(w, r, status, part{"labels-section", v})
 }
 
 // pickerView loads the label list for item: all the user's labels, and the

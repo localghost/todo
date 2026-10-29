@@ -1,0 +1,54 @@
+{{/* The Labels page (labels_page.go, labels.js). */}}
+{{define "labels-page"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="htmx-config" content='{"historyCacheSize":0,"allowEval":false,"includeIndicatorStyles":false,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"404","swap":true},{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+<title>Labels – TooDoo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/tz.js" defer></script>
+<script src="/static/htmx.min.js" defer></script>
+<script src="/static/chips.js" defer></script>
+<script src="/static/wheel.js" defer></script>
+<script src="/static/labels.js" defer></script>
+</head>
+<body>
+<main class="account-wrap labels-wrap">
+<div class="account-top"><span><a href="/">← Back to my list</a> · <a href="/guide">User guide</a></span> <form method="post" action="/logout" class="inline-form"><button type="submit" class="link-button">Log out</button></form></div>
+<h1>Labels</h1>
+{{template "labels-section" .}}
+</main>
+</body>
+</html>
+{{end}}
+
+{{define "labels-section"}}<section id="labels-section" class="labels-section" aria-label="Your labels">
+<form id="label-create" class="label-create" method="post" action="/labels" hx-post="/labels" hx-target="#labels-section" hx-swap="outerHTML">
+<button type="button" class="sw lp-new-sw" data-color="{{.NewColor}}" aria-label="Color of the new label" title="Choose a color for the new label"></button>
+<input type="hidden" name="color" value="{{.NewColor}}">
+<label class="visually-hidden" for="label-search">Search or create a label</label>
+<input id="label-search" name="name" value="{{.Value}}" placeholder="Search or create…" autocomplete="off" maxlength="30"{{if .Error}} aria-invalid="true" aria-describedby="label-error"{{end}}>
+<button type="submit" class="btn-primary">Create</button>
+</form>
+{{if .Error}}<p class="error" id="label-error" role="alert">{{.Error}}</p>{{end}}
+{{if .Labels}}<p class="hint lp-hint">Click a label to show only its items. Click a color circle to change the color.</p>
+<ul class="lp-list">
+{{range .Labels}}<li class="lp-line" data-label="{{.ID}}" data-name="{{.Name}}" data-items="{{.Items}}"><button type="button" class="sw" data-color="{{.Color}}" data-label="{{.ID}}" aria-label="Color of “{{.Name}}”" title="Change the color"></button><a class="lp-name" href="/?label={{.ID}}" title="Show only “{{.Name}}”">{{.Name}}</a><span class="lp-count">{{.Count}}</span><button type="button" class="lp-x" aria-label="Delete label “{{.Name}}”" title="Delete label">{{template "x-icon"}}</button></li>
+{{end}}</ul>
+<p class="lp-none" hidden>No label has this name. Click Create to make it.</p>
+{{else}}<p class="lp-empty">You have no labels yet. Type a name above and click Create, or add a label to an item with “+ Label”.</p>{{end}}
+<div class="lp-color" role="group" aria-labelledby="lp-color-title" hidden>
+<p class="lp-color-title" id="lp-color-title"></p>
+<div class="lp-color-body">
+<div class="wheel" role="slider" tabindex="0" aria-label="Hue and strength" aria-valuemin="0" aria-valuemax="359" aria-valuenow="0"><span class="wheel-ring"></span></div>
+<div class="lp-color-side">
+<p class="color-preview">Preview <span class="chip"></span></p>
+<div class="due-actions"><button type="button" class="due-save" data-color-done>Done</button><button type="button" class="due-remove" data-color-cancel>Cancel</button></div>
+<p class="hint">Drag in the wheel, or use the arrow keys. Enter is Done, Esc is Cancel.</p>
+</div>
+</div>
+</div>
+</section>{{end}}

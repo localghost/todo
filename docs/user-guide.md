@@ -158,35 +158,38 @@ Labels such as "work" or "home" put your items into groups. Each label has a col
 
 ![The label list](guide-images/label-list.png "the label list of the item “Send the invoice”. The item has the label “work”, so “work” has a check.")
 
-To find a label, type a part of its name in the search field at the top of the list.
+To find a label, type a part of its name in the search field at the top of the list. The last
+line, **Manage labels…**, opens the Labels page.
 
 You can also remove a label from an item without the list: point at the label on the item and
 click its ×. On a phone the × always shows.
 
-### Create a label
+### Create a label for an item
 
 1. In the label list, type the name of the new label.
-2. The last line shows **Create “name”**. Its color circle shows the color that the label will
-   get. To pick another color, click the circle first (see below).
+2. The last label line shows **Create “name”**. Its color circle shows the color that the label
+   will get. To pick another color, click the circle first, then use the color wheel (see below).
 3. Click **Create “name”**. The app makes the label and adds it to the item.
 
-### Change the color of a label
+### The Labels page
 
-1. In the label list, click the color circle at the start of the label's line. A color wheel
-   shows in the pop-up.
-2. Click or drag on the wheel. The angle sets the color, and the distance from the middle sets
-   how strong it is. You can also use the arrow keys.
-3. Click **Done** to save the color, or **Cancel** to keep the old color.
+Click **Labels** at the top right of your list, or **Manage labels…** in a label list. The
+Labels page shows all your labels. Each line has the color circle, the name, the number of items
+with the label, and an ×. Click a name to show only the items with that label.
 
-![The color wheel](guide-images/color-wheel.png "the color wheel of the label “work”. The small circle is the current color. Preview shows the label with it.")
+![The Labels page](guide-images/labels-page.png "the Labels page with the field “Search or create…”, the button Create, and the labels “home”, “urgent” and “work”, each with its color circle, the number of items and an ×.")
 
-### Delete a label
+- **Find a label:** type a part of its name in the field "Search or create…".
+- **Create a label:** type its name and click **Create**, or press Enter. To pick its color
+  first, click the color circle at the start of the field.
+- **Change a color:** click the color circle of a label. A color wheel opens under the line.
+  Click or drag on the wheel. The angle sets the color, and the distance from the middle sets how
+  strong it is. You can also use the arrow keys. Click **Done** to save the color, or **Cancel**
+  to keep the old color.
+- **Delete a label:** click the × of its line. The page asks "Delete “name”?" and shows how many
+  items use the label. Click **Delete**. The app removes the label from all items. The items stay.
 
-1. In the label list, point at the line of the label and click the **×** at the right end. On a
-   phone the × always shows.
-2. The line asks "Delete “name”?" and shows how many items use the label. Click **Delete**.
-
-The app removes the label from all items. The items stay.
+![The color wheel](guide-images/color-wheel.png "the color wheel of the label “work” on the Labels page. The small circle is the current color. Preview shows the label with it.")
 
 ![The question before a label is deleted](guide-images/label-delete.png "the question before the label “urgent” is deleted. One item has this label. The item stays.")
 
@@ -214,7 +217,7 @@ The app works in the browser of a phone. On a touch screen:
   label always shows.
 - The **Due date** and **Label** buttons under the add field are taller, and the × in the due
   date button always shows.
-- The × to delete a label in the label list always shows.
+- On the Labels page, the × of a label and the color circles are larger.
 
 ![The list on a phone](guide-images/phone.png "the list in the browser of a phone, 375 pixels wide. The × on each label always shows.")
 

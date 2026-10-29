@@ -348,36 +348,31 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 .picker-opt[hidden], .picker-empty[hidden], .picker-main[hidden], .picker-color[hidden] { display: none; }
 .picker-opt:hover, .picker-opt:focus-within { background: var(--ground); }
-/* The color circle of a line: the label's color, a larger click area. */
-.picker-opt .sw {
-  position: relative; flex: none; width: 14px; height: 14px; padding: 0; border-radius: 50%; cursor: pointer;
+/* The color dot of a line shows the label's color. Only the Create line has
+   a circle button: it chooses the new label's color, with a larger click
+   area. The colors of other labels change on the Labels page. */
+.picker-opt .sw, .lp-line .sw, .label-create .sw {
+  position: relative; flex: none; width: 14px; height: 14px; padding: 0; border-radius: 50%;
   background: var(--l-c); border: 1px solid rgba(31, 30, 27, 0.25); box-shadow: inset 0 0 0 2px var(--card);
 }
-.picker-opt .sw::after { content: ""; position: absolute; inset: -6px; }
-.picker-opt .sw:hover { box-shadow: inset 0 0 0 2px var(--card), 0 0 0 2px var(--accent); }
+button.sw { cursor: pointer; }
+button.sw::after { content: ""; position: absolute; inset: -6px; }
+button.sw:hover, button.sw[aria-expanded="true"] { box-shadow: inset 0 0 0 2px var(--card), 0 0 0 2px var(--accent); }
 .picker-name {
   flex: 1 1 auto; min-width: 0; padding: 6px 0; text-align: left; cursor: pointer; overflow-wrap: anywhere;
   font: inherit; color: inherit; background: none; border: none;
 }
 .picker-name[aria-disabled="true"] { cursor: default; color: var(--done); }
 .picker-check { flex: none; display: inline-flex; color: var(--accent); }
-/* The × of a line shows when the pointer is on the line or focus is in it. */
-.picker-x {
-  flex: none; width: 24px; height: 24px; padding: 0; border: none; border-radius: 50%; opacity: 0; cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center; background: none; color: var(--muted);
-}
-.picker-opt:hover .picker-x, .picker-opt:focus-within .picker-x { opacity: 1; }
-.picker-x:hover { background: var(--line); color: var(--error); }
-.picker-opt .sw:focus-visible, .picker-name:focus-visible, .picker-x:focus-visible, .picker-back:focus-visible {
+button.sw:focus-visible, .picker-name:focus-visible, .picker-back:focus-visible, .picker-manage:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
-.picker-opt.asking, .picker-opt.asking:hover { padding: 2px 0; background: none; }
-.picker-opt.asking > :not(.picker-ask) { display: none; }
-.picker-ask {
-  flex: 1 1 auto; display: flex; flex-direction: column; gap: 8px; padding: 8px; font-size: 13px;
-  background: #FCEDEC; border: 1px solid #F2C4C0; border-radius: 6px;
+/* The last line of the list opens the Labels page. */
+.picker-manage {
+  display: block; margin: 2px 0 0; padding: 8px 8px 4px; border-top: 1px solid var(--line);
+  font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none;
 }
-.picker-ask p { margin: 0; }
+.picker-manage:hover { text-decoration: underline; }
 /* The wheel view in place of the list. */
 .picker-color { display: flex; flex-direction: column; gap: 10px; padding: 4px; }
 .picker-color-head { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--muted); }
@@ -389,12 +384,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (hover: none) {
   .picker-search { font-size: 16px; padding: 8px; }
   .picker-opt { min-height: 44px; font-size: 16px; }
-  .picker-opt .sw { width: 22px; height: 22px; }
-  .picker-opt .sw::after { inset: -8px; }
-  .picker-x { opacity: 1; width: 36px; height: 36px; }
-  .picker-ask { font-size: 15px; }
-  .picker-ask .btn-small { flex: 1 1 0; min-height: 44px; font-size: 15px; }
-  .picker-color .wheel { width: 200px; height: 200px; }
+  .picker-opt .sw, .lp-line .sw, .label-create .sw { width: 22px; height: 22px; }
+  button.sw::after { inset: -8px; }
+  .picker-manage { padding: 12px 8px 8px; font-size: 16px; }
+  .picker-color .wheel, .lp-color .wheel { width: 200px; height: 200px; }
 }
 
 /* The due date pop-up under the calendar icon: a .picker with a form. */
@@ -541,4 +534,50 @@ main.guide { display: block; max-width: 760px; font-size: 17px; line-height: 1.5
   .guide h2 { font-size: 22px; }
   .guide table { font-size: 14px; }
   .guide th, .guide td { padding: 6px; }
+}
+
+/* The Labels page (canvas page "16 · Labels", board "Labels page again"):
+   the look of the Account page; one line per label with its color circle,
+   name, number of items and ×. The wheel opens inside the line, the delete
+   question under it (labels.js). */
+.labels-wrap { max-width: 640px; }
+.labels-section { display: flex; flex-direction: column; gap: 12px; }
+.label-create { display: flex; align-items: center; gap: 8px; }
+.label-create input[name="name"] {
+  flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--ink);
+  padding: 10px 12px; border: 2px solid var(--line); border-radius: 8px; background: var(--card);
+}
+.label-create input[name="name"]:focus { outline: none; border-color: var(--accent); }
+.label-create input[aria-invalid="true"] { border-color: var(--error); }
+.label-create .btn-primary { flex: none; }
+.lp-hint { margin: 0; }
+.lp-list { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+.lp-line, .lp-ask { padding: 8px 12px; }
+.lp-line { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-height: 30px; }
+.lp-list > li + li { border-top: 1px solid var(--line); }
+.lp-line[hidden], .lp-none[hidden], .lp-color[hidden] { display: none; }
+.lp-name { flex: 1 1 auto; min-width: 0; font-size: 16px; color: var(--ink); overflow-wrap: anywhere; }
+.lp-name:hover { color: var(--accent); }
+.lp-count { flex: none; font-size: 13px; color: var(--muted); }
+.lp-x {
+  flex: none; width: 28px; height: 28px; padding: 0; border: none; border-radius: 50%; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; background: none; color: var(--muted);
+}
+.lp-x:hover { background: var(--ground); color: var(--error); }
+.lp-x:focus-visible, .lp-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lp-line.asking { background: #FCEDEC; }
+.lp-ask { display: flex; flex-direction: column; gap: 8px; background: #FCEDEC; font-size: 14px; }
+.lp-ask p { margin: 0; }
+.lp-none, .lp-empty { margin: 0; font-size: 15px; color: var(--muted); }
+.lp-empty { padding: 16px 14px; background: var(--card); border: 1px dashed var(--line); border-radius: 10px; }
+.lp-color { flex: 1 0 100%; display: flex; flex-direction: column; gap: 8px; padding: 10px 0 4px; }
+.lp-color-title { margin: 0; font-size: 13px; font-weight: 700; color: var(--muted); }
+.lp-color-body { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.lp-color-side { display: flex; flex-direction: column; gap: 10px; flex: 1 1 180px; }
+.lp-color-side .hint { margin: 0; }
+.lp-color .due-actions { justify-content: flex-start; }
+@media (hover: none) {
+  .lp-x { width: 44px; height: 44px; }
+  .lp-line { min-height: 44px; }
+  .lp-ask .btn-small { flex: 1 1 0; min-height: 44px; font-size: 15px; }
 }

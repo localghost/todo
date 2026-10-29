@@ -22,9 +22,11 @@ Privacy policy: https://toodoo.fly.dev/privacy (the text is in
 - Drag items by the grip (⋮⋮) to change their order, or use the arrow keys. Overdue items
   stay at the top.
 - Put labels such as "work" or "home" on items with the "Label" chip on each item. It opens a
-  searchable list of all your labels: click names to add or remove several labels, click a
-  label's color circle to pick any color from a color wheel, and use its × to delete it. Point
-  at a label on an item to remove it with its ×. Click a label to see only its items.
+  searchable list of all your labels: click names to add or remove several labels, or create a
+  new one. Point at a label on an item to remove it with its ×. Click a label to see only its
+  items.
+- Manage labels on the Labels page (the "Labels" link at the top): create a label, pick any
+  color from a color wheel, delete a label, and see how many items use each one.
 - Times are shown in your browser's time zone.
 - An Android app on Google Play (https://play.google.com/store/apps/details?id=com.codeleet.toodoo) with the same list: add, edit, swipe right to check off, swipe left to delete
   (both with Undo), hold a row to drag it, due dates, labels and the label filter, label chips

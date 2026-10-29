@@ -52,11 +52,12 @@
 <input type="text" class="picker-search" value="{{.Value}}" placeholder="Search or create…" aria-label="Search or create a label" autocomplete="off" maxlength="30"{{if .Error}} aria-invalid="true" aria-describedby="picker-msg-{{.Item.ID}}"{{end}}>
 {{if .Error}}<p class="picker-msg error" id="picker-msg-{{.Item.ID}}" role="alert">{{.Error}}</p>{{end}}
 <ul class="picker-list" aria-label="Your labels">
-{{range .Options}}<li class="picker-opt" data-name="{{.Name}}" data-label="{{.ID}}" data-items="{{.Items}}"><button type="button" class="sw" data-color="{{.Color}}" data-label="{{.ID}}" aria-label="Color of “{{.Name}}”" title="Change the color"></button><button type="button" class="picker-name" aria-pressed="{{.On}}"{{if and $.Full (not .On)}} aria-disabled="true"{{end}}>{{.Name}}</button>{{if .On}}<span class="picker-check" title="The item has this label">{{template "tick-icon"}}</span>{{end}}{{if not $.Draft}}<button type="button" class="picker-x" aria-label="Delete label “{{.Name}}”" title="Delete label">{{template "x-small-icon"}}</button>{{end}}</li>
+{{range .Options}}<li class="picker-opt" data-name="{{.Name}}" data-label="{{.ID}}"><span class="sw" data-color="{{.Color}}" data-label="{{.ID}}" aria-hidden="true"></span><button type="button" class="picker-name" aria-pressed="{{.On}}"{{if and $.Full (not .On)}} aria-disabled="true"{{end}}>{{.Name}}</button>{{if .On}}<span class="picker-check" title="The item has this label">{{template "tick-icon"}}</span>{{end}}</li>
 {{end}}<li class="picker-opt picker-create" hidden><button type="button" class="sw" data-color="{{.NewColor}}" aria-label="Color of the new label" title="Choose a color for the new label"></button><button type="button" class="picker-name"><span class="picker-create-text"></span></button></li>
 </ul>
 <p class="picker-empty" hidden></p>
 {{if .Full}}<p class="picker-msg">An item can have at most 5 labels.</p>{{end}}
+<a class="picker-manage" href="/labels">Manage labels…</a>
 </div>
 <div class="picker-color" role="group" aria-labelledby="picker-color-title-{{.Item.ID}}" hidden>
 <p class="picker-color-head"><button type="button" class="picker-back" data-color-cancel aria-label="Back to the labels">{{template "back-icon"}}</button><span class="picker-color-title" id="picker-color-title-{{.Item.ID}}"></span></p>

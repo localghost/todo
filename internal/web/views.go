@@ -140,7 +140,7 @@ func labelsMessage(err error) string {
 	case errors.As(err, &le):
 		return le.Msg
 	case errors.Is(err, todo.ErrTooManyLabels):
-		return "You have 50 labels. Delete one first (× on its line)."
+		return "You have 50 labels. Delete one on the Labels page first."
 	}
 	return ""
 }

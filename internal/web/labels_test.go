@@ -2,7 +2,6 @@ package web_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -63,10 +62,16 @@ func TestPlusAddsOneLabel(t *testing.T) {
 	// The list offers all the user's labels; the item's labels are pressed.
 	body = do(t, env.H, "GET", path, nil, htmxHeaders).Body.String()
 	assertContains(t, body, `data-name="home"`, `data-name="work"`, `class="picker-search"`,
-		`aria-pressed="false">home</button>`, `class="picker-x" aria-label="Delete label “home”"`,
+		`aria-pressed="false">home</button>`, `<a class="picker-manage" href="/labels">Manage labels…</a>`,
 		`class="wheel" role="slider"`, `data-full="false"`,
 		fmt.Sprintf(`data-new-color="%s"`, todo.LabelColors[2]))
-	assertNotContains(t, body, `role="listbox"`, `data-taken`)
+	// Colors and deletes are on the Labels page (option P2): a line has a
+	// color dot, not a button, and no ×; only the Create line has a circle.
+	assertNotContains(t, body, `role="listbox"`, `data-taken`, `class="picker-x"`)
+	if n := strings.Count(body, `<button type="button" class="sw"`); n != 1 {
+		t.Fatalf("%d color circle buttons, want 1 (the Create line)", n)
+	}
+	assertContains(t, body, `<span class="sw" data-color=`, `aria-hidden="true"></span><button type="button" class="picker-name"`)
 
 	rec := do(t, env.H, "POST", path, url.Values{"name": {"work"}}, htmxHeaders)
 	if rec.Code != http.StatusOK {
@@ -230,18 +235,6 @@ func TestLabelsOfOtherUsersItems(t *testing.T) {
 	}
 }
 
-func TestLabelsPageIsGone(t *testing.T) {
-	env := newTestEnv(t)
-	rec := do(t, env.H, "GET", "/labels", nil, nil)
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/" {
-		t.Fatalf("GET /labels: %d %q, want 303 to /", rec.Code, rec.Header().Get("Location"))
-	}
-	assertNotContains(t, do(t, env.H, "GET", "/", nil, nil).Body.String(), `href="/labels"`)
-	if rec := do(t, env.H, "GET", "/static/labels.js", nil, nil); rec.Code != http.StatusNotFound {
-		t.Fatalf("labels.js: %d, want 404", rec.Code)
-	}
-}
-
 func TestLabelsOfAnotherUserCannotBeChanged(t *testing.T) {
 	env := newTestEnv(t)
 	ctx := context.Background()
@@ -312,28 +305,7 @@ func TestSetLabelColorRoute(t *testing.T) {
 	}
 }
 
-func TestDeleteLabelRoute(t *testing.T) {
-	env := newTestEnv(t)
-	a := addLabeled(t, env.Svc, env.User.ID, "Invoice", "work, home")
-	work := labelID(t, a, "work")
-	rec := do(t, env.H, "DELETE", fmt.Sprintf("/labels/%d", work), nil, htmxHeaders)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("delete: %d", rec.Code)
-	}
-	assertContains(t, rec.Body.String(), `id="list-section"`, ">home</a>")
-	assertNotContains(t, rec.Body.String(), ">work</a>")
-	if _, err := env.Svc.Label(context.Background(), env.User.ID, work); !errors.Is(err, todo.ErrNotFound) {
-		t.Fatalf("label still there: %v", err)
-	}
-	// Deleting the label of the filter goes to the full list.
-	home := labelID(t, a, "home")
-	rec = do(t, env.H, "DELETE", fmt.Sprintf("/labels/%d", home), nil, filtered(home))
-	if rec.Header().Get("HX-Redirect") != "/" {
-		t.Fatalf("filter label: HX-Redirect = %q", rec.Header().Get("HX-Redirect"))
-	}
-}
-
-func TestFiftyLabelsMessageNamesTheX(t *testing.T) {
+func TestFiftyLabelsMessageNamesTheLabelsPage(t *testing.T) {
 	env := newTestEnv(t)
 	for i := 0; i < todo.MaxLabelsPerUser; i += 5 {
 		addLabeled(t, env.Svc, env.User.ID, "Item", fmt.Sprintf("l%d, l%d, l%d, l%d, l%d", i, i+1, i+2, i+3, i+4))
@@ -343,29 +315,17 @@ func TestFiftyLabelsMessageNamesTheX(t *testing.T) {
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("51st label: %d, want 422", rec.Code)
 	}
-	assertContains(t, rec.Body.String(), "You have 50 labels. Delete one first (× on its line).")
-	assertNotContains(t, rec.Body.String(), "Labels page")
+	assertContains(t, rec.Body.String(), "You have 50 labels. Delete one on the Labels page first.")
 }
 
 func TestLabelListScriptAndStyle(t *testing.T) {
 	env := newTestEnv(t)
 	js := do(t, env.H, "GET", "/static/app.js", nil, nil).Body.String()
-	assertContains(t, js, "reopenFor", "makeWheel(", `"/labels/" + edit.label + "/color"`, "askDelete(", "No items use it.")
-	assertNotContains(t, js, "aria-activedescendant", "data-taken")
+	assertContains(t, js, "reopenFor", "makeWheel(", `closest("button.sw")`)
+	assertNotContains(t, js, "aria-activedescendant", "data-taken", "askDelete(", `"/labels/" + edit.label`)
 	css := do(t, env.H, "GET", "/static/app.css", nil, nil).Body.String()
-	assertContains(t, css, ".picker-x", ".picker-opt.asking", ".picker-color[hidden]")
-}
-
-// A label that is already gone (deleted in another tab) still answers with
-// the list section, so the page does not lose its items.
-func TestDeleteGoneLabelAnswersTheList(t *testing.T) {
-	env := newTestEnv(t)
-	addLabeled(t, env.Svc, env.User.ID, "Invoice", "work")
-	rec := do(t, env.H, "DELETE", "/labels/999", nil, htmxHeaders)
-	if rec.Code != http.StatusNotFound {
-		t.Fatalf("status = %d, want 404", rec.Code)
-	}
-	assertContains(t, rec.Body.String(), `id="list-section"`, ">work</a>")
+	assertContains(t, css, ".picker-color[hidden]", ".picker-manage")
+	assertNotContains(t, css, ".picker-x", ".picker-opt.asking")
 }
 
 // The wheel view is a group named by its title ("Color of “work”").
