@@ -154,8 +154,8 @@ func TestSortDueCSS(t *testing.T) {
 
 // sortSlideHarness runs app.js with fake rows. A "Sort by due date" answer
 // moves row 2 above row 1 and the checkboxes 28 px to the left; the rows
-// slide from their old places (canvas page "14 · Overdue at the top",
-// "transition between the two orders", option A).
+// slide from their old places in 0.7 s (canvas page "14 · Overdue at the
+// top", "transition between the two orders", option A).
 const sortSlideHarness = `
 const src = require("fs").readFileSync(process.argv[2], "utf8");
 const handlers = {};
@@ -169,7 +169,7 @@ function makeRow(id, top, left) {
     getBoundingClientRect: () => ({ top: row.top, left: 0 }),
     querySelector: (s) => s === ".check" ? check : null,
     querySelectorAll: (s) => s === ".check, .text-col" ? [check, col] : [],
-    animate: (k) => { anims.push(id + " row " + JSON.stringify(k[0])); return { finished: Promise.resolve() }; } };
+    animate: (k, o) => { anims.push(id + " row " + JSON.stringify(k[0]) + " " + o.duration + "ms"); return { finished: Promise.resolve() }; } };
   return row;
 }
 let rows = [makeRow("item-1", 100, 40), makeRow("item-2", 160, 40)];
@@ -217,9 +217,9 @@ func TestAppJSSlidesRowsAfterSort(t *testing.T) {
 		t.Fatalf("node: %v\n%s", err, out)
 	}
 	want := `{"name":"sort","anims":[` +
-		`"item-2 row {\"transform\":\"translateY(60px)\",\"backgroundColor\":\"rgb(255, 255, 255)\"}",` +
+		`"item-2 row {\"transform\":\"translateY(60px)\",\"backgroundColor\":\"rgb(255, 255, 255)\"} 700ms",` +
 		`"item-2 check {\"transform\":\"translateX(28px)\"}","item-2 text {\"transform\":\"translateX(28px)\"}",` +
-		`"item-1 row {\"transform\":\"translateY(-60px)\",\"backgroundColor\":\"rgb(255, 255, 255)\"}",` +
+		`"item-1 row {\"transform\":\"translateY(-60px)\",\"backgroundColor\":\"rgb(255, 255, 255)\"} 700ms",` +
 		`"item-1 check {\"transform\":\"translateX(28px)\"}","item-1 text {\"transform\":\"translateX(28px)\"}"]}` + "\n" +
 		`{"name":"other request","anims":0}` + "\n" +
 		`{"name":"reduced motion","anims":0}`

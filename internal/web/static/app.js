@@ -375,9 +375,9 @@ document.addEventListener("htmx:oobAfterSwap", () => {
 // row slides from its old place to its new one, the checkbox and the text
 // slide into the place of the grip column, and the grips and the gray line
 // fade in (canvas page "14 · Overdue at the top", "transition between the
-// two orders", option A). With "reduce motion" the list changes at once.
+// two orders", option A, 0.7 s). With "reduce motion" the list changes at once.
 // The focus goes to the new button, so a keyboard user stays in the toolbar.
-const SLIDE_MS = 300;
+const SLIDE_MS = 700;
 const SLIDE_EASE = "cubic-bezier(0.2, 0.7, 0.3, 1)";
 let sortBefore = null; // row id -> { top, left } before the swap
 
