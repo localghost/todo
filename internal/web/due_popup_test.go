@@ -146,7 +146,8 @@ func TestRowIconsAlwaysShow(t *testing.T) {
 	}
 	assertContains(t, css, ".chip:hover .chip-x, .chip:focus-within .chip-x {",
 		".due-chip:hover .due-x, .due-chip:focus-within .due-x {",
-		".label-add:hover, .due-add:hover { color: var(--muted); }",
+		".label-add:hover, .due-add:hover { color: var(--accent); }",
+		".icon-btn:hover, .icon-btn[aria-expanded=\"true\"] { color: var(--accent); }",
 		".label-add[aria-expanded=\"true\"], .due-add[aria-expanded=\"true\"] { color: var(--accent); }")
 	assertNotContains(t, css, ".item:hover .label-add", ".item:hover .due-chip", ".due-chip:not(.is-set)")
 }

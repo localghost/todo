@@ -276,8 +276,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* The date and the labels of a row (canvas page 10, "row icons without text
    again", option 2). Without a date the row shows a small gray calendar icon,
    and after the labels a small gray +: no text, no circle; ::after keeps a
-   larger click area; the icon gets darker under the pointer and blue while
-   its pop-up is open. A set date is a filled chip (red when overdue, gray on
+   larger click area; the icon turns blue under the pointer and while its
+   pop-up is open, as under the add field ("one hover color for the calendar
+   and +", option A). A set date is a filled chip (red when overdue, gray on
    a done row) that opens the pop-up; its × shows on hover or focus and
    removes the date. A touch screen has no hover: the icons are larger and the
    × always shows. */
@@ -288,7 +289,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   color: #8C8A84; background: none; border: none;
 }
 .label-add::after, .due-add::after { content: ""; position: absolute; inset: -4px; }
-.label-add:hover, .due-add:hover { color: var(--muted); }
+.label-add:hover, .due-add:hover { color: var(--accent); }
 .label-add[aria-expanded="true"], .due-add[aria-expanded="true"] { color: var(--accent); }
 .label-add:focus-visible, .due-add:focus-visible, .due-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .due-chip.is-set {
