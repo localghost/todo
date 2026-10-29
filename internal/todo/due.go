@@ -18,6 +18,12 @@ func (e *DueError) Is(target error) bool { return target == ErrBadDue }
 // allDayHour is the local hour when an item without a due time is due.
 const allDayHour = 9
 
+// ParseDue checks a due date and time as the add form sends them, and gives
+// the due moment in loc (nil when both are empty) and whether it is all day.
+func ParseDue(date, clock string, loc *time.Location) (*time.Time, bool, error) {
+	return parseDue(date, clock, loc)
+}
+
 // parseDue reads the browser's date (YYYY-MM-DD) and optional time (HH:MM)
 // in loc. Both empty means no due date.
 func parseDue(date, clock string, loc *time.Location) (*time.Time, bool, error) {

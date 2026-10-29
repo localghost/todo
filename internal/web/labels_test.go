@@ -59,7 +59,7 @@ func TestPlusAddsOneLabel(t *testing.T) {
 
 	body := do(t, env.H, "GET", "/", nil, nil).Body.String()
 	assertContains(t, body, fmt.Sprintf(`id="label-add-%d" class="label-add"`, a.ID), fmt.Sprintf(`data-picker="%s"`, path))
-	assertNotContains(t, body, `name="labels"`, "suggest-btn")
+	assertNotContains(t, body, "suggest-btn")
 
 	// The list offers all the user's labels; the item's labels are pressed.
 	body = do(t, env.H, "GET", path, nil, htmxHeaders).Body.String()
@@ -136,13 +136,14 @@ func TestFilterByLabel(t *testing.T) {
 
 	body := do(t, env.H, "GET", fmt.Sprintf("/?label=%d", work), nil, nil).Body.String()
 	assertContains(t, body, "Invoice", `class="active-filter"`, `href="/" aria-label="Show all labels"`,
-		"1 open · 0 done", `New items get the label <span class="chip" data-color=`)
+		"1 open · 0 done", fmt.Sprintf(`name="labels" value="%d"`, work), `<span class="chip-name">work</span>`)
 	assertNotContains(t, body, "Water the plants")
 
 	// An unknown or foreign label shows the full list.
 	body = do(t, env.H, "GET", "/?label=999", nil, nil).Body.String()
 	assertContains(t, body, "Invoice", "Water the plants")
-	assertNotContains(t, body, `class="active-filter"`, "New items get the label")
+	assertContains(t, body, `name="labels" value=""`)
+	assertNotContains(t, body, `class="active-filter"`, `class="chip-name"`)
 
 	// htmx requests from the filtered page are filtered too.
 	rec := do(t, env.H, "POST", "/settings/hide-done", url.Values{"hide_done": {"1"}}, filtered(work))
@@ -165,13 +166,20 @@ func TestAddWhileFilteredGetsTheLabel(t *testing.T) {
 	env := newTestEnv(t)
 	a := addLabeled(t, env.Svc, env.User.ID, "Invoice", "work")
 	work := labelID(t, a, "work")
-	rec := do(t, env.H, "POST", "/items", url.Values{"text": {"Report"}, "labels": {"ignored"}}, filtered(work))
+	// The filtered page picks the filter label in #add-extras.
+	rec := do(t, env.H, "POST", "/items", url.Values{"text": {"Report"}, "labels": {fmt.Sprint(work)}}, filtered(work))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("add: %d", rec.Code)
 	}
-	assertContains(t, rec.Body.String(), "Report", ">work</a>", "2 open · 0 done")
-	// Without a filter a new item has no labels.
-	do(t, env.H, "POST", "/items", url.Values{"text": {"Plain"}, "labels": {"x"}}, htmxHeaders)
+	assertContains(t, rec.Body.String(), "Report", ">work</a>", "2 open · 0 done", fmt.Sprintf(`name="labels" value="%d"`, work))
+	// Without the label the item is not in the filtered list: the list comes back without it.
+	rec = do(t, env.H, "POST", "/items", url.Values{"text": {"Elsewhere"}, "labels": {""}}, filtered(work))
+	if rec.Code != http.StatusOK || rec.Header().Get("HX-Retarget") != "#list-section" {
+		t.Fatalf("add without the label: %d %q", rec.Code, rec.Header().Get("HX-Retarget"))
+	}
+	assertNotContains(t, rec.Body.String(), "Elsewhere")
+	// Unknown label ids are left out.
+	do(t, env.H, "POST", "/items", url.Values{"text": {"Plain"}, "labels": {"x,999"}}, htmxHeaders)
 	items, _ := env.Svc.List(context.Background(), env.User.ID, false)
 	if got := items[len(items)-1]; got.Text != "Plain" || len(got.Labels) != 0 {
 		t.Fatalf("plain item = %+v", got)

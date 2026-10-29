@@ -24,42 +24,67 @@ func (s *server) index(w http.ResponseWriter, r *http.Request) {
 		s.render(w, r, http.StatusOK, part{"list", lv})
 		return
 	}
-	form := formView{Focus: true, Filter: lv.Filter}
-	s.render(w, r, http.StatusOK, part{"page", pageView{Form: form, List: lv, Username: currentUser(r).Username}})
+	draft, err := s.newDraft(r)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	page := pageView{Form: formView{Focus: true}, Draft: draft, List: lv, Username: currentUser(r).Username}
+	s.render(w, r, http.StatusOK, part{"page", page})
 }
 
 func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
-	filter, err := s.labelFilter(r)
-	if err != nil {
+	// The due date and the labels come from #add-extras (draft.go), which
+	// shows the list's filter label at the start.
+	draft, err := s.readDraft(r)
+	var dueErr *todo.DueError
+	msg := ""
+	if errors.As(err, &dueErr) {
+		msg = dueErr.Msg
+	} else if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
-	// The add form has no due fields: a date is set later with the calendar
-	// icon on the row, so a new item is never overdue and goes at the end.
-	in := todo.Input{Text: r.FormValue("text")}
-	if filter != nil {
-		in.Labels = filter.Name // a new item shows in the filtered list
+	in := todo.Input{Text: r.FormValue("text"), DueDate: draft.DueDate, DueTime: draft.DueTime, Labels: draft.labelNames()}
+	var item todo.Item
+	if msg == "" {
+		item, err = s.svc.AddItem(r.Context(), userID(r), in, s.zoneFor(r))
+		msg = textMessage(err, "Please type some text first.")
 	}
-	item, err := s.svc.AddItem(r.Context(), userID(r), in, s.zoneFor(r))
-	if msg := textMessage(err, "Please type some text first."); msg != "" {
+	if msg != "" {
 		w.Header().Set("HX-Retarget", "#add-form")
 		w.Header().Set("HX-Reswap", "outerHTML")
-		s.render(w, r, http.StatusUnprocessableEntity, part{"add-form", formView{Text: in.Text, Error: msg, Focus: true, Filter: filter}})
+		s.render(w, r, http.StatusUnprocessableEntity, part{"add-form", formView{Text: in.Text, Error: msg, Focus: true}})
 		return
 	}
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
+	fresh, err := s.newDraft(r)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	fresh.OOB = true
 	lv, err := s.listView(r, currentUser(r).HideDone)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
+	// An overdue item goes to the top, and an item without the filter label
+	// is not in the filtered list: the whole list comes back. Else the new
+	// row goes at the end.
+	if item.Overdue(s.nowFor(r)) || (lv.Filter != nil && !item.HasLabel(lv.Filter.ID)) {
+		w.Header().Set("HX-Retarget", "#list-section")
+		w.Header().Set("HX-Reswap", "outerHTML")
+		s.render(w, r, http.StatusOK, part{"list", lv}, part{"add-extras", fresh})
+		return
+	}
 	lv.OOB = true
 	// The add form is not part of the answer: app.js clears the input, so
 	// text typed while this request ran is not lost.
-	s.render(w, r, http.StatusOK, part{"item", item}, part{"oob", lv})
+	s.render(w, r, http.StatusOK, part{"item", item}, part{"oob", lv}, part{"add-extras", fresh})
 }
 
 func (s *server) toggleItem(w http.ResponseWriter, r *http.Request) {

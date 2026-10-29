@@ -29,10 +29,9 @@ type listView struct {
 
 // formView is the data for the add form.
 type formView struct {
-	Text   string
-	Error  string // why the text was refused, or ""
-	Focus  bool
-	Filter *todo.Label // new items get this label (the list's filter)
+	Text  string
+	Error string // why the text was refused, or ""
+	Focus bool
 }
 
 // editView is the data for a row in edit mode.
@@ -45,6 +44,7 @@ type editView struct {
 // duePickerView is the data for the due date pop-up of an item.
 type duePickerView struct {
 	Item    todo.Item
+	Draft   bool   // the pop-up of the add form (draft.go)
 	DueDate string // the date field (what the user typed, after an error)
 	DueTime string
 	Error   string // why the last save failed
@@ -64,11 +64,13 @@ type pickerView struct {
 	NewColor string         // the color of a new label
 	Value    string         // the search field (what the user typed, after an error)
 	Error    string
+	Draft    bool // the list of the add form (draft.go): picks only, no delete
 }
 
 // pageView is the data for the full page.
 type pageView struct {
 	Form     formView
+	Draft    draftView
 	List     listView
 	Username string
 }

@@ -37,6 +37,10 @@ async function signUp(p) {
   await p.waitFor("location.pathname === '/' && !!document.getElementById('new-item')", 20000);
 }
 
+// day is the date in days from today, as a date field wants it.
+const day = (p, days) => p.eval(`(() => { const d = new Date(); d.setDate(d.getDate() + ${days});
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); })()`);
+
 async function addSamples(p) {
   const zone = await p.eval("Intl.DateTimeFormat().resolvedOptions().timeZone");
   for (const [i, it] of ITEMS.entries()) {
@@ -46,9 +50,7 @@ async function addSamples(p) {
       await send(p, "POST", `/items/${id}/labels`, { name, color: COLORS[name] });
     }
     if (it.due) {
-      const day = await p.eval(`(() => { const d = new Date(); d.setDate(d.getDate() + ${it.due[0]});
-        return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); })()`);
-      await send(p, "PUT", `/items/${id}/due`, { due_date: day, due_time: it.due[1], due_tz: zone });
+      await send(p, "PUT", `/items/${id}/due`, { due_date: await day(p, it.due[0]), due_time: it.due[1], due_tz: zone });
     }
     if (it.done) {
       await send(p, "POST", `/items/${id}/toggle`, {});
@@ -89,6 +91,27 @@ async function desktop() {
 
     await p.shot(out("overdue.png"), ["#item-1"]);
 
+    // The add field with a due date and two labels picked.
+    await p.goto(BASE + "/");
+    await p.click("#new-item"); await p.type("Pay the rent");
+    await p.click("#due-add-0");
+    await p.waitFor("!!document.querySelector('#due-picker-0')");
+    await p.eval(`document.querySelector('#due-picker-0 [name=due_date]').value = ${q(await day(p, 1))}`);
+    await p.click("#due-picker-0 .due-time"); await p.type("1000");
+    await p.click("#due-picker-0 .due-save");
+    await p.waitFor("!!document.querySelector('#due-add-0.set')");
+    for (const name of ["home", "urgent"]) {
+      await p.click("#label-add-0");
+      await p.waitFor("!!document.querySelector('#picker-0')");
+      await p.click(`#picker-0 .picker-opt[data-name=${q(name)}] .picker-name`);
+      await p.waitFor(`[...document.querySelectorAll('#add-extras > .chip .chip-name')].some((e) => e.textContent === ${q(name)})`);
+      await p.key("Escape");
+      await p.waitFor("!document.querySelector('#picker-0')");
+    }
+    await p.click("#new-item");
+    await p.shot(out("add-form.png"), ["#add-form", "#add-extras"]);
+
+    await p.goto(BASE + "/");
     await p.click("#item-3 .text");
     await p.waitFor("!!document.querySelector('#item-3.editing input')");
     await p.shot(out("edit.png"), ["#item-2", "#item-3", "#item-4"]);

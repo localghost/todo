@@ -4,6 +4,21 @@
 <input id="new-item" name="text" placeholder="What needs to be done?" autocomplete="off" value="{{.Text}}"{{if .Focus}} autofocus{{end}}{{if .Error}} aria-invalid="true" aria-describedby="add-error"{{end}}>
 <button type="submit">Add</button>
 </div>
-{{with .Filter}}<p class="filter-hint">New items get the label <span class="chip" data-color="{{.Color}}" data-label="{{.ID}}">{{.Name}}</span></p>
-{{end}}{{if .Error}}<p id="add-error" class="error">{{.Error}}</p>{{end}}
+{{if .Error}}<p id="add-error" class="error">{{.Error}}</p>{{end}}
 </form>{{end}}
+
+
+{{/* The due date and labels of the new item (draft.go). The hidden fields
+belong to #add-form; this part stays outside the form, so the pop-ups,
+which are forms too, are not inside it. */}}
+{{define "add-extras"}}<div id="add-extras" class="add-extras" role="group" aria-label="Due date and labels of the new item"{{if .OOB}} hx-swap-oob="true"{{end}}>
+<input type="hidden" form="add-form" name="due_date" value="{{.DueDate}}">
+<input type="hidden" form="add-form" name="due_time" value="{{.DueTime}}">
+<input type="hidden" form="add-form" name="labels" value="{{.LabelIDs}}">
+<span class="due-add-wrap"><button type="button" id="due-add-0" class="pill draft-due{{if .DueText}} set{{end}}"{{if .DueText}} aria-label="Due date: {{.DueText}}" title="Change the due date"{{else}} title="Set the due date"{{end}} aria-haspopup="dialog" aria-expanded="false" data-picker="{{.DueURL}}">{{template "calendar-icon-18"}}{{if .DueText}}{{.DueText}}{{else}}Due date{{end}}</button></span>
+{{if .DueText}}<button type="button" class="pill-x" aria-label="Remove the due date" title="Remove the due date"
+  hx-post="/new/due" hx-vals='{"clear":"1"}' hx-include="#add-extras" hx-target="#add-extras" hx-swap="outerHTML">{{template "x-icon"}}</button>
+{{end}}<span class="label-add-wrap"><button type="button" id="label-add-0" class="pill draft-label" title="Add a label" aria-haspopup="dialog" aria-expanded="false" data-picker="{{.LabelsURL}}">{{template "plus-icon-18"}}Label</button></span>
+{{range .Labels}}<span class="chip" data-color="{{.Color}}" data-label="{{.ID}}"><span class="chip-name">{{.Name}}</span><button type="button" class="chip-x" aria-label="Remove label “{{.Name}}” from the new item" title="Remove label"
+  hx-post="/new/labels" hx-vals='{"remove":"{{.ID}}"}' hx-include="#add-extras" hx-target="#add-extras" hx-swap="outerHTML">{{template "x-small-icon"}}</button></span>
+{{end}}</div>{{end}}

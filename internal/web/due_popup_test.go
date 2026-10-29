@@ -152,7 +152,7 @@ func TestAppJSOpensTheDuePopup(t *testing.T) {
 	h, _ := newTestApp(t)
 	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
 	assertContains(t, js,
-		`closest(".label-add, .due-add")`, `closest("button.due")`, `classList.contains("due-picker")`,
+		`closest(".label-add, .due-add, .draft-label, .draft-due")`, `closest("button.due")`, `classList.contains("due-picker")`,
 		`focusAfterSwap = "due-add-"`, `input:not([type="hidden"])`)
 }
 

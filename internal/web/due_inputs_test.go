@@ -8,38 +8,59 @@ import (
 	"testing"
 )
 
-// The add form has only the text field and Add (canvas page 10, "add form
-// without the due date"). A due date is set with the calendar icon on a row.
-func TestAddFormHasNoDueFields(t *testing.T) {
+// The add form has the text field and Add. The due date and labels of the
+// new item are under it, in #add-extras (canvas page 10, "calendar and +
+// under the add field", option B): hidden fields of the form and two buttons.
+func TestAddFormHasDueAndLabelButtons(t *testing.T) {
 	h, _ := newTestApp(t)
 	body := do(t, h, "GET", "/", nil, nil).Body.String()
 	form := body[strings.Index(body, `<form id="add-form"`):]
 	form = form[:strings.Index(form, "</form>")]
-	assertNotContains(t, form, `id="new-due-date"`, `name="due_date"`, `name="due_time"`, `<label for="new-due-date">`, "due-line")
+	assertNotContains(t, form, `name="due_date"`, "due-line")
 	assertContains(t, form, `<input id="new-item" name="text"`, `autofocus`)
+	assertContains(t, body, `<div id="add-extras" class="add-extras"`,
+		`<input type="hidden" form="add-form" name="due_date" value="">`,
+		`<input type="hidden" form="add-form" name="labels" value="">`,
+		`id="due-add-0" class="pill draft-due"`, `data-picker="/new/due?due_date=&amp;due_time="`, ">Due date</button>",
+		`id="label-add-0" class="pill draft-label"`, `data-picker="/new/labels?labels="`, ">Label</button>")
 }
 
-// POST /items ignores due fields: a new item never has a due date.
-func TestAddIgnoresDueFields(t *testing.T) {
+// POST /items reads the due date of #add-extras. A new item that is not
+// overdue goes at the end; an overdue one comes with the whole list.
+func TestAddWithDueDate(t *testing.T) {
 	h, svc := newTestApp(t)
 	rec := do(t, h, "POST", "/items",
-		url.Values{"text": {"Call the dentist"}, "due_date": {"2020-01-01"}, "due_time": {"14:00"}}, htmxHeaders)
+		url.Values{"text": {"Call the dentist"}, "due_date": {"2099-01-01"}, "due_time": {"1400"}}, htmxHeaders)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	if got := rec.Header().Get("HX-Retarget"); got != "" {
 		t.Errorf("HX-Retarget = %q, want none (the row is added at the end)", got)
 	}
+	// The buttons start again: no due date.
+	assertContains(t, rec.Body.String(), `<div id="add-extras" class="add-extras" role="group" aria-label="Due date and labels of the new item" hx-swap-oob="true">`, ">Due date</button>")
 	got, _ := svc.Get(context.Background(), 1, 1)
-	if got.Text != "Call the dentist" || got.DueAt != nil {
-		t.Fatalf("stored %+v, want the text and no due date", got)
+	if got.Text != "Call the dentist" || got.DueAt == nil || got.DueAllDay {
+		t.Fatalf("stored %+v, want the text and a due time", got)
 	}
-	rec = do(t, h, "POST", "/items", url.Values{"text": {""}, "due_date": {"bad"}}, htmxHeaders)
+
+	rec = do(t, h, "POST", "/items", url.Values{"text": {"Pay rent"}, "due_date": {"2020-01-01"}}, htmxHeaders)
+	if rec.Code != http.StatusOK || rec.Header().Get("HX-Retarget") != "#list-section" {
+		t.Fatalf("overdue: status = %d, HX-Retarget = %q, want 200 #list-section", rec.Code, rec.Header().Get("HX-Retarget"))
+	}
+	assertContains(t, rec.Body.String(), `<section id="list-section"`, "Pay rent", "Overdue since", `id="add-extras"`)
+
+	rec = do(t, h, "POST", "/items", url.Values{"text": {""}, "due_date": {"2099-01-01"}}, htmxHeaders)
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("empty text: status = %d, want 422", rec.Code)
 	}
 	assertContains(t, rec.Body.String(), "Please type some text first.")
-	assertNotContains(t, rec.Body.String(), "add-due-error", "due_date")
+
+	rec = do(t, h, "POST", "/items", url.Values{"text": {"Bad"}, "due_date": {"bad"}}, htmxHeaders)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("bad date: status = %d, want 422", rec.Code)
+	}
+	assertContains(t, rec.Body.String(), "Please choose a valid date and time.", `value="Bad"`)
 }
 
 // Edit mode changes only the text; the due date has its own pop-up.

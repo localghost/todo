@@ -12,6 +12,11 @@ document.addEventListener("htmx:beforeSwap", (e) => {
   const source = e.detail.elt;
   const row = source && source.closest ? source.closest("li.item") : null;
   const active = document.activeElement;
+  if (e.detail.target.id === "add-extras" && active && active.closest && active.closest("#add-extras")) {
+    // The buttons come back new: go on at the one that was used.
+    focusAfterSwap = active.closest(".due-picker, .pill-x") ? "due-add-0" : "label-add-0";
+    return;
+  }
   if (!row || !active || !row.contains(active)) {
     return;
   }
@@ -408,7 +413,7 @@ function popupButton(target) {
     return null;
   }
   const due = target.closest("button.due");
-  return due ? due.parentElement.querySelector(".due-add") : target.closest(".label-add, .due-add");
+  return due ? due.parentElement.querySelector(".due-add") : target.closest(".label-add, .due-add, .draft-label, .draft-due");
 }
 
 // resetPicker forgets the open pop-up. A color that the wheel shows but did
@@ -562,6 +567,24 @@ function toggleLabel(line) {
   const id = picker.dataset.item;
   const name = line.querySelector(".picker-name");
   if (name.getAttribute("aria-disabled") === "true") {
+    return;
+  }
+  if (picker.dataset.draft) {
+    // The list of the add form: the server draws #add-extras again with
+    // the label picked or not (draft.go).
+    const extras = document.getElementById("add-extras");
+    const values = {};
+    extras.querySelectorAll('input[type="hidden"]').forEach((i) => { values[i.name] = i.value; });
+    const to = { target: "#add-extras", swap: "outerHTML" };
+    if (line.classList.contains("picker-create")) {
+      values.name = line.dataset.name;
+      values.color = picker.dataset.newColor;
+    } else if (name.getAttribute("aria-pressed") === "true") {
+      values.remove = line.dataset.label;
+    } else {
+      values.name = line.dataset.name;
+    }
+    sendForList("POST", "/new/labels", { ...to, values });
     return;
   }
   const row = { target: "#item-" + id, swap: "outerHTML" };
