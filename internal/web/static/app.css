@@ -81,13 +81,18 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .empty-hint { margin: 0; font-size: 15px; color: var(--muted); }
 
 /* List */
+/* The box does not clip its content, so a pop-up of the last rows can hang
+   out of it. The first and last rows round their own corners instead, so a
+   row background (overdue, dragged) stays inside the box (9 px: the box's
+   10 px less its border). */
 #items {
   list-style: none; margin: 0; padding: 0;
   background: var(--card); border: 1px solid var(--line); border-radius: 10px;
-  overflow: hidden;
 }
 #items:not(:has(li)) { display: none; }
 .item { display: flex; align-items: flex-start; gap: 4px; padding: 0 4px; }
+.item:first-child { border-top-left-radius: 9px; border-top-right-radius: 9px; }
+.item:last-child { border-bottom-left-radius: 9px; border-bottom-right-radius: 9px; }
 /* The 44 px box centre meets the centre of the first text line (canvas page 15). */
 .item .check { margin-top: -2px; }
 .item + .item { border-top: 1px solid var(--line); }
@@ -313,9 +318,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .chip-x { width: 22px; height: 22px; margin: -6px -7px -6px 1px; opacity: 1; }
 }
 
-/* The label list under a +. The list of items clips its corners; not while
-   a label list hangs out of it. */
-#items:has(.picker) { overflow: visible; }
+/* The pop-ups: the label list and the due date pop-up. */
 .picker {
   position: absolute; z-index: 20; top: calc(100% + 8px); left: -6px;
   width: 15rem; max-width: calc(100vw - 32px);

@@ -171,3 +171,21 @@ func TestAppJSDuePopupButtonsKeepFocus(t *testing.T) {
 	assertContains(t, js, `e.target.closest(isDuePicker() ? "input" : ".picker-search")`)
 	assertNotContains(t, js, `isDuePicker() ? "input, button"`)
 }
+
+// The list box does not clip its rows, so the pop-up of the last row hangs
+// out of it in every browser; the first and last rows round their own
+// corners. (A rule with :has() let it out before, and a browser without it
+// cut the pop-up off.)
+func TestListBoxDoesNotClipPopups(t *testing.T) {
+	h, _ := newTestApp(t)
+	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
+	i := strings.Index(css, "#items {")
+	if i < 0 {
+		t.Fatal("no #items rule")
+	}
+	if rule := css[i : i+strings.Index(css[i:], "}")]; strings.Contains(rule, "overflow") {
+		t.Fatalf("#items must not clip: %s", rule)
+	}
+	assertNotContains(t, css, "#items:has(.picker)")
+	assertContains(t, css, ".item:first-child { border-top-left-radius: 9px;", ".item:last-child { border-bottom-left-radius: 9px;")
+}
