@@ -8,7 +8,8 @@ import (
 
 // dueView is the due label of one item.
 type dueView struct {
-	Text    string
+	Text    string // "Due tomorrow, 10:00" or "Overdue since …"
+	Chip    string // the text of the row's date chip: "Tomorrow, 10:00" or "Overdue since …"
 	Overdue bool
 }
 
@@ -20,9 +21,10 @@ func dueLabel(it todo.Item, now time.Time) dueView {
 	}
 	d := it.DueAt.In(now.Location())
 	if it.Overdue(now) {
-		return dueView{Text: "Overdue since " + dueWhen(d, it.DueAllDay, now), Overdue: true}
+		text := "Overdue since " + dueWhen(d, it.DueAllDay, now)
+		return dueView{Text: text, Chip: text, Overdue: true}
 	}
-	return dueView{Text: dueText(it, now)}
+	return dueView{Text: dueText(it, now), Chip: upperFirst(dueWhen(d, it.DueAllDay, now))}
 }
 
 // dueText is the plain "Due …" label, also used in notifications.

@@ -26,8 +26,9 @@ func TestDuePopupShowsFields(t *testing.T) {
 		`name="due_date" value="2026-10-03"`, `name="due_time" value="14:00"`,
 		`<input type="hidden" name="due_tz" value="`,
 		`<p class="hint">Leave the time empty for “all day”</p>`,
-		`<button type="submit" class="due-save">Save</button>`,
-		`<button type="button" class="due-remove" hx-put="/items/1/due" hx-params="none">Remove date</button>`)
+		`<div class="due-actions"><button type="submit" class="due-save">Save</button></div>`)
+	// The × in the date chip removes a date (canvas page 10, option D).
+	assertNotContains(t, timed.Body.String(), "Remove date")
 	empty := do(t, h, "GET", "/items/2/due", nil, htmxHeaders).Body.String()
 	assertContains(t, empty, `name="due_date" value=""`, `name="due_time" value=""`)
 	assertNotContains(t, empty, "Remove date", "novalidate")
@@ -72,8 +73,7 @@ func TestDuePopupBadValue(t *testing.T) {
 	assertContains(t, body, `id="due-picker-1"`,
 		`name="due_date" value="" aria-label="Due date" aria-invalid="true" aria-describedby="due-error-1"`,
 		`name="due_time" value="10:00"`,
-		`<p class="hint error" id="due-error-1" role="alert">Pick a day for the due date.</p>`,
-		"Remove date")
+		`<p class="hint error" id="due-error-1" role="alert">Pick a day for the due date.</p>`)
 	assertNotContains(t, body, "<li")
 	if got, _ := svc.Get(context.Background(), 1, 1); got.DueAt == nil {
 		t.Fatal("the due date was removed after a bad value")
@@ -95,8 +95,9 @@ func TestDuePopupUnknownItem(t *testing.T) {
 	}
 }
 
-// The gray line is: due text, calendar icon, labels, + (canvas page 10, option A).
-func TestRowHasDueButtonAndCalendarIcon(t *testing.T) {
+// The gray line is: the date chip, the labels, the "Label" chip (canvas page
+// 10, "due date and labels of a row as chips", option D).
+func TestRowHasDueChipAndLabelChip(t *testing.T) {
 	h, svc := newTestApp(t)
 	ctx := context.Background()
 	tomorrow := time.Now().AddDate(0, 0, 1).Format("2006-01-02")
@@ -105,10 +106,15 @@ func TestRowHasDueButtonAndCalendarIcon(t *testing.T) {
 	mustAdd(t, svc, "No date")
 	body := do(t, h, "GET", "/", nil, nil).Body.String()
 	assertContains(t, body,
-		`<span class="meta"><button type="button" class="due" title="Change the due date" aria-haspopup="dialog" data-due-for="1">Due tomorrow, 14:00</button><span class="due-add-wrap"><button type="button" id="due-add-1" class="due-add" aria-label="Set the due date of “Call the dentist”" title="Set the due date" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/1/due"><svg width="12" height="12"`,
-		`<span class="meta"><span class="due-add-wrap"><button type="button" id="due-add-2" class="due-add"`)
+		`<span class="meta"><span class="due-add-wrap due-chip is-set"><button type="button" id="due-add-1" class="due-add" aria-label="Due tomorrow, 14:00. Change the due date of “Call the dentist”" title="Change the due date" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/1/due"><svg width="12" height="12"`,
+		`</svg>Tomorrow, 14:00</button><button type="button" class="due-x" aria-label="Remove the due date of “Call the dentist”" title="Remove the due date"`,
+		`hx-put="/items/1/due" hx-params="none" hx-target="closest li" hx-swap="outerHTML">`,
+		`<span class="meta"><span class="due-add-wrap due-chip"><button type="button" id="due-add-2" class="due-add" aria-label="Set the due date of “No date”"`,
+		`</svg>Due date</button></span>`,
+		`id="label-add-2" class="label-add"`, `</svg>Label</button>`)
+	assertNotContains(t, body, `class="due"`, `data-due-for=`)
 	if i, j := strings.Index(body, `id="due-add-1"`), strings.Index(body, `class="chip" data-color=`); i < 0 || j < i {
-		t.Fatalf("the calendar icon must come before the labels (icon at %d, chip at %d)", i, j)
+		t.Fatalf("the date chip must come before the labels (date at %d, label at %d)", i, j)
 	}
 }
 
@@ -116,17 +122,16 @@ func TestCalendarIconCSS(t *testing.T) {
 	h, _ := newTestApp(t)
 	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
 	assertContains(t, css,
-		".label-add, .due-add {", ".label-add::after, .due-add::after {",
-		"button.due {", ".due-picker {", ".due-actions {", ".due-save {", ".due-remove {")
+		".label-add, .due-add {", ".due-chip.is-set {", ".due-chip.is-over {", ".due-x {",
+		".due-picker {", ".due-actions {", ".due-save {", ".due-remove {")
 }
 
-// The calendar icon and the + show on every row, also with no pointer on it
-// (canvas page 16, "always shown", option A). Only the × on a chip waits for
-// the pointer.
-func TestRowIconsAlwaysShow(t *testing.T) {
+// The "Due date" and "Label" chips show on every row, also with no pointer
+// on it; the pointer on the row only makes them blue (option D). Only the ×
+// waits for the pointer.
+func TestRowChipsAlwaysShow(t *testing.T) {
 	h, _ := newTestApp(t)
 	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
-	assertNotContains(t, css, ".item:hover .label-add", ".item:hover .due-add")
 	i := strings.Index(css, ".label-add, .due-add {")
 	if i < 0 {
 		t.Fatal("no .label-add, .due-add rule")
@@ -134,17 +139,18 @@ func TestRowIconsAlwaysShow(t *testing.T) {
 	if rule := css[i : i+strings.Index(css[i:], "}")]; strings.Contains(rule, "opacity") {
 		t.Fatalf("the icons must not be hidden: %s", rule)
 	}
-	assertContains(t, css, ".chip:hover .chip-x, .chip:focus-within .chip-x {")
+	assertContains(t, css, ".chip:hover .chip-x, .chip:focus-within .chip-x {",
+		".due-chip:hover .due-x, .due-chip:focus-within .due-x {", ".item:hover .label-add, .item:focus-within .label-add,")
 }
 
-// On hover only the lines of the calendar icon and the + get darker; there
-// is no circle behind them, also while the pop-up is open.
-func TestRowIconHoverHasNoBackground(t *testing.T) {
+// A touch screen has no hover: the chips are blue and taller, and the ×
+// always shows.
+func TestRowChipsOnTouch(t *testing.T) {
 	h, _ := newTestApp(t)
 	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
 	assertContains(t, css,
-		".label-add:hover, .due-add:hover { color: var(--muted); }",
-		".label-add[aria-expanded=\"true\"], .due-add[aria-expanded=\"true\"] { color: var(--accent); }")
+		".label-add, .due-add, .due-chip.is-set { height: 28px; }",
+		".due-x, .due-chip .due-x { width: 22px; height: 22px; margin: 0 3px 0 -4px; opacity: 1; }")
 }
 
 // One pop-up code serves the label list and the due date pop-up.
@@ -152,7 +158,7 @@ func TestAppJSOpensTheDuePopup(t *testing.T) {
 	h, _ := newTestApp(t)
 	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
 	assertContains(t, js,
-		`closest(".label-add, .due-add, .draft-label, .draft-due")`, `closest("button.due")`, `classList.contains("due-picker")`,
+		`closest(".label-add, .due-add, .draft-label, .draft-due")`, `classList.contains("due-picker")`,
 		`focusAfterSwap = "due-add-"`, `input:not([type="hidden"])`)
 }
 

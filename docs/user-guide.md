@@ -100,19 +100,22 @@ above them.
 
 ## Due dates
 
-Each item has a small calendar icon under its text.
+Under its text, an item without a date has a **Due date** chip with a calendar. It is gray until
+the pointer is on the item.
 
-1. Click the calendar icon. A pop-up opens.
+1. Click **Due date**. A pop-up opens.
 2. Pick a day.
 3. If you want a time, type it in the second field. Type only the digits: `1430` becomes 14:30.
    The app uses the 24-hour clock.
 4. Click **Save**.
 
-![The due date pop-up](guide-images/due-popup.png "the due date pop-up of the item “Send the invoice”, with the day, the time 10:00, Save and Remove date.")
+![The due date pop-up](guide-images/due-popup.png "the due date pop-up of the item “Send the invoice”, with the day, the time 10:00 and Save.")
 
 - If you leave the time empty, the item is due all day.
-- To change a date, click the calendar icon or the due date text.
-- To remove a date, open the pop-up and click **Remove date**.
+- After Save, the chip shows the date, for example "Tomorrow, 10:00". It is red when the item is
+  overdue.
+- To change a date, click the chip.
+- To remove a date, point at the chip and click the × that shows in it.
 - Esc closes the pop-up and does not save.
 
 The app shows the times in the time zone of your browser.
@@ -138,7 +141,7 @@ site in your browser settings.
 An overdue item shows the buttons **+5 min**, **+10 min**, **+15 min** and **+30 min**. Click one
 to move the due time to that many minutes from now.
 
-![An overdue item with the postpone buttons](guide-images/overdue.png "an overdue item. The red text shows since when it is overdue. Under it are the four postpone buttons.")
+![An overdue item with the postpone buttons](guide-images/overdue.png "an overdue item. The red chip shows since when it is overdue. Under it are the four postpone buttons.")
 
 ## Labels
 
@@ -146,7 +149,8 @@ Labels such as "work" or "home" put your items into groups. Each label has a col
 
 ### Add and remove labels
 
-1. Click the small **+** under the text of an item. The label list opens.
+1. Click the **Label** chip under the text of an item. The label list opens. The chip is gray
+   until the pointer is on the item.
 2. Click a label name to add it to the item. A check shows on its line.
 3. Click a name with a check to remove that label from the item.
 4. The list stays open, so you can click more names. Press Esc or click outside the list to close
@@ -206,7 +210,8 @@ To see all items again, click the × next to "Label: name".
 
 The app works in the browser of a phone. On a touch screen:
 
-- The calendar icon, the + and the × on a label always show, and they are larger.
+- The **Due date** and **Label** chips of an item are blue and taller, and the × on a date or a
+  label always shows.
 - The **Due date** and **Label** buttons under the add field are taller, and the × in the due
   date button always shows.
 - The × to delete a label in the label list always shows.

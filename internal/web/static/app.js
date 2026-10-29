@@ -35,6 +35,11 @@ document.addEventListener("htmx:beforeSwap", (e) => {
     focusAfterSwap = "due-add-" + row.id.slice("item-".length);
     return;
   }
+  if (active.matches(".due-x")) {
+    // The date is gone, the row stays: go on at its "Due date" chip.
+    focusAfterSwap = "due-add-" + row.id.slice("item-".length);
+    return;
+  }
   if (!active.matches(".check, .delete, .chip-x")) {
     return;
   }
@@ -406,14 +411,10 @@ function focusPicker() {
   return input;
 }
 
-// popupButton is the + or calendar icon that a press on target belongs to.
-// A due text belongs to the calendar icon of its row.
+// popupButton is the date chip or the "Label" chip that a press on target
+// belongs to, on a row or under the add field.
 function popupButton(target) {
-  if (!target.closest) {
-    return null;
-  }
-  const due = target.closest("button.due");
-  return due ? due.parentElement.querySelector(".due-add") : target.closest(".label-add, .due-add, .draft-label, .draft-due");
+  return target.closest ? target.closest(".label-add, .due-add, .draft-label, .draft-due") : null;
 }
 
 // resetPicker forgets the open pop-up. A color that the wheel shows but did

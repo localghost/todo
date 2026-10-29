@@ -236,11 +236,11 @@ func TestOverdueOrderUsesBrowserZone(t *testing.T) {
 
 	body := do(t, env.H, "GET", "/", nil, tz("Europe/Warsaw")).Body.String()
 	assertOrder(t, body, "Pay the rent", "Buy milk")
-	assertContains(t, body, `class="due overdue"`)
+	assertContains(t, body, `due-chip is-set is-over"`)
 
 	body = do(t, env.H, "GET", "/", nil, nil).Body.String() // no cookie: UTC, still 2 Oct
 	assertOrder(t, body, "Buy milk", "Pay the rent")
-	assertNotContains(t, body, `class="due overdue"`)
+	assertNotContains(t, body, `is-over"`)
 }
 
 // A due change that keeps the item overdue but moves its due time re-sorts the group.

@@ -14,7 +14,8 @@ func TestDraftDueDate(t *testing.T) {
 	env := newTestEnv(t)
 	body := do(t, env.H, "GET", "/new/due?due_date=2099-03-04&due_time=09:30", nil, htmxHeaders).Body.String()
 	assertContains(t, body, `id="due-picker-0"`, `aria-label="Due date of the new item"`, `hx-post="/new/due"`,
-		`hx-target="#add-extras"`, `value="2099-03-04"`, `value="09:30"`, "Remove date")
+		`hx-target="#add-extras"`, `value="2099-03-04"`, `value="09:30"`)
+	assertNotContains(t, body, "Remove date")
 
 	rec := do(t, env.H, "POST", "/new/due", url.Values{"due_date": {"2099-03-04"}, "due_time": {"930"}, "labels": {""}}, htmxHeaders)
 	if rec.Code != http.StatusOK {
@@ -35,7 +36,7 @@ func TestDraftDueDate(t *testing.T) {
 	}
 	assertContains(t, rec.Body.String(), "Pick a day for the due date.", `value="14:00"`)
 
-	// "clear" (the × and "Remove date") takes the date away.
+	// "clear" (the × in the date button) takes the date away.
 	rec = do(t, env.H, "POST", "/new/due", url.Values{"due_date": {"2099-03-04"}, "clear": {"1"}}, htmxHeaders)
 	assertContains(t, rec.Body.String(), ">Due date</button>", `name="due_date" value=""`)
 	assertNotContains(t, rec.Body.String(), `class="pill-x"`, "due-set")

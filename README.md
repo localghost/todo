@@ -15,13 +15,13 @@ Privacy policy: https://toodoo.fly.dev/privacy (the text is in
 - Add, edit, check off and delete items. Hide the done ones, or clear them all at once.
 - Give a new item its due date and labels with the "Due date" and "Label" buttons under the
   add field.
-- Give an item a due date and time with the calendar icon on each item (or a click on its
-  due date). Type the time as digits: 1430 becomes 14:30. The
+- Give an item a due date and time with its "Due date" chip. The chip then shows the date,
+  and its × removes it. Type the time as digits: 1430 becomes 14:30. The
   browser can remind you, and you can postpone by 5, 10, 15 or 30 minutes.
 - Overdue items move to the top of the list.
 - Drag items by the grip (⋮⋮) to change their order, or use the arrow keys. Overdue items
   stay at the top.
-- Put labels such as "work" or "home" on items with the small + on each item. It opens a
+- Put labels such as "work" or "home" on items with the "Label" chip on each item. It opens a
   searchable list of all your labels: click names to add or remove several labels, click a
   label's color circle to pick any color from a color wheel, and use its × to delete it. Point
   at a label on an item to remove it with its ×. Click a label to see only its items.

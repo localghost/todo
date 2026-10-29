@@ -4,7 +4,7 @@
 
 {{define "x-small-icon"}}<svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>{{end}}
 
-{{define "plus-icon"}}<svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>{{end}}
+{{define "plus-icon"}}<svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>{{end}}
 
 {{define "tick-icon"}}<svg width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2.5 6.2l2.3 2.3 4.7-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>{{end}}
 
@@ -25,8 +25,9 @@
 <div class="text-col">
 <button class="text" type="button" title="Click to edit"
   hx-get="/items/{{.ID}}/edit" hx-target="closest li" hx-swap="outerHTML">{{.Text}}</button>
-<span class="meta">{{if $d.Text}}<button type="button" class="due{{if $d.Overdue}} overdue{{end}}" title="Change the due date" aria-haspopup="dialog" data-due-for="{{.ID}}">{{$d.Text}}</button>{{end}}<span class="due-add-wrap"><button type="button" id="due-add-{{.ID}}" class="due-add" aria-label="Set the due date of “{{.Text}}”" title="Set the due date" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/due">{{template "calendar-icon"}}</button></span>{{range .Labels}}<span class="chip" data-color="{{.Color}}" data-label="{{.ID}}"><a href="/?label={{.ID}}" title="Show only “{{.Name}}”">{{.Name}}</a><button type="button" class="chip-x" aria-label="Remove label “{{.Name}}” from “{{$.Text}}”" title="Remove label"
-  hx-delete="/items/{{$.ID}}/labels/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">{{template "x-small-icon"}}</button></span>{{end}}<span class="label-add-wrap"><button type="button" id="label-add-{{.ID}}" class="label-add" aria-label="Add a label to “{{.Text}}”" title="Add a label" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/labels">{{template "plus-icon"}}</button></span></span>
+<span class="meta"><span class="due-add-wrap due-chip{{if $d.Text}} is-set{{if $d.Overdue}} is-over{{end}}{{end}}"><button type="button" id="due-add-{{.ID}}" class="due-add" aria-label="{{if $d.Text}}{{$d.Text}}. Change the due date of “{{.Text}}”{{else}}Set the due date of “{{.Text}}”{{end}}" title="{{if $d.Text}}Change the due date{{else}}Set the due date{{end}}" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/due">{{template "calendar-icon"}}{{if $d.Text}}{{$d.Chip}}{{else}}Due date{{end}}</button>{{if $d.Text}}<button type="button" class="due-x" aria-label="Remove the due date of “{{.Text}}”" title="Remove the due date"
+  hx-put="/items/{{.ID}}/due" hx-params="none" hx-target="closest li" hx-swap="outerHTML">{{template "x-small-icon"}}</button>{{end}}</span>{{range .Labels}}<span class="chip" data-color="{{.Color}}" data-label="{{.ID}}"><a href="/?label={{.ID}}" title="Show only “{{.Name}}”">{{.Name}}</a><button type="button" class="chip-x" aria-label="Remove label “{{.Name}}” from “{{$.Text}}”" title="Remove label"
+  hx-delete="/items/{{$.ID}}/labels/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">{{template "x-small-icon"}}</button></span>{{end}}<span class="label-add-wrap"><button type="button" id="label-add-{{.ID}}" class="label-add" aria-label="Add a label to “{{.Text}}”" title="Add a label" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/labels">{{template "plus-icon"}}Label</button></span></span>
 {{if $d.Overdue}}<span class="postpone" role="group" aria-label="Postpone">{{range postponeMinutes}}<button type="button" class="postpone-btn" aria-label="Postpone {{$.Text}} by {{.}} minutes" hx-post="/items/{{$.ID}}/postpone?minutes={{.}}" hx-target="closest li" hx-swap="outerHTML">+{{.}} min</button>{{end}}</span>{{end}}
 </div>
 <button class="delete" type="button" aria-label="Delete: {{.Text}}"
@@ -75,5 +76,5 @@
 </div>
 <input type="hidden" name="due_tz" value="{{zone}}">
 {{if .Error}}<p class="hint error" id="due-error-{{.Item.ID}}" role="alert">{{.Error}}</p>{{else}}<p class="hint">Leave the time empty for “all day”</p>{{end}}
-<div class="due-actions"><button type="submit" class="due-save">Save</button>{{if .Draft}}{{if .DueDate}}<button type="button" class="due-remove" hx-post="/new/due" hx-vals='{"clear":"1"}'>Remove date</button>{{end}}{{else if .Item.DueAt}}<button type="button" class="due-remove" hx-put="/items/{{.Item.ID}}/due" hx-params="none">Remove date</button>{{end}}</div>
+<div class="due-actions"><button type="submit" class="due-save">Save</button></div>
 </form>{{end}}

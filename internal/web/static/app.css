@@ -126,14 +126,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   overflow-wrap: anywhere;
 }
 .meta { font-size: 13px; line-height: 1.3; color: var(--muted); }
-.due.overdue { color: var(--error); font-weight: 600; }
-/* The due text opens the due date pop-up (canvas page 10). */
-button.due {
-  font: inherit; color: inherit; text-align: left;
-  padding: 0; background: none; border: none; cursor: pointer;
-}
-button.due:hover { text-decoration: underline; }
-button.due:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .postpone { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 .postpone-btn {
   font: inherit; font-size: 12px; font-weight: 600; color: var(--accent);
@@ -266,12 +258,7 @@ button.due:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 
 /* Labels on a row (canvas page 16, the + boards). The × on a chip shows when
    the pointer is on the chip or focus is in it; touch screens have no hover,
-   so there it always shows. The + always shows on every row, also on a row
-   without labels (the smaller gray +, option C; "always shown", option A).
-   The + is a small gray plus with no circle; ::after keeps a larger click
-   area. The calendar icon of the due date (canvas page 10, option A) looks
-   and shows the same way. On hover only the icon gets darker; it has no
-   background. */
+   so there it always shows. */
 .chip-x {
   flex: none; width: 0; height: 16px; margin: -2px 0; padding: 0; overflow: hidden; opacity: 0;
   display: inline-flex; align-items: center; justify-content: center;
@@ -280,19 +267,49 @@ button.due:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 .chip:hover .chip-x, .chip:focus-within .chip-x { width: 16px; margin: -2px -4px -2px 3px; opacity: 1; }
 .chip-x:hover { background: var(--l-bd); }
 .chip-x:focus-visible { outline: 2px solid var(--accent); }
+
+/* The date chip and the "Label" chip of a row work like the buttons under
+   the add field (canvas page 10, "due date and labels of a row as chips",
+   option D). Without a date the row shows a quiet "Due date" chip, and after
+   the labels a quiet "Label" chip: gray until the pointer or the focus is on
+   the row, then blue. A set date is a filled chip (red when overdue, gray on
+   a done row) that opens the pop-up; its × shows on hover or focus and
+   removes the date. A touch screen has no hover: the chips are blue, taller,
+   and the × always shows. */
 .label-add-wrap, .due-add-wrap { position: relative; display: inline-flex; }
 .label-add, .due-add {
-  position: relative; width: 16px; height: 16px; padding: 0; border-radius: 50%; cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center;
-  color: #8C8A84; background: none; border: none;
+  display: inline-flex; align-items: center; gap: 4px; height: 22px; box-sizing: border-box;
+  padding: 0 8px 0 6px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  font: inherit; font-size: 12px; font-weight: 600; line-height: 1;
+  color: #8C8A84; background: transparent; border: 1px solid var(--line);
 }
-.label-add::after, .due-add::after { content: ""; position: absolute; inset: -4px; }
-.label-add:hover, .due-add:hover { color: var(--muted); }
-.label-add[aria-expanded="true"], .due-add[aria-expanded="true"] { color: var(--accent); }
-.label-add:focus-visible, .due-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.item:hover .label-add, .item:focus-within .label-add,
+.item:hover .due-chip:not(.is-set) .due-add, .item:focus-within .due-chip:not(.is-set) .due-add {
+  color: var(--accent); background: var(--card); border-color: #C9D6F5;
+}
+.label-add:hover, .due-chip:not(.is-set) .due-add:hover,
+.label-add[aria-expanded="true"], .due-chip:not(.is-set) .due-add[aria-expanded="true"] { color: var(--accent); background: var(--card); border-color: var(--accent); }
+.label-add:focus-visible, .due-add:focus-visible, .due-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.due-chip.is-set {
+  align-items: center; height: 22px; box-sizing: border-box; border-radius: 999px;
+  background: #EEF2FC; border: 1px solid #C9D6F5; color: var(--accent-dark);
+}
+.due-chip.is-over { background: #FCEDEC; border-color: #F2C4C0; color: var(--error); }
+.done .due-chip.is-set { background: #EFEEEA; border-color: #D9D7D0; color: #4A4843; opacity: 0.7; }
+.due-chip.is-set:hover, .due-chip.is-set:focus-within { border-color: currentColor; }
+.due-chip.is-set .due-add { height: 20px; color: inherit; background: none; border: none; }
+.due-x {
+  flex: none; width: 0; height: 16px; margin: 0; padding: 0; overflow: hidden; opacity: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: 50%; color: inherit; background: none; cursor: pointer;
+}
+.due-chip:hover .due-x, .due-chip:focus-within .due-x { width: 16px; margin: 0 4px 0 -4px; opacity: 1; }
+.due-x:hover { background: rgba(31, 30, 27, 0.12); }
 @media (hover: none) {
-  .label-add, .due-add { width: 20px; height: 20px; }
-  .label-add::after, .due-add::after { inset: -6px; }
+  .label-add, .due-add, .due-chip.is-set { height: 28px; }
+  .due-chip.is-set .due-add { height: 26px; }
+  .label-add, .due-chip:not(.is-set) .due-add { color: var(--accent); background: var(--card); border-color: #C9D6F5; }
+  .due-x, .due-chip .due-x { width: 22px; height: 22px; margin: 0 3px 0 -4px; opacity: 1; }
   .chip-x { width: 22px; height: 22px; margin: -6px -7px -6px 1px; opacity: 1; }
 }
 

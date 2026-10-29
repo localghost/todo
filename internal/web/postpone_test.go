@@ -38,9 +38,9 @@ func TestPostponeRoute(t *testing.T) {
 	if rec.Header().Get("HX-Retarget") != "#list-section" {
 		t.Fatalf("HX-Retarget = %q, want #list-section", rec.Header().Get("HX-Retarget"))
 	}
-	assertContains(t, body, `<section id="list-section"`, `<li id="item-1" class="item">`, `<button type="button" class="due" title="Change the due date" aria-haspopup="dialog" data-due-for="1">Due `,
+	assertContains(t, body, `<section id="list-section"`, `<li id="item-1" class="item">`, `<span class="due-add-wrap due-chip is-set"><button type="button" id="due-add-1"`,
 		`id="toolbar" class="toolbar"`)
-	assertNotContains(t, body, `class="due overdue"`, `class="postpone-btn"`)
+	assertNotContains(t, body, `is-over"`, `class="postpone-btn"`)
 }
 
 func TestPostponeRouteErrors(t *testing.T) {

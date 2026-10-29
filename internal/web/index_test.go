@@ -143,10 +143,9 @@ func TestItemShowsDueLabel(t *testing.T) {
 
 	body := do(t, h, "GET", "/", nil, nil).Body.String()
 	assertContains(t, body,
-		`<span class="meta"><button type="button" class="due" title="Change the due date" aria-haspopup="dialog" data-due-for="1">Due tomorrow, 14:00</button><span class="due-add-wrap">`,
-		`<span class="meta"><button type="button" class="due overdue" title="Change the due date" aria-haspopup="dialog" data-due-for="2">Overdue since 1 Jan 2020, 08:00</button><span class="due-add-wrap">`,
-		`<span class="meta"><button type="button" class="due" title="Change the due date" aria-haspopup="dialog" data-due-for="3">Due 1 Jan 2020</button><span class="due-add-wrap">`)
-	assertNotContains(t, body, `· <button type="button" class="due`)
+		`<span class="due-add-wrap due-chip is-set"><button type="button" id="due-add-1"`, `</svg>Tomorrow, 14:00</button>`,
+		`<span class="due-add-wrap due-chip is-set is-over"><button type="button" id="due-add-2"`, `</svg>Overdue since 1 Jan 2020, 08:00</button>`,
+		`<span class="due-add-wrap due-chip is-set"><button type="button" id="due-add-3"`, `</svg>1 Jan 2020</button>`)
 }
 
 // The text field of the add form stretches; the Add button keeps its natural width.
