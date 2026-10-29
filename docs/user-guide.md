@@ -102,7 +102,8 @@ above them.
 
 ### Sort by due date
 
-Click **Sort by due date** above the list. The order is then:
+Click **Sort by due date** above the list. The rows slide to their new places, so you can see
+where each item goes. The order is then:
 
 1. The overdue items, the most overdue first.
 2. The other items with a due date, the nearest date first. An item that is due all day comes
