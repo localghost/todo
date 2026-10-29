@@ -27,28 +27,22 @@
 
 {{define "labels-section"}}<section id="labels-section" class="labels-section" aria-label="Your labels">
 <form id="label-create" class="label-create" method="post" action="/labels" hx-post="/labels" hx-target="#labels-section" hx-swap="outerHTML">
-<button type="button" class="sw lp-new-sw" data-color="{{.NewColor}}" aria-label="Color of the new label" title="Choose a color for the new label"></button>
+<span class="lp-sw-wrap"><button type="button" class="sw lp-new-sw" data-color="{{.NewColor}}" aria-label="Color of the new label" title="Choose a color for the new label" aria-haspopup="dialog" aria-expanded="false"></button></span>
 <input type="hidden" name="color" value="{{.NewColor}}">
-<label class="visually-hidden" for="label-search">Search or create a label</label>
-<input id="label-search" name="name" value="{{.Value}}" placeholder="Search or create…" autocomplete="off" maxlength="30"{{if .Error}} aria-invalid="true" aria-describedby="label-error"{{end}}>
+<label class="visually-hidden" for="label-name">Name of the new label</label>
+<input id="label-name" name="name" value="{{.Value}}" placeholder="New label" autocomplete="off" maxlength="30"{{if .Error}} aria-invalid="true" aria-describedby="label-error"{{end}}>
 <button type="submit" class="btn-primary">Create</button>
 </form>
 {{if .Error}}<p class="error" id="label-error" role="alert">{{.Error}}</p>{{end}}
 {{if .Labels}}<p class="hint lp-hint">Click a label to show only its items. Click a color circle to change the color.</p>
 <ul class="lp-list">
-{{range .Labels}}<li class="lp-line" data-label="{{.ID}}" data-name="{{.Name}}" data-items="{{.Items}}"><button type="button" class="sw" data-color="{{.Color}}" data-label="{{.ID}}" aria-label="Color of “{{.Name}}”" title="Change the color"></button><a class="lp-name" href="/?label={{.ID}}" title="Show only “{{.Name}}”">{{.Name}}</a><span class="lp-count">{{.Count}}</span><button type="button" class="lp-x" aria-label="Delete label “{{.Name}}”" title="Delete label">{{template "x-icon"}}</button></li>
+{{range .Labels}}<li class="lp-line" data-label="{{.ID}}" data-name="{{.Name}}" data-items="{{.Items}}"><span class="lp-sw-wrap"><button type="button" class="sw" data-color="{{.Color}}" data-label="{{.ID}}" aria-label="Color of “{{.Name}}”" title="Change the color" aria-haspopup="dialog" aria-expanded="false"></button></span><a class="lp-name" href="/?label={{.ID}}" title="Show only “{{.Name}}”">{{.Name}}</a><span class="lp-count">{{.Count}}</span><button type="button" class="lp-x" aria-label="Delete label “{{.Name}}”" title="Delete label">{{template "x-icon"}}</button></li>
 {{end}}</ul>
-<p class="lp-none" hidden>No label has this name. Click Create to make it.</p>
 {{else}}<p class="lp-empty">You have no labels yet. Type a name above and click Create, or add a label to an item with “+ Label”.</p>{{end}}
-<div class="lp-color" role="group" aria-labelledby="lp-color-title" hidden>
+<div class="picker lp-color" role="dialog" aria-labelledby="lp-color-title" hidden>
 <p class="lp-color-title" id="lp-color-title"></p>
-<div class="lp-color-body">
 <div class="wheel" role="slider" tabindex="0" aria-label="Hue and strength" aria-valuemin="0" aria-valuemax="359" aria-valuenow="0"><span class="wheel-ring"></span></div>
-<div class="lp-color-side">
 <p class="color-preview">Preview <span class="chip"></span></p>
 <div class="due-actions"><button type="button" class="due-save" data-color-done>Done</button><button type="button" class="due-remove" data-color-cancel>Cancel</button></div>
-<p class="hint">Drag in the wheel, or use the arrow keys. Enter is Done, Esc is Cancel.</p>
-</div>
-</div>
 </div>
 </section>{{end}}

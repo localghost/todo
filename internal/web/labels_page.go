@@ -1,8 +1,10 @@
 package web
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"todo/internal/todo"
 )
@@ -59,16 +61,23 @@ func (s *server) labelsPage(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, http.StatusOK, part{"labels-page", v})
 }
 
-// createLabel makes the label in the form field "name" with "color". A name
-// the user has a label for already changes nothing. The answer is the
-// section of the page; on a bad name it keeps the name and shows why.
+// createLabel makes the label in the form field "name" with "color". The
+// answer is the section of the page; on a bad name, or a name that a label
+// has already (ignoring case), it keeps the name and shows why.
 func (s *server) createLabel(w http.ResponseWriter, r *http.Request) {
 	name, color := r.FormValue("name"), r.FormValue("color")
-	_, err := s.svc.CreateLabel(r.Context(), userID(r), name, color)
-	msg := labelsMessage(err)
-	if err != nil && msg == "" {
+	msg, err := s.existingLabelMessage(r, name)
+	if err != nil {
 		s.serverError(w, r, err)
 		return
+	}
+	if msg == "" {
+		_, err = s.svc.CreateLabel(r.Context(), userID(r), name, color)
+		msg = labelsMessage(err)
+		if err != nil && msg == "" {
+			s.serverError(w, r, err)
+			return
+		}
 	}
 	v, verr := s.labelsView(r)
 	if verr != nil {
@@ -89,4 +98,23 @@ func (s *server) createLabel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, status, part{"labels-section", v})
+}
+
+// existingLabelMessage says so if the user has a label with this name
+// already (ignoring case and extra spaces), else "".
+func (s *server) existingLabelMessage(r *http.Request, name string) (string, error) {
+	name = strings.Join(strings.Fields(name), " ")
+	if name == "" {
+		return "", nil
+	}
+	labels, err := s.svc.Labels(r.Context(), userID(r))
+	if err != nil {
+		return "", err
+	}
+	for _, l := range labels {
+		if strings.EqualFold(l.Name, name) {
+			return fmt.Sprintf("You have a label “%s” already.", l.Name), nil
+		}
+	}
+	return "", nil
 }

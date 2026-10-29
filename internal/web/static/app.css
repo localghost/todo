@@ -536,10 +536,11 @@ main.guide { display: block; max-width: 760px; font-size: 17px; line-height: 1.5
   .guide th, .guide td { padding: 6px; }
 }
 
-/* The Labels page (canvas page "16 · Labels", board "Labels page again"):
-   the look of the Account page; one line per label with its color circle,
-   name, number of items and ×. The wheel opens inside the line, the delete
-   question under it (labels.js). */
+/* The Labels page (canvas page "16 · Labels", boards "Labels page again" and
+   "the field only creates, the color wheel as a pop-up", W1): the look of
+   the Account page; one line per label with its color circle, name, number
+   of items and ×. The color wheel is a .picker pop-up under the circle, the
+   delete question is under the line (labels.js). */
 .labels-wrap { max-width: 640px; }
 .labels-section { display: flex; flex-direction: column; gap: 12px; }
 .label-create { display: flex; align-items: center; gap: 8px; }
@@ -555,7 +556,8 @@ main.guide { display: block; max-width: 760px; font-size: 17px; line-height: 1.5
 .lp-line, .lp-ask { padding: 8px 12px; }
 .lp-line { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-height: 30px; }
 .lp-list > li + li { border-top: 1px solid var(--line); }
-.lp-line[hidden], .lp-none[hidden], .lp-color[hidden] { display: none; }
+.lp-color[hidden] { display: none; }
+.lp-sw-wrap { position: relative; display: inline-flex; flex: none; }
 .lp-name { flex: 1 1 auto; min-width: 0; font-size: 16px; color: var(--ink); overflow-wrap: anywhere; }
 .lp-name:hover { color: var(--accent); }
 .lp-count { flex: none; font-size: 13px; color: var(--muted); }
@@ -568,13 +570,10 @@ main.guide { display: block; max-width: 760px; font-size: 17px; line-height: 1.5
 .lp-line.asking { background: #FCEDEC; }
 .lp-ask { display: flex; flex-direction: column; gap: 8px; background: #FCEDEC; font-size: 14px; }
 .lp-ask p { margin: 0; }
-.lp-none, .lp-empty { margin: 0; font-size: 15px; color: var(--muted); }
+.lp-empty { margin: 0; font-size: 15px; color: var(--muted); }
 .lp-empty { padding: 16px 14px; background: var(--card); border: 1px dashed var(--line); border-radius: 10px; }
-.lp-color { flex: 1 0 100%; display: flex; flex-direction: column; gap: 8px; padding: 10px 0 4px; }
+.lp-color { gap: 10px; padding: 12px; left: -10px; }
 .lp-color-title { margin: 0; font-size: 13px; font-weight: 700; color: var(--muted); }
-.lp-color-body { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-.lp-color-side { display: flex; flex-direction: column; gap: 10px; flex: 1 1 180px; }
-.lp-color-side .hint { margin: 0; }
 .lp-color .due-actions { justify-content: flex-start; }
 @media (hover: none) {
   .lp-x { width: 44px; height: 44px; }

@@ -1,7 +1,9 @@
-// The Labels page (canvas page "16 · Labels", board "Labels page again").
-// Typing in the field shows only the labels whose name has the text. A color
-// circle opens the color wheel under its line; Done saves the color at once
-// (the circle of the new label keeps it for Create). × asks before a delete.
+// The Labels page (canvas page "16 · Labels", boards "Labels page again" and
+// "the field only creates, the color wheel as a pop-up", option W1). The
+// field only creates a label. A color circle opens the color wheel in a
+// pop-up under it; Done saves the color at once (the circle of the new label
+// keeps it for Create). Cancel, Esc or a press outside closes it without a
+// change. × asks before a delete.
 // The server answers a create or a delete with the whole section, so the
 // page starts again from the new section. Needs chips.js and wheel.js.
 "use strict";
@@ -14,23 +16,6 @@ function section() {
 
 function cleanName(v) {
   return v.trim().replace(/\s+/g, " ");
-}
-
-// filterLines shows the lines whose name has the typed text.
-function filterLines() {
-  const s = section();
-  const input = s && s.querySelector("#label-search");
-  if (!input) {
-    return;
-  }
-  const q = cleanName(input.value).toLowerCase();
-  let shown = 0;
-  s.querySelectorAll(".lp-line").forEach((line) => {
-    line.hidden = q !== "" && !line.dataset.name.toLowerCase().includes(q);
-    if (!line.hidden) shown++;
-  });
-  const none = s.querySelector(".lp-none");
-  if (none) none.hidden = shown > 0;
 }
 
 function wheelOf(view) {
@@ -55,16 +40,14 @@ function openColor(sw) {
   const s = section();
   const line = sw.closest(".lp-line");
   const view = s.querySelector(".lp-color");
-  const name = line ? line.dataset.name : cleanName(s.querySelector("#label-search").value) || "new label";
+  const name = line ? line.dataset.name : cleanName(s.querySelector("#label-name").value) || "new label";
   colorEdit = { sw, line, label: line ? line.dataset.label : "", old: sw.dataset.color };
   view.querySelector(".lp-color-title").textContent = line ? "Color of “" + name + "”" : "Color of the new label";
   const chip = view.querySelector(".chip");
   chip.textContent = name;
   chip.dataset.color = colorEdit.old;
-  // In a line the wheel goes inside it, under the name (the list holds
-  // only lines); for the new label it goes under the field.
-  if (line) line.append(view);
-  else s.querySelector(".label-create").after(view);
+  // The pop-up hangs under the circle.
+  sw.parentElement.append(view);
   view.hidden = false;
   sw.setAttribute("aria-expanded", "true");
   wheelOf(view).set(colorEdit.old);
@@ -183,9 +166,17 @@ document.addEventListener("click", (e) => {
   }
 });
 
-document.addEventListener("input", (e) => {
-  if (e.target.id === "label-search") {
-    filterLines();
+// A press outside the open pop-up closes it without a change; a press on
+// its own circle is the click that closes it.
+document.addEventListener("mousedown", (e) => {
+  if (!colorEdit || !e.target.closest) {
+    return;
+  }
+  const view = section().querySelector(".lp-color");
+  if (!view.contains(e.target) && e.target.closest("button.sw") !== colorEdit.sw) {
+    closeColor(false);
+  } else if (view.contains(e.target) && !e.target.closest(".wheel")) {
+    e.preventDefault(); // the buttons must not take the focus first
   }
 });
 
@@ -202,17 +193,16 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// A new section (after Create or a delete): no wheel is open, the field
-// gets the focus, and a typed name filters the lines.
+// A new section (after Create or a delete): no wheel is open, and the field
+// gets the focus.
 document.addEventListener("htmx:afterSwap", (e) => {
   if (e.detail.target.id !== "labels-section" && !document.getElementById("labels-section").contains(e.detail.target)) {
     return;
   }
   colorEdit = null;
-  const input = document.getElementById("label-search");
+  const input = document.getElementById("label-name");
   if (input) {
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
   }
-  filterLines();
 });

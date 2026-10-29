@@ -177,15 +177,15 @@ Click **Labels** at the top right of your list, or **Manage labels…** in a lab
 Labels page shows all your labels. Each line has the color circle, the name, the number of items
 with the label, and an ×. Click a name to show only the items with that label.
 
-![The Labels page](guide-images/labels-page.png "the Labels page with the field “Search or create…”, the button Create, and the labels “home”, “urgent” and “work”, each with its color circle, the number of items and an ×.")
+![The Labels page](guide-images/labels-page.png "the Labels page with the field “New label”, the button Create, and the labels “home”, “urgent” and “work”, each with its color circle, the number of items and an ×.")
 
-- **Find a label:** type a part of its name in the field "Search or create…".
-- **Create a label:** type its name and click **Create**, or press Enter. To pick its color
-  first, click the color circle at the start of the field.
-- **Change a color:** click the color circle of a label. A color wheel opens under the line.
-  Click or drag on the wheel. The angle sets the color, and the distance from the middle sets how
+- **Create a label:** type its name in the field "New label" and click **Create**, or press
+  Enter. To pick its color first, click the color circle at the start of the field. If you have
+  a label with this name already, the page says so.
+- **Change a color:** click the color circle of a label. A pop-up with a color wheel opens under
+  the circle. Click or drag on the wheel. The angle sets the color, and the distance from the middle sets how
   strong it is. You can also use the arrow keys. Click **Done** to save the color, or **Cancel**
-  to keep the old color.
+  to keep the old color. Esc or a click outside the pop-up also keeps the old color.
 - **Delete a label:** click the × of its line. The page asks "Delete “name”?" and shows how many
   items use the label. Click **Delete**. The app removes the label from all items. The items stay.
 

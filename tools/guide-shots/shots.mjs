@@ -137,7 +137,7 @@ async function desktop() {
     await p.shot(out("labels-page.png"), ["main"], 0);
     await p.click(`.lp-line[data-name=${q("work")}] .sw`);
     await p.waitFor("document.activeElement.matches('.wheel')");
-    await p.shot(out("color-wheel.png"), [`.lp-line[data-name=${q("work")}]`]);
+    await p.shot(out("color-wheel.png"), [`.lp-line[data-name=${q("work")}]`, ".lp-color"]);
     await p.key("Escape");
     await p.click(`.lp-line[data-name=${q("urgent")}] .lp-x`);
     await p.waitFor("!!document.querySelector('.lp-ask [data-ask-delete]')");

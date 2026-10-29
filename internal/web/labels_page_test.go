@@ -30,11 +30,12 @@ func TestLabelsPage(t *testing.T) {
 	body := rec.Body.String()
 	assertContains(t, body, "<title>Labels – TooDoo</title>", `<a href="/">← Back to my list</a>`, "<h1>Labels</h1>",
 		`<script src="/static/labels.js" defer></script>`, `<script src="/static/wheel.js" defer></script>`,
-		`hx-post="/labels"`, `placeholder="Search or create…"`, `>Create</button>`,
+		`hx-post="/labels"`, `placeholder="New label"`, `>Create</button>`,
 		fmt.Sprintf(`<a class="lp-name" href="/?label=%d" title="Show only “work”">work</a><span class="lp-count">2 items</span>`, work),
 		fmt.Sprintf(`<a class="lp-name" href="/?label=%d" title="Show only “home”">home</a><span class="lp-count">1 item</span>`, home),
-		`aria-label="Color of “work”"`, `class="lp-x" aria-label="Delete label “work”"`, `class="wheel" role="slider"`)
-	assertNotContains(t, body, "You have no labels yet")
+		`aria-label="Color of “work”"`, `class="lp-x" aria-label="Delete label “work”"`, `class="wheel" role="slider"`,
+		`<span class="lp-sw-wrap"><button type="button" class="sw"`, `class="picker lp-color" role="dialog"`)
+	assertNotContains(t, body, "You have no labels yet", "Search or create", "lp-none")
 
 	// Anonymous: the login page.
 	if rec := do(t, env.H, "GET", "/labels", nil, anon); rec.Code != http.StatusSeeOther {
@@ -71,6 +72,15 @@ func TestLabelsPageCreate(t *testing.T) {
 		t.Fatalf("bad name: %d, want 422", rec.Code)
 	}
 	assertContains(t, rec.Body.String(), "A label can have at most 30 characters.", `aria-invalid="true"`, `value="`+strings.Repeat("x", 31)+`"`)
+	// A name that a label has already (ignoring case and spaces) says so.
+	rec = do(t, env.H, "POST", "/labels", url.Values{"name": {" GARDEN "}}, htmxHeaders)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("existing name: %d, want 422", rec.Code)
+	}
+	assertContains(t, rec.Body.String(), "You have a label “garden” already.", `value=" GARDEN "`)
+	if labels, _ := env.Svc.Labels(context.Background(), env.User.ID); len(labels) != 1 {
+		t.Fatalf("labels = %+v, want only garden", labels)
+	}
 	// Without JavaScript the form answers the whole page.
 	rec = do(t, env.H, "POST", "/labels", url.Values{"name": {"home"}}, nil)
 	assertContains(t, rec.Body.String(), "<h1>Labels</h1>", `data-name="home"`)
@@ -104,5 +114,7 @@ func TestLabelsPageDelete(t *testing.T) {
 func TestLabelsPageScript(t *testing.T) {
 	env := newTestEnv(t)
 	js := do(t, env.H, "GET", "/static/labels.js", nil, nil).Body.String()
-	assertContains(t, js, "makeWheel(", `"/labels/" + edit.label + "/color"`, "No items use it.", `"DELETE", "/labels/" + id`)
+	assertContains(t, js, "makeWheel(", `"/labels/" + edit.label + "/color"`, "No items use it.", `"DELETE", "/labels/" + id`,
+		"sw.parentElement.append(view)", `addEventListener("mousedown"`)
+	assertNotContains(t, js, "filterLines", "label-search")
 }
