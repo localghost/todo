@@ -273,25 +273,24 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .chip-x:hover { background: var(--l-bd); }
 .chip-x:focus-visible { outline: 2px solid var(--accent); }
 
-/* The date chip and the "Label" chip of a row work like the buttons under
-   the add field (canvas page 10, "due date and labels of a row as chips",
-   option D). Without a date the row shows a quiet "Due date" chip, and after
-   the labels a quiet "Label" chip: gray until the pointer or the focus is on
-   the chip itself, then blue ("hover on a row's chips", option A). A set date is a filled chip (red when overdue, gray on
+/* The date and the labels of a row (canvas page 10, "row icons without text
+   again", option 2). Without a date the row shows a small gray calendar icon,
+   and after the labels a small gray +: no text, no circle; ::after keeps a
+   larger click area; the icon gets darker under the pointer and blue while
+   its pop-up is open. A set date is a filled chip (red when overdue, gray on
    a done row) that opens the pop-up; its × shows on hover or focus and
-   removes the date. A touch screen has no hover: the chips are blue, taller,
-   and the × always shows. */
+   removes the date. A touch screen has no hover: the icons are larger and the
+   × always shows. */
 .label-add-wrap, .due-add-wrap { position: relative; display: inline-flex; }
 .label-add, .due-add {
-  display: inline-flex; align-items: center; gap: 4px; height: 22px; box-sizing: border-box;
-  padding: 0 8px 0 6px; border-radius: 999px; cursor: pointer; white-space: nowrap;
-  font: inherit; font-size: 12px; font-weight: 600; line-height: 1;
-  color: #8C8A84; background: transparent; border: 1px solid var(--line);
+  position: relative; width: 16px; height: 16px; padding: 0; border-radius: 50%; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #8C8A84; background: none; border: none;
 }
-.label-add:hover, .label-add:focus-visible, .label-add[aria-expanded="true"],
-.due-chip:not(.is-set) .due-add:hover, .due-chip:not(.is-set) .due-add:focus-visible,
-.due-chip:not(.is-set) .due-add[aria-expanded="true"] { color: var(--accent); background: var(--card); border-color: var(--accent); }
-.label-add:focus-visible, .due-add:focus-visible, .due-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.label-add::after, .due-add::after { content: ""; position: absolute; inset: -4px; }
+.label-add:hover, .due-add:hover { color: var(--muted); }
+.label-add[aria-expanded="true"], .due-add[aria-expanded="true"] { color: var(--accent); }
+.label-add:focus-visible, .due-add:focus-visible, .due-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .due-chip.is-set {
   align-items: center; height: 22px; box-sizing: border-box; border-radius: 999px;
   background: #EEF2FC; border: 1px solid #C9D6F5; color: var(--accent-dark);
@@ -299,7 +298,11 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .due-chip.is-over { background: #FCEDEC; border-color: #F2C4C0; color: var(--error); }
 .done .due-chip.is-set { background: #EFEEEA; border-color: #D9D7D0; color: #4A4843; opacity: 0.7; }
 .due-chip.is-set:hover, .due-chip.is-set:focus-within { border-color: currentColor; }
-.due-chip.is-set .due-add { height: 20px; color: inherit; background: none; border: none; }
+.due-chip.is-set .due-add {
+  width: auto; height: 20px; gap: 4px; padding: 0 8px 0 6px; border-radius: 999px; white-space: nowrap;
+  font: inherit; font-size: 12px; font-weight: 600; line-height: 1; color: inherit;
+}
+.due-chip.is-set .due-add::after { content: none; }
 .due-x {
   flex: none; width: 0; height: 16px; margin: 0; padding: 0; overflow: hidden; opacity: 0;
   display: inline-flex; align-items: center; justify-content: center;
@@ -308,9 +311,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .due-chip:hover .due-x, .due-chip:focus-within .due-x { width: 16px; margin: 0 4px 0 -4px; opacity: 1; }
 .due-x:hover { background: rgba(31, 30, 27, 0.12); }
 @media (hover: none) {
-  .label-add, .due-add, .due-chip.is-set { height: 28px; }
+  .label-add, .due-add { width: 20px; height: 20px; }
+  .label-add::after, .due-add::after { inset: -6px; }
+  .due-chip.is-set { height: 28px; }
   .due-chip.is-set .due-add { height: 26px; }
-  .label-add, .due-chip:not(.is-set) .due-add { color: var(--accent); background: var(--card); border-color: #C9D6F5; }
   .due-x, .due-chip .due-x { width: 22px; height: 22px; margin: 0 3px 0 -4px; opacity: 1; }
   .chip-x { width: 22px; height: 22px; margin: -6px -7px -6px 1px; opacity: 1; }
 }

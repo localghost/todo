@@ -95,9 +95,10 @@ func TestDuePopupUnknownItem(t *testing.T) {
 	}
 }
 
-// The gray line is: the date chip, the labels, the "Label" chip (canvas page
-// 10, "due date and labels of a row as chips", option D).
-func TestRowHasDueChipAndLabelChip(t *testing.T) {
+// The gray line is: the date chip (or the small calendar icon when there is
+// no date), the labels, the small + (canvas page 10, "row icons without text
+// again", option 2).
+func TestRowHasDueChipAndIcons(t *testing.T) {
 	h, svc := newTestApp(t)
 	ctx := context.Background()
 	tomorrow := time.Now().AddDate(0, 0, 1).Format("2006-01-02")
@@ -110,8 +111,12 @@ func TestRowHasDueChipAndLabelChip(t *testing.T) {
 		`</svg>Tomorrow, 14:00</button><button type="button" class="due-x" aria-label="Remove the due date of “Call the dentist”" title="Remove the due date"`,
 		`hx-put="/items/1/due" hx-params="none" hx-target="closest li" hx-swap="outerHTML">`,
 		`<span class="meta"><span class="due-add-wrap due-chip"><button type="button" id="due-add-2" class="due-add" aria-label="Set the due date of “No date”"`,
-		`</svg>Due date</button></span>`,
-		`id="label-add-2" class="label-add"`, `</svg>Label</button>`)
+		`id="label-add-2" class="label-add"`)
+	// The icons of a row have no text.
+	row := body[strings.Index(body, `<li id="item-2"`):]
+	row = row[:strings.Index(row, "</li>")]
+	assertContains(t, row, `</svg></button></span>`, `aria-label="Add a label to “No date”"`)
+	assertNotContains(t, row, "Due date</button>", "Label</button>")
 	assertNotContains(t, body, `class="due"`, `data-due-for=`)
 	if i, j := strings.Index(body, `id="due-add-1"`), strings.Index(body, `class="chip" data-color=`); i < 0 || j < i {
 		t.Fatalf("the date chip must come before the labels (date at %d, label at %d)", i, j)
@@ -126,11 +131,10 @@ func TestCalendarIconCSS(t *testing.T) {
 		".due-picker {", ".due-actions {", ".due-save {", ".due-remove {")
 }
 
-// The "Due date" and "Label" chips show on every row, also with no pointer
-// on it (option D). Only the chip under the pointer, with focus, or with its
-// pop-up open turns blue; the pointer on the row does not ("hover on a row's
-// chips", option A). Only the × waits for the pointer.
-func TestRowChipsAlwaysShow(t *testing.T) {
+// The calendar icon and the + show on every row, also with no pointer on it
+// (option 2). Only the × of the date chip and of a label waits for the
+// pointer. The pointer on the row does not change the icons.
+func TestRowIconsAlwaysShow(t *testing.T) {
 	h, _ := newTestApp(t)
 	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
 	i := strings.Index(css, ".label-add, .due-add {")
@@ -142,17 +146,18 @@ func TestRowChipsAlwaysShow(t *testing.T) {
 	}
 	assertContains(t, css, ".chip:hover .chip-x, .chip:focus-within .chip-x {",
 		".due-chip:hover .due-x, .due-chip:focus-within .due-x {",
-		".label-add:hover, .label-add:focus-visible, .label-add[aria-expanded=\"true\"],\n.due-chip:not(.is-set) .due-add:hover,")
-	assertNotContains(t, css, ".item:hover .label-add", ".item:hover .due-chip")
+		".label-add:hover, .due-add:hover { color: var(--muted); }",
+		".label-add[aria-expanded=\"true\"], .due-add[aria-expanded=\"true\"] { color: var(--accent); }")
+	assertNotContains(t, css, ".item:hover .label-add", ".item:hover .due-chip", ".due-chip:not(.is-set)")
 }
 
-// A touch screen has no hover: the chips are blue and taller, and the ×
-// always shows.
-func TestRowChipsOnTouch(t *testing.T) {
+// A touch screen has no hover: the icons and the date chip are larger, and
+// the × always shows.
+func TestRowIconsOnTouch(t *testing.T) {
 	h, _ := newTestApp(t)
 	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
 	assertContains(t, css,
-		".label-add, .due-add, .due-chip.is-set { height: 28px; }",
+		".label-add, .due-add { width: 20px; height: 20px; }", ".due-chip.is-set { height: 28px; }",
 		".due-x, .due-chip .due-x { width: 22px; height: 22px; margin: 0 3px 0 -4px; opacity: 1; }")
 }
 

@@ -100,10 +100,9 @@ above them.
 
 ## Due dates
 
-Under its text, an item without a date has a **Due date** chip with a calendar. It is gray until
-the pointer is on it.
+Under its text, an item without a date has a small calendar icon.
 
-1. Click **Due date**. A pop-up opens.
+1. Click the calendar icon. A pop-up opens.
 2. Pick a day.
 3. If you want a time, type it in the second field. Type only the digits: `1430` becomes 14:30.
    The app uses the 24-hour clock.
@@ -149,8 +148,7 @@ Labels such as "work" or "home" put your items into groups. Each label has a col
 
 ### Add and remove labels
 
-1. Click the **Label** chip under the text of an item. The label list opens. The chip is gray
-   until the pointer is on it.
+1. Click the small **+** under the text of an item. The label list opens.
 2. Click a label name to add it to the item. A check shows on its line.
 3. Click a name with a check to remove that label from the item.
 4. The list stays open, so you can click more names. Press Esc or click outside the list to close
@@ -213,8 +211,8 @@ To see all items again, click the × next to "Label: name".
 
 The app works in the browser of a phone. On a touch screen:
 
-- The **Due date** and **Label** chips of an item are blue and taller, and the × on a date or a
-  label always shows.
+- The calendar icon and the + of an item are larger, and the × on a date or a label always
+  shows.
 - The **Due date** and **Label** buttons under the add field are taller, and the × in the due
   date button always shows.
 - On the Labels page, the × of a label and the color circles are larger.

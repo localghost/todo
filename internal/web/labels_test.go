@@ -37,16 +37,17 @@ func filtered(id int64) map[string]string {
 	return map[string]string{"HX-Request": "true", "HX-Current-URL": "http://example.com/?label=" + strconv.FormatInt(id, 10)}
 }
 
-// The "Label" chip is gray until the pointer is on its row (canvas page 10,
-// option D). It shows on every row, also on a row without labels.
-func TestLabelChipIsQuiet(t *testing.T) {
+// The + is small and gray, with no circle and no text (canvas page 10, "row
+// icons without text again", option 2). It shows on every row, also on a row
+// without labels; an invisible area keeps it easy to click.
+func TestLabelPlusIsSmallAndGray(t *testing.T) {
 	env := newTestEnv(t)
 	addLabeled(t, env.Svc, env.User.ID, "Invoice", "")
 	css := do(t, env.H, "GET", "/static/app.css", nil, nil).Body.String()
-	assertContains(t, css, "color: #8C8A84", "left: var(--caret, 8px)")
+	assertContains(t, css, "color: #8C8A84", ".label-add::after", "left: var(--caret, 8px)")
 	assertNotContains(t, css, ".label-add.bare", "border: 1px dashed #B9B6AD")
 	body := do(t, env.H, "GET", "/", nil, nil).Body.String()
-	assertContains(t, body, `<svg width="10" height="10" viewBox="0 0 12 12"`, `</svg>Label</button>`)
+	assertContains(t, body, `<svg width="9" height="9" viewBox="0 0 12 12"`)
 }
 
 func TestPlusAddsOneLabel(t *testing.T) {
