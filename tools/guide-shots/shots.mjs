@@ -99,7 +99,7 @@ async function desktop() {
     await p.eval(`document.querySelector('#due-picker-0 [name=due_date]').value = ${q(await day(p, 1))}`);
     await p.click("#due-picker-0 .due-time"); await p.type("1000");
     await p.click("#due-picker-0 .due-save");
-    await p.waitFor("!!document.querySelector('#due-add-0.set')");
+    await p.waitFor("!!document.querySelector('.due-set #due-add-0')");
     for (const name of ["home", "urgent"]) {
       await p.click("#label-add-0");
       await p.waitFor("!!document.querySelector('#picker-0')");

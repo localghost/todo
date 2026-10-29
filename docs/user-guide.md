@@ -52,7 +52,8 @@ and for how long. The login, sign-up and Account pages link to it.
 
 1. Type the task in the field "What needs to be done?".
 2. If you want a due date, click **Due date** under the field. Pick the day and, if you want, the
-   time, then click **Save**. The button shows the date. The × next to it removes the date.
+   time, then click **Save**. The button shows the date. To remove the date, point at the
+   button and click the × that shows in it.
 3. If you want labels, click **Label** under the field. Click a label name to select it, or type
    a new name to create a label. The selected labels show next to the button, each with an ×.
 4. Press Enter or click **Add**. The item goes to the end of the list. If its due date has
@@ -206,7 +207,8 @@ To see all items again, click the × next to "Label: name".
 The app works in the browser of a phone. On a touch screen:
 
 - The calendar icon, the + and the × on a label always show, and they are larger.
-- The **Due date** and **Label** buttons under the add field are taller.
+- The **Due date** and **Label** buttons under the add field are taller, and the × in the due
+  date button always shows.
 - The × to delete a label in the label list always shows.
 
 ![The list on a phone](guide-images/phone.png "the list in the browser of a phone, 375 pixels wide. The × on each label always shows.")

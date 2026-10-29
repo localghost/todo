@@ -397,9 +397,11 @@ button.due:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 }
 /* The due date and labels of a new item, under the add field (canvas page
    "10 · Due date", "calendar and + under the add field", option B): outlined
-   buttons like "Hide done", with 18 px icons. A picked date fills its button;
-   picked labels are chips whose × always shows. The pop-ups are the ones of
-   a row. */
+   buttons like "Hide done", with 18 px icons. Picked labels are chips whose
+   × always shows. A picked date fills its button, and the button holds an ×
+   that shows on hover or focus, like the × of a label ("× inside the due
+   date button", option A); a touch screen always shows it. The pop-ups are
+   the ones of a row. */
 .add-extras { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: -8px; }
 .pill {
   display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px 0 10px;
@@ -408,19 +410,28 @@ button.due:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 }
 .pill:hover, .pill[aria-expanded="true"] { border-color: var(--accent); }
 .pill[aria-expanded="true"] { background: #EEF2FC; }
-.pill.set { background: #EEF2FC; border-color: #C9D6F5; color: var(--accent-dark); }
-.pill:focus-visible, .pill-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.pill-x {
-  width: 28px; height: 28px; margin-left: -4px; padding: 0; border: none; border-radius: 50%;
-  display: inline-flex; align-items: center; justify-content: center;
-  color: var(--muted); background: none; cursor: pointer;
+.pill:focus-visible, .pill-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.due-set {
+  align-items: center; min-height: 36px; box-sizing: border-box; border-radius: 999px;
+  background: #EEF2FC; border: 1px solid #C9D6F5; color: var(--accent-dark);
 }
-.pill-x:hover { color: var(--ink); background: #E9E7E0; }
+.due-set:hover, .due-set:focus-within { border-color: var(--accent); }
+.due-set .draft-due, .due-set .draft-due[aria-expanded="true"] {
+  min-height: 34px; color: inherit; background: none; border: none;
+}
+.pill-x {
+  flex: none; width: 0; height: 22px; margin: 0; padding: 0; overflow: hidden; opacity: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: 50%; color: inherit; background: none; cursor: pointer;
+}
+.due-set:hover .pill-x, .due-set:focus-within .pill-x { width: 22px; margin: 0 7px 0 -8px; opacity: 1; }
+.pill-x:hover { background: #C9D6F5; }
 .add-extras .chip { font-size: 13px; padding: 5px 9px; }
 .add-extras .chip-x { width: 16px; margin: -2px -4px -2px 3px; opacity: 1; }
 @media (hover: none) {
-  .pill { min-height: 44px; }
-  .pill-x { width: 44px; height: 44px; margin-left: -10px; }
+  .pill, .due-set { min-height: 44px; }
+  .due-set .draft-due { min-height: 42px; }
+  .pill-x, .due-set .pill-x { width: 30px; height: 30px; margin: 0 6px 0 -8px; opacity: 1; }
   .add-extras .chip-x { width: 22px; height: 22px; margin: -6px -7px -6px 1px; }
 }
 

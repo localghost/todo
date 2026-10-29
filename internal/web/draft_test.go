@@ -21,7 +21,8 @@ func TestDraftDueDate(t *testing.T) {
 		t.Fatalf("set: %d", rec.Code)
 	}
 	assertContains(t, rec.Body.String(), `<div id="add-extras"`, `name="due_date" value="2099-03-04"`, `name="due_time" value="09:30"`,
-		`class="pill draft-due set" aria-label="Due date: 4 Mar 2099, 09:30"`, `class="pill-x"`)
+		`<span class="due-add-wrap due-set"><button type="button" id="due-add-0" class="pill draft-due" aria-label="Due date: 4 Mar 2099, 09:30"`,
+		`</button><button type="button" class="pill-x" aria-label="Remove the due date"`)
 
 	// All day: no time.
 	rec = do(t, env.H, "POST", "/new/due", url.Values{"due_date": {"2099-03-04"}}, htmxHeaders)
@@ -37,7 +38,7 @@ func TestDraftDueDate(t *testing.T) {
 	// "clear" (the × and "Remove date") takes the date away.
 	rec = do(t, env.H, "POST", "/new/due", url.Values{"due_date": {"2099-03-04"}, "clear": {"1"}}, htmxHeaders)
 	assertContains(t, rec.Body.String(), ">Due date</button>", `name="due_date" value=""`)
-	assertNotContains(t, rec.Body.String(), `class="pill-x"`)
+	assertNotContains(t, rec.Body.String(), `class="pill-x"`, "due-set")
 }
 
 // The label list of the add form picks labels without an item.
