@@ -101,7 +101,7 @@ above them.
 ## Due dates
 
 Under its text, an item without a date has a **Due date** chip with a calendar. It is gray until
-the pointer is on the item.
+the pointer is on it.
 
 1. Click **Due date**. A pop-up opens.
 2. Pick a day.
@@ -150,7 +150,7 @@ Labels such as "work" or "home" put your items into groups. Each label has a col
 ### Add and remove labels
 
 1. Click the **Label** chip under the text of an item. The label list opens. The chip is gray
-   until the pointer is on the item.
+   until the pointer is on it.
 2. Click a label name to add it to the item. A check shows on its line.
 3. Click a name with a check to remove that label from the item.
 4. The list stays open, so you can click more names. Press Esc or click outside the list to close

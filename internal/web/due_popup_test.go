@@ -127,8 +127,9 @@ func TestCalendarIconCSS(t *testing.T) {
 }
 
 // The "Due date" and "Label" chips show on every row, also with no pointer
-// on it; the pointer on the row only makes them blue (option D). Only the ×
-// waits for the pointer.
+// on it (option D). Only the chip under the pointer, with focus, or with its
+// pop-up open turns blue; the pointer on the row does not ("hover on a row's
+// chips", option A). Only the × waits for the pointer.
 func TestRowChipsAlwaysShow(t *testing.T) {
 	h, _ := newTestApp(t)
 	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
@@ -140,7 +141,9 @@ func TestRowChipsAlwaysShow(t *testing.T) {
 		t.Fatalf("the icons must not be hidden: %s", rule)
 	}
 	assertContains(t, css, ".chip:hover .chip-x, .chip:focus-within .chip-x {",
-		".due-chip:hover .due-x, .due-chip:focus-within .due-x {", ".item:hover .label-add, .item:focus-within .label-add,")
+		".due-chip:hover .due-x, .due-chip:focus-within .due-x {",
+		".label-add:hover, .label-add:focus-visible, .label-add[aria-expanded=\"true\"],\n.due-chip:not(.is-set) .due-add:hover,")
+	assertNotContains(t, css, ".item:hover .label-add", ".item:hover .due-chip")
 }
 
 // A touch screen has no hover: the chips are blue and taller, and the ×
