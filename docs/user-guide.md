@@ -1,7 +1,7 @@
 # User guide
 
-TooDoo is a small to-do list for the browser. This guide shows how to use it: items, due dates,
-reminders and labels. Open the app at https://toodoo.fly.dev.
+TooDoo is a small to-do list for the browser and for Android phones. This guide shows how to use
+it: items, their order, due dates, reminders and labels. Open the app at https://toodoo.fly.dev.
 
 ## Get started
 
@@ -25,6 +25,9 @@ There is no email address. If you forget your password, ask the admin of the app
 ![The login page](guide-images/login.png "the login page with the fields Username and Password, the box “Keep me logged in”, the link to Sign up, and the links to the user guide and the privacy policy.")
 
 To log out, click **Log out** at the top right of your list.
+
+The top right of your list also has the links **Labels** (see "The Labels page"), **Help** (this
+guide) and **Account**.
 
 ### Your account
 
@@ -57,7 +60,8 @@ and for how long. The login, sign-up and Account pages link to it.
 3. If you want labels, click the **+** under the field. Click a label name to select it, or type
    a new name to create a label. The selected labels show before the +, each with an ×.
 4. Press Enter or click **Add**. The item goes to the end of the list. If its due date has
-   already passed, it goes to the top. The date and the labels under the field then clear.
+   already passed, it goes to the top. If the list is sorted by due date, the item goes to its
+   place in that order. The date and the labels under the field then clear.
 
 ![The add field with a due date and two labels](guide-images/add-form.png "the add field with the text “Pay the rent”. Under it, the due date button shows “Tomorrow, 10:00”, then the selected labels “home” and “urgent”, then the +.")
 
@@ -81,11 +85,16 @@ add field.
 
 ### Done items
 
+Above the list, the app shows how many items are open and how many are done, for example
+"4 open · 1 done". The buttons for done items also show the number of done items, for example
+**Hide done (1)**.
+
 - **Hide done** hides the done items. **Show done** shows them again. The app remembers your
   choice.
 - **Clear done** deletes all done items. The app asks first, because you cannot undo it. If the
   number of done items changes before you click **Delete** (for example in another tab), the
-  app deletes nothing and asks again with the new number.
+  app deletes nothing and asks again with the new number. If the list shows only the items of
+  one label, **Clear done** deletes only the done items with that label.
 
 ![The question of Clear done](guide-images/clear-done.png "the question after a click on Clear done. “Delete 1 item” deletes the done items. Cancel keeps them.")
 
@@ -106,15 +115,16 @@ Click **Sort by due date** above the list. The rows slide to their new places, s
 where each item goes. The order is then:
 
 1. The overdue items, the most overdue first.
-2. The other items with a due date, the nearest date first. An item that is due all day comes
+2. The other items with a due date, the earliest date first. An item that is due all day comes
    after the items with a time on that day.
 3. The items without a due date.
 
 Items with the same due date, and the items without a due date, keep your order. Done items keep
 their place in this order too.
 
-In this order the grips go away, and you cannot drag items. A gray line under the buttons tells
-you this. A new item, or an item with a new due date, goes to its place at once.
+In this order the grips go away, and you cannot drag items. The rows move to the left, so no
+empty space stays. A gray hint under the buttons says "Sorted by due date. To drag items, click
+“Sort by hand”". A new item, or an item with a new due date, goes to its place at once.
 
 Click **Sort by hand** to go back. Your order by hand is still there. The app remembers your
 choice, also on your other computers.
@@ -238,6 +248,7 @@ The app works in the browser of a phone. On a touch screen:
   shows.
 - The calendar icon and the + under the add field are larger, and the × in the due date button
   always shows.
+- In the label list and the due date pop-up, the lines, the fields and the buttons are larger.
 - On the Labels page, the × of a label and the color circles are larger.
 
 ![The list on a phone](guide-images/phone.png "the list in the browser of a phone, 375 pixels wide. The × on each label always shows.")
