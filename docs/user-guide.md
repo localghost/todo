@@ -86,8 +86,7 @@ add field.
 ### Done items
 
 Above the list, the app shows how many items are open and how many are done, for example
-"4 open · 1 done". The buttons for done items also show the number of done items, for example
-**Hide done (1)**.
+"4 open · 1 done".
 
 - **Hide done** hides the done items. **Show done** shows them again. The app remembers your
   choice.

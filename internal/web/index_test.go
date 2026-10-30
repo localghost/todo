@@ -16,7 +16,7 @@ func TestIndexEmpty(t *testing.T) {
 	}
 	assertContains(t, rec.Body.String(),
 		"<!doctype html>", `id="add-form"`, "What needs to be done?",
-		"0 open · 0 done", "Hide done (0)", "No items yet", "Type a task above and press Enter.",
+		"0 open · 0 done", "Hide done", "No items yet", "Type a task above and press Enter.",
 		`/static/htmx.min.js`, `name="htmx-config"`)
 }
 
@@ -28,7 +28,7 @@ func TestIndexListsItemsInOrder(t *testing.T) {
 
 	body := do(t, h, "GET", "/", nil, nil).Body.String()
 	assertContains(t, body, `id="item-1"`, `id="item-2" class="item done"`,
-		"1 open · 1 done", "Hide done (1)")
+		"1 open · 1 done", "Hide done")
 	assertNotContains(t, body, "No items yet")
 	if i1, i2 := strings.Index(body, "Buy milk"), strings.Index(body, "Call the dentist"); i1 > i2 {
 		t.Fatalf("items out of order: Buy milk at %d, Call the dentist at %d", i1, i2)
@@ -43,7 +43,7 @@ func TestIndexHideDone(t *testing.T) {
 	env.Auth.SetHideDone(context.Background(), env.User.ID, true)
 
 	body := do(t, env.H, "GET", "/", nil, nil).Body.String()
-	assertContains(t, body, "Buy milk", "Show done (1)", `aria-pressed="true"`,
+	assertContains(t, body, "Buy milk", "Show done", `aria-pressed="true"`,
 		`hx-post="/settings/hide-done"`, `hx-vals='{"hide_done":"0"}'`)
 	assertNotContains(t, body, "Call the dentist")
 }

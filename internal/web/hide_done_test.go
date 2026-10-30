@@ -25,11 +25,11 @@ func TestHideDoneIsSavedPerUser(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("save: %d", rec.Code)
 	}
-	assertContains(t, rec.Body.String(), `id="list-section"`, "Show done (1)", `hx-vals='{"hide_done":"0"}'`)
+	assertContains(t, rec.Body.String(), `id="list-section"`, "Show done", `hx-vals='{"hide_done":"0"}'`)
 	assertNotContains(t, rec.Body.String(), "Call the dentist")
 
 	body := do(t, env.H, "GET", "/", nil, nil).Body.String() // no query
-	assertContains(t, body, "Buy milk", "Show done (1)", `aria-pressed="true"`)
+	assertContains(t, body, "Buy milk", "Show done", `aria-pressed="true"`)
 	assertNotContains(t, body, "Call the dentist")
 
 	other, _, err := env.Auth.StartSession(ctx, env.User.ID, false) // another device
@@ -40,17 +40,17 @@ func TestHideDoneIsSavedPerUser(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("second session: %d, want 200", rec.Code)
 	}
-	assertContains(t, rec.Body.String(), "Buy milk", "Show done (1)")
+	assertContains(t, rec.Body.String(), "Buy milk", "Show done")
 	assertNotContains(t, rec.Body.String(), "Call the dentist")
 
 	bob, _ := env.Auth.SignUp(ctx, "bob", pw)
 	bobToken, _, _ := env.Auth.LogIn(ctx, "bob", pw, false)
 	done, _ := env.Svc.Add(ctx, bob.ID, "Bobs done item", "", "")
 	env.Svc.Toggle(ctx, bob.ID, done.ID)
-	assertContains(t, do(t, env.H, "GET", "/", nil, cookie(bobToken)).Body.String(), "Bobs done item", "Hide done (1)")
+	assertContains(t, do(t, env.H, "GET", "/", nil, cookie(bobToken)).Body.String(), "Bobs done item", "Hide done")
 
 	rec = do(t, env.H, "POST", "/settings/hide-done", url.Values{"hide_done": {"0"}}, htmxHeaders)
-	assertContains(t, rec.Body.String(), "Call the dentist", "Hide done (1)", `hx-vals='{"hide_done":"1"}'`)
+	assertContains(t, rec.Body.String(), "Call the dentist", "Hide done", `hx-vals='{"hide_done":"1"}'`)
 }
 
 func TestHideDoneWithoutHTMXRedirects(t *testing.T) {
@@ -133,4 +133,23 @@ func TestAppJSReloadsListWhenHideStateDiffers(t *testing.T) {
 	if got := strings.TrimSpace(string(out)); got != want {
 		t.Fatalf("got\n%s\nwant\n%s", got, want)
 	}
+}
+
+// The toolbar shows the number of done items once, in the counter. The buttons
+// have no number (canvas page "3 · Done hidden", board "the number of done
+// items only once", option A).
+func TestDoneCountOnlyInCounter(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+	mustAdd(t, env.Svc, "Buy milk")
+	b := mustAdd(t, env.Svc, "Call the dentist")
+	env.Svc.Toggle(ctx, env.User.ID, b.ID)
+
+	body := do(t, env.H, "GET", "/", nil, nil).Body.String()
+	assertContains(t, body, "1 open · 1 done", ">Hide done</button>", ">Clear done</button>")
+	assertNotContains(t, body, "Hide done (", "Clear done (")
+
+	rec := do(t, env.H, "POST", "/settings/hide-done", url.Values{"hide_done": {"1"}}, htmxHeaders)
+	assertContains(t, rec.Body.String(), "1 open · 1 done", ">Show done</button>", ">Clear done</button>")
+	assertNotContains(t, rec.Body.String(), "Show done (", "Clear done (")
 }

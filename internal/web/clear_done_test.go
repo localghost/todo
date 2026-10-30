@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// "Clear done (N)" shows next to "Hide done (N)" only when there is a done
+// "Clear done" shows next to "Hide done" only when there is a done
 // item (canvas page 3, "Clear done – ask first").
 func TestClearDoneButtonShowsOnlyWithDoneItems(t *testing.T) {
 	env := newTestEnv(t)
@@ -20,7 +20,7 @@ func TestClearDoneButtonShowsOnlyWithDoneItems(t *testing.T) {
 	env.Svc.Toggle(context.Background(), 1, a.ID)
 	body = do(t, env.H, "GET", "/", nil, nil).Body.String()
 	assertContains(t, body,
-		`<button class="filter clear-done" type="button" aria-controls="clear-confirm" aria-expanded="false" hx-get="/items/done/clear" hx-target="#clear-confirm">Clear done (1)</button>`)
+		`<button class="filter clear-done" type="button" aria-controls="clear-confirm" aria-expanded="false" hx-get="/items/done/clear" hx-target="#clear-confirm">Clear done</button>`)
 }
 
 // The button asks first; the question names the count, and the label when

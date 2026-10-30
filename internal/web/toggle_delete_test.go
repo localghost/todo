@@ -19,7 +19,7 @@ func TestToggleMarksDone(t *testing.T) {
 	}
 	assertContains(t, rec.Body.String(),
 		`<li id="item-1" class="item done">`, "Mark not done: Buy milk",
-		"0 open · 1 done", "Hide done (1)", `hx-swap-oob="true"`)
+		"0 open · 1 done", "Hide done", `hx-swap-oob="true"`)
 }
 
 func TestToggleTwiceMarksNotDone(t *testing.T) {
@@ -40,7 +40,7 @@ func TestToggleInHideModeRemovesRow(t *testing.T) {
 	}
 	body := rec.Body.String()
 	assertNotContains(t, body, `<li id="item-1"`)
-	assertContains(t, body, "Show done (1)", "All done")
+	assertContains(t, body, "Show done", "All done")
 }
 
 func TestToggleUnknownItem(t *testing.T) {
