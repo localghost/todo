@@ -318,7 +318,7 @@ func TestMigrateV5ToV6AddsSortDue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, stmt := range []string{`ALTER TABLE users DROP COLUMN sort_due`, `PRAGMA user_version = 5`} {
+	for _, stmt := range []string{`ALTER TABLE items DROP COLUMN repeat`, `ALTER TABLE items DROP COLUMN repeat_day`, `ALTER TABLE users DROP COLUMN sort_due`, `PRAGMA user_version = 5`} {
 		if _, err := db.Exec(stmt); err != nil {
 			t.Fatalf("%s: %v", stmt, err)
 		}
@@ -330,8 +330,8 @@ func TestMigrateV5ToV6AddsSortDue(t *testing.T) {
 		t.Fatalf("Open v5: %v", err)
 	}
 	defer s.Close()
-	if v := userVersion(t, path); v != 6 {
-		t.Fatalf("user_version = %d, want 6", v)
+	if v := userVersion(t, path); v != 7 {
+		t.Fatalf("user_version = %d, want 7", v)
 	}
 	u, err := s.UserByName(context.Background(), "alice")
 	if err != nil || u.SortDue {

@@ -37,6 +37,8 @@ type Item struct {
 	DueAllDay  bool       // true: no time was given; DueAt is 09:00 local
 	NotifiedAt *time.Time // nil: not notified yet
 	Labels     []Label    // sorted by name; empty from ClaimDue
+	Repeat     string     // "", RepeatDaily, RepeatWeekly, RepeatMonthly or RepeatYearly
+	RepeatDay  int        // the day of the month that the rule keeps (repeat.go); 0 without a rule
 }
 
 // Change holds the editable fields of an item for Create and UpdateItem.
@@ -45,6 +47,8 @@ type Change struct {
 	DueAt         *time.Time
 	DueAllDay     bool
 	ResetNotified bool // UpdateItem only: set NotifiedAt back to nil
+	Repeat        string
+	RepeatDay     int
 	// Labels are label names; missing labels are created. In UpdateItem they
 	// replace the item's labels, unless KeepLabels is set.
 	Labels     []string

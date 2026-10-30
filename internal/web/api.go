@@ -60,6 +60,7 @@ type apiItem struct {
 	DueAllDay bool       `json:"due_all_day"`
 	Overdue   bool       `json:"overdue"`
 	Labels    []apiLabel `json:"labels"`
+	Repeat    string     `json:"repeat"` // "", "day", "week", "month" or "year"
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 }
@@ -85,7 +86,7 @@ func toAPILabel(l todo.Label) apiLabel {
 
 func toAPIItem(it todo.Item, now time.Time) apiItem {
 	out := apiItem{ID: it.ID, Text: it.Text, Done: it.Done, DueAllDay: it.DueAllDay, Overdue: it.Overdue(now),
-		Labels: []apiLabel{}, CreatedAt: it.CreatedAt.UTC(), UpdatedAt: it.UpdatedAt.UTC()}
+		Labels: []apiLabel{}, Repeat: it.Repeat, CreatedAt: it.CreatedAt.UTC(), UpdatedAt: it.UpdatedAt.UTC()}
 	if it.DueAt != nil {
 		d := it.DueAt.UTC()
 		out.DueAt = &d
@@ -280,7 +281,7 @@ func (s *server) apiUpdateItem(w http.ResponseWriter, r *http.Request) {
 		item, err = s.svc.EditText(r.Context(), userID(r), id, *in.Text)
 	}
 	if err == nil && in.Done != nil && *in.Done != item.Done {
-		item, err = s.svc.SetDone(r.Context(), userID(r), id, *in.Done)
+		item, err = s.svc.SetDoneIn(r.Context(), userID(r), id, *in.Done, s.zoneFor(r))
 	}
 	s.apiItemAnswer(w, r, http.StatusOK, item, err)
 }
@@ -294,20 +295,28 @@ func (s *server) apiDeleteItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // apiSetDue sets the due date from {"date", "time"} in the phone's zone.
-// An empty time is all day; both empty remove the due date.
+// An empty time is all day; both empty remove the due date. "repeat" sets
+// the repeat rule; without it the item keeps its rule.
 func (s *server) apiSetDue(w http.ResponseWriter, r *http.Request) {
 	id, ok := apiID(w, r)
 	if !ok {
 		return
 	}
 	var in struct {
-		Date string `json:"date"`
-		Time string `json:"time"`
+		Date   string  `json:"date"`
+		Time   string  `json:"time"`
+		Repeat *string `json:"repeat"`
 	}
 	if !readJSON(w, r, &in) {
 		return
 	}
-	item, err := s.svc.SetDue(r.Context(), userID(r), id, in.Date, in.Time, s.zoneFor(r))
+	var item todo.Item
+	var err error
+	if in.Repeat != nil {
+		item, err = s.svc.SetDueRepeat(r.Context(), userID(r), id, in.Date, in.Time, *in.Repeat, s.zoneFor(r))
+	} else {
+		item, err = s.svc.SetDue(r.Context(), userID(r), id, in.Date, in.Time, s.zoneFor(r))
+	}
 	s.apiItemAnswer(w, r, http.StatusOK, item, err)
 }
 

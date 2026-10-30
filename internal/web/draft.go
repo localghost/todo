@@ -23,8 +23,10 @@ type draftView struct {
 	DueDate string // as the date field wants it, or ""
 	DueTime string // HH:MM, or "" for all day
 	DueText string // "Tomorrow, 10:00", or "" without a due date
-	Labels  []todo.Label
-	OOB     bool // sent next to the new item, to start again
+	// DueRepeat is the repeat rule of the due date ("": never).
+	DueRepeat string
+	Labels    []todo.Label
+	OOB       bool // sent next to the new item, to start again
 }
 
 // LabelIDs is the hidden field: the ids of the picked labels, with commas.
@@ -38,7 +40,11 @@ func (d draftView) LabelIDs() string {
 
 // DueURL opens the due date pop-up with the picked date in its fields.
 func (d draftView) DueURL() string {
-	return "/new/due?" + url.Values{"due_date": {d.DueDate}, "due_time": {d.DueTime}}.Encode()
+	v := url.Values{"due_date": {d.DueDate}, "due_time": {d.DueTime}}
+	if d.DueRepeat != "" {
+		v.Set("due_repeat", d.DueRepeat)
+	}
+	return "/new/due?" + v.Encode()
 }
 
 // LabelsURL opens the label list with the picked labels ticked.
@@ -86,18 +92,22 @@ func (s *server) readDraft(r *http.Request) (draftView, error) {
 			}
 		}
 	}
-	return d, s.setDraftDue(r, &d, d.DueDate, r.FormValue("due_time"))
+	return d, s.setDraftDue(r, &d, d.DueDate, r.FormValue("due_time"), r.FormValue("due_repeat"))
 }
 
 // setDraftDue checks a due date and puts it in d, in the form the fields
 // show it. On a bad value d keeps no due date.
-func (s *server) setDraftDue(r *http.Request, d *draftView, date, clock string) error {
-	d.DueDate, d.DueTime, d.DueText = "", "", ""
+func (s *server) setDraftDue(r *http.Request, d *draftView, date, clock, repeat string) error {
+	d.DueDate, d.DueTime, d.DueText, d.DueRepeat = "", "", "", ""
 	loc := s.zoneFor(r)
 	at, allDay, err := todo.ParseDue(date, clock, loc)
-	if err != nil || at == nil {
+	if err != nil {
 		return err
 	}
+	if err := todo.CheckRepeat(repeat, at); err != nil || at == nil {
+		return err
+	}
+	d.DueRepeat = repeat
 	it := todo.Item{DueAt: at, DueAllDay: allDay}
 	d.DueDate, d.DueTime = dueInputs(it, loc)
 	d.DueText = upperFirst(dueWhen(at.In(loc), allDay, s.nowFor(r)))
@@ -125,7 +135,7 @@ func (s *server) draftDuePicker(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	s.render(w, r, http.StatusOK, part{"due-picker", duePickerView{Item: d.draftItem(), Draft: true, DueDate: d.DueDate, DueTime: d.DueTime}})
+	s.render(w, r, http.StatusOK, part{"due-picker", duePickerView{Item: d.draftItem(), Draft: true, DueDate: d.DueDate, DueTime: d.DueTime, Repeat: d.DueRepeat}})
 }
 
 // setDraftDueDate saves the due date of the pop-up in the add form, or
@@ -137,16 +147,16 @@ func (s *server) setDraftDueDate(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	date, clock := r.FormValue("due_date"), r.FormValue("due_time")
+	date, clock, repeat := r.FormValue("due_date"), r.FormValue("due_time"), r.FormValue("due_repeat")
 	if r.FormValue("clear") != "" {
-		date, clock = "", ""
+		date, clock, repeat = "", "", ""
 	}
 	var dueErr *todo.DueError
-	if err := s.setDraftDue(r, &d, date, clock); errors.As(err, &dueErr) {
+	if err := s.setDraftDue(r, &d, date, clock, repeat); errors.As(err, &dueErr) {
 		w.Header().Set("HX-Retarget", "#due-picker-0")
 		w.Header().Set("HX-Reswap", "outerHTML")
 		s.render(w, r, http.StatusUnprocessableEntity,
-			part{"due-picker", duePickerView{Item: d.draftItem(), Draft: true, DueDate: date, DueTime: clock, Error: dueErr.Msg}})
+			part{"due-picker", duePickerView{Item: d.draftItem(), Draft: true, DueDate: date, DueTime: clock, Repeat: repeat, Error: dueErr.Msg}})
 		return
 	}
 	s.render(w, r, http.StatusOK, part{"add-extras", d})

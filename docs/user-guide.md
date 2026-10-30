@@ -100,6 +100,26 @@ Above the list, the app shows how many items are open and how many are done, for
 
 ![The question of Clear done](guide-images/clear-done.png "the question after a click on Clear done. “Delete 1 item” deletes the done items. Cancel keeps them.")
 
+### Search the items
+
+1. Click the magnifying glass (⌕) left of **Sort by due date**, or press `/`. A search field
+   opens above the list.
+2. Type a part of a word, for example "pl". The list shows only the items that match, and the
+   matching letters are yellow. The counter says how many items match, for example "2 of 5
+   items match".
+3. To see all items again, press Esc or click the × in the field.
+
+- The letters that you type must come in this order in the text, but other letters can be
+  between them. So "jul" finds "Julek", and also "January telephone bill".
+- Upper and lower case do not matter, and neither do Polish letters: "zolw" finds "żółw".
+- The search also looks at the label names of the items.
+- The search covers the items that the list shows. With **Hide done** on, it does not find
+  done items. With a label filter, it finds only the items with that label.
+- While the search is open, you cannot drag the items. A new item that you add shows in the
+  list, also if it does not match.
+
+![Search](guide-images/search.png "the search field with “pl”: the list shows “Water the plants” and “Plan the team meeting”, and the matching letters are yellow.")
+
 ## Order of the items
 
 You put the items in order by hand:
@@ -153,6 +173,29 @@ Under its text, an item without a date has a small calendar icon.
 - Esc closes the pop-up and does not save.
 
 The app shows the times in the time zone of your browser.
+
+### Repeat an item
+
+An item with a due date can repeat: every day, every week, every month or every year.
+
+1. Click the calendar icon or the date chip of the item.
+2. In the pop-up, choose the rule in the list **Repeat**, for example "Every week".
+3. Click **Save**. The date chip shows ↻.
+
+When you check off a repeating item, it stays open, and its date moves to the next time. A
+gray line under the item says "Done. Next time: …". To put the old date back, click **Undo**
+in this line within 8 seconds.
+
+- The next date is always after today. If you check off an item late, the app skips the times
+  that you missed. If you check it off early, the next time comes after the date that it had.
+- The time of the item stays.
+- "Every month" on the 31st uses the last day of a shorter month, for example 28 February, and
+  then the 31st again. "Every year" on 29 February uses 28 February in other years.
+- To stop the repeat, choose "Never". If you remove the date, the repeat goes too.
+- You can also choose the repeat for a new item, in the pop-up of the calendar icon under the
+  add field.
+
+![A repeating item](guide-images/repeat.png "the item “Send the invoice” after a check: the date chip with ↻ shows the next date, and under it is the line “Done. Next time: …” with Undo.")
 
 ### Overdue items
 
@@ -277,7 +320,9 @@ web, so a change on the phone shows in the browser and the other way round.
 - **The list:** swipe a row to the right to mark it done (on a done row, the same swipe marks it
   not done again). Swipe a row to the left to delete it. Both show Undo for a few seconds, and
   the change is saved when Undo goes away. Hold a row still for half a second until it lifts,
-  then drag it to change the order. For now, you cannot move an overdue row in the app. Pull
+  then drag it to change the order. For now, you cannot move an overdue row in the app. A
+  repeating item that you mark done in the app comes back with its next date; for now, you can
+  set the repeat only on the web, and the app has no search. Pull
   down to load the list again. The first time, a blue hint above the list explains this; "Got
   it" closes it.
 - **Without swiping:** the item sheet has a "Mark as done" button. With TalkBack, each row has
@@ -324,6 +369,8 @@ web, so a change on the phone shows in the browser and the other way round.
 | Add field | Enter | Adds the item |
 | Item in edit mode | Enter | Saves the text |
 | Item in edit mode | Esc | Cancels the change |
+| Anywhere in the list | / | Opens the search |
+| Search field | Esc | Closes the search and shows all items |
 | Grip (⋮⋮) | Up arrow, down arrow | Moves the item |
 | List, after a delete | Ctrl+Z | Brings the deleted item back (while **Undo** shows) |
 | Due date pop-up | Enter | Saves the date |

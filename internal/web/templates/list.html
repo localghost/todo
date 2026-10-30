@@ -1,5 +1,8 @@
 {{define "list"}}<section id="list-section" data-hide-done="{{.HideDone}}" data-sort-due="{{.SortDue}}">
 {{template "toolbar" .}}
+{{/* Search the items (canvas page "19 · Search", option A): app.js shows
+     this row and keeps it open over list answers. */}}
+<div id="search-row" class="search-row" role="search" hidden><span class="search-glass">{{template "search-icon"}}</span><input id="search" type="text" placeholder="Search the items" aria-label="Search the items" aria-describedby="search-status" autocomplete="off" spellcheck="false"><button type="button" class="search-close" aria-label="Close the search" title="Close the search (Esc)">{{template "x-icon"}}</button><p id="search-status" class="visually-hidden" aria-live="polite"></p></div>
 {{if .SortDue}}<p class="sort-hint">Sorted by due date. To drag items, click “Sort by hand”.</p>{{end}}
 {{template "clear-confirm-slot" .}}
 {{template "notify-bar" .}}
@@ -20,7 +23,7 @@
 {{/* The order of the list (canvas page "14 · Overdue at the top", board
      "sort the list by due date", option A): the text tells what a click
      does, as with "Hide done"; no highlight. */}}
-<div class="toolbar-right"><button class="filter sort-due" type="button"
+<div class="toolbar-right"><button class="filter search-toggle" type="button" aria-label="Search the items" title="Search the items (/)" aria-expanded="false" aria-controls="search-row">{{template "search-icon"}}</button><button class="filter sort-due" type="button"
   hx-post="/settings/sort-due" {{if .SortDue}}hx-vals='{"sort_due":"0"}'{{else}}hx-vals='{"sort_due":"1"}'{{end}} hx-target="#list-section" hx-swap="outerHTML">{{if .SortDue}}Sort by hand{{else}}Sort by due date{{end}}</button><button class="filter" type="button" aria-pressed="{{.HideDone}}"
   hx-post="/settings/hide-done" {{if .HideDone}}hx-vals='{"hide_done":"0"}'{{else}}hx-vals='{"hide_done":"1"}'{{end}} hx-target="#list-section" hx-swap="outerHTML">{{if .HideDone}}Show done{{else}}Hide done{{end}}</button>{{if .Done}}
 <button class="filter clear-done" type="button" aria-controls="clear-confirm" aria-expanded="{{.Ask}}" hx-get="/items/done/clear" hx-target="#clear-confirm">Clear done</button>{{end}}</div>

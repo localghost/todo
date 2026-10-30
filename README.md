@@ -14,6 +14,10 @@ Privacy policy: https://toodoo.fly.dev/privacy (the text is in
 
 - Add, edit, check off and delete items. After a delete, Undo shows for 8 seconds. Hide the
   done ones, or clear them all at once.
+- Search the items with the magnifying glass or `/`. The search is fuzzy: "jul" finds "Julek",
+  and Polish letters do not matter.
+- Repeat an item every day, week, month or year. When you check it off, its date moves to the
+  next time.
 - Give a new item its due date and labels with the calendar icon and the + under the add
   field, as on each item.
 - Give an item a due date and time with the calendar icon on each item. The date then shows

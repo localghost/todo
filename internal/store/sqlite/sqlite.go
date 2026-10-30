@@ -17,10 +17,10 @@ import (
 	"todo/internal/todo"
 )
 
-const itemCols = `id, user_id, text, done, position, created_at, updated_at, due_at, due_all_day, notified_at`
+const itemCols = `id, user_id, text, done, position, created_at, updated_at, due_at, due_all_day, notified_at, repeat, repeat_day`
 
 // currentVersion is the schema version this code writes (PRAGMA user_version).
-const currentVersion = 6
+const currentVersion = 7
 
 // schemaV2 is the schema since user accounts (PRAGMA user_version = 2).
 var schemaV2 = []string{
@@ -109,7 +109,10 @@ func migrate(db *sql.DB, opts Options) error {
 		if err := migrateToV5(db, max(version, 4)); err != nil {
 			return err
 		}
-		return migrateToV6(db, max(version, 5))
+		if err := migrateToV6(db, max(version, 5)); err != nil {
+			return err
+		}
+		return migrateToV7(db, max(version, 6))
 	}
 	tables, err := userTables(db)
 	if err != nil {
@@ -169,7 +172,10 @@ func migrate(db *sql.DB, opts Options) error {
 	if err := migrateToV5(db, 4); err != nil {
 		return err
 	}
-	return migrateToV6(db, 5)
+	if err := migrateToV6(db, 5); err != nil {
+		return err
+	}
+	return migrateToV7(db, 6)
 }
 
 // migrateToV3 adds the per-user setting hide_done (schema version 3).
@@ -271,6 +277,29 @@ func migrateToV6(db *sql.DB, version int) error {
 	for _, stmt := range []string{
 		`ALTER TABLE users ADD COLUMN sort_due INTEGER NOT NULL DEFAULT 0`,
 		`PRAGMA user_version = 6`,
+	} {
+		if _, err := tx.Exec(stmt); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// migrateToV7 adds the repeat rule of an item (schema version 7; canvas
+// page "20 · Repeat").
+func migrateToV7(db *sql.DB, version int) error {
+	if version >= 7 {
+		return nil
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, stmt := range []string{
+		`ALTER TABLE items ADD COLUMN repeat TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE items ADD COLUMN repeat_day INTEGER NOT NULL DEFAULT 0`,
+		`PRAGMA user_version = 7`,
 	} {
 		if _, err := tx.Exec(stmt); err != nil {
 			return err
@@ -423,9 +452,9 @@ func (s *Store) Create(ctx context.Context, userID int64, c todo.Change, now tim
 		return todo.Item{}, todo.ErrTooManyItems
 	}
 	res, err := tx.ExecContext(ctx,
-		`INSERT INTO items (user_id, text, done, position, created_at, updated_at, due_at, due_all_day)
-		 VALUES (?, ?, 0, (SELECT COALESCE(MAX(position), 0) + 1 FROM items WHERE user_id = ?), ?, ?, ?, ?)`,
-		userID, c.Text, userID, ts, ts, formatDue(c.DueAt), c.DueAllDay)
+		`INSERT INTO items (user_id, text, done, position, created_at, updated_at, due_at, due_all_day, repeat, repeat_day)
+		 VALUES (?, ?, 0, (SELECT COALESCE(MAX(position), 0) + 1 FROM items WHERE user_id = ?), ?, ?, ?, ?, ?, ?)`,
+		userID, c.Text, userID, ts, ts, formatDue(c.DueAt), c.DueAllDay, c.Repeat, c.RepeatDay)
 	if err != nil {
 		return todo.Item{}, fmt.Errorf("create item: %w", err)
 	}
@@ -449,10 +478,10 @@ func (s *Store) UpdateItem(ctx context.Context, userID, id int64, c todo.Change,
 	}
 	defer tx.Rollback()
 	if err := updateOne(ctx, tx,
-		`UPDATE items SET text = ?, due_at = ?, due_all_day = ?, updated_at = ?,
+		`UPDATE items SET text = ?, due_at = ?, due_all_day = ?, repeat = ?, repeat_day = ?, updated_at = ?,
 		 notified_at = CASE WHEN ? THEN NULL ELSE notified_at END
 		 WHERE id = ? AND user_id = ?`,
-		c.Text, formatDue(c.DueAt), c.DueAllDay, formatTime(now), c.ResetNotified, id, userID); err != nil {
+		c.Text, formatDue(c.DueAt), c.DueAllDay, c.Repeat, c.RepeatDay, formatTime(now), c.ResetNotified, id, userID); err != nil {
 		return todo.Item{}, err
 	}
 	if !c.KeepLabels {
@@ -690,7 +719,7 @@ func scanItem(r scanner) (todo.Item, error) {
 	var created, updated string
 	var dueAt, notifiedAt sql.NullString
 	if err := r.Scan(&it.ID, &it.UserID, &it.Text, &it.Done, &it.Position, &created, &updated,
-		&dueAt, &it.DueAllDay, &notifiedAt); err != nil {
+		&dueAt, &it.DueAllDay, &notifiedAt, &it.Repeat, &it.RepeatDay); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return todo.Item{}, err
 		}

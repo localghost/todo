@@ -61,11 +61,15 @@ func (s *Service) AddItem(ctx context.Context, userID int64, in Input, loc *time
 	if err != nil {
 		return Item{}, err
 	}
+	if err := CheckRepeat(in.Repeat, dueAt); err != nil {
+		return Item{}, err
+	}
 	labels, err := ParseLabels(in.Labels)
 	if err != nil {
 		return Item{}, err
 	}
-	return s.store.Create(ctx, userID, Change{Text: text, DueAt: dueAt, DueAllDay: allDay, Labels: labels}, s.now())
+	return s.store.Create(ctx, userID, Change{Text: text, DueAt: dueAt, DueAllDay: allDay, Labels: labels,
+		Repeat: in.Repeat, RepeatDay: repeatDay(in.Repeat, dueAt, s.zone(loc))}, s.now())
 }
 
 // EditText changes only the text of an item. The due date, its notified
@@ -83,26 +87,53 @@ func (s *Service) EditText(ctx context.Context, userID, id int64, text string) (
 		return it, nil
 	}
 	return s.store.UpdateItem(ctx, userID, id,
-		Change{Text: text, DueAt: it.DueAt, DueAllDay: it.DueAllDay, KeepLabels: true}, s.now())
+		Change{Text: text, DueAt: it.DueAt, DueAllDay: it.DueAllDay, KeepLabels: true,
+			Repeat: it.Repeat, RepeatDay: it.RepeatDay}, s.now())
 }
 
 // SetDue changes only the due date of an item, read in loc (nil: the
-// service's zone). An empty date and time removes the due date. A new due
-// date resets the notified state, so the item can notify again.
+// service's zone). An empty date and time removes the due date, and with it
+// the repeat; a new date keeps the item's repeat rule.
 func (s *Service) SetDue(ctx context.Context, userID, id int64, date, clock string, loc *time.Location) (Item, error) {
-	dueAt, allDay, err := parseDue(date, clock, s.zone(loc))
-	if err != nil {
-		return Item{}, err
-	}
 	it, err := s.store.Get(ctx, userID, id)
 	if err != nil {
 		return Item{}, err
 	}
-	if sameDue(it.DueAt, it.DueAllDay, dueAt, allDay) {
+	repeat := it.Repeat
+	if strings.TrimSpace(date) == "" && strings.TrimSpace(clock) == "" {
+		repeat = "" // the date goes, and the repeat with it
+	}
+	return s.setDue(ctx, it, date, clock, repeat, loc)
+}
+
+// SetDueRepeat is SetDue with a repeat rule ("": none), as the due date
+// pop-up sends them. A rule needs a date.
+func (s *Service) SetDueRepeat(ctx context.Context, userID, id int64, date, clock, repeat string, loc *time.Location) (Item, error) {
+	it, err := s.store.Get(ctx, userID, id)
+	if err != nil {
+		return Item{}, err
+	}
+	return s.setDue(ctx, it, date, clock, repeat, loc)
+}
+
+// setDue sets the due date and the rule of it. A new due date resets the
+// notified state, so the item can notify again.
+func (s *Service) setDue(ctx context.Context, it Item, date, clock, repeat string, loc *time.Location) (Item, error) {
+	loc = s.zone(loc)
+	dueAt, allDay, err := parseDue(date, clock, loc)
+	if err != nil {
+		return Item{}, err
+	}
+	if err := CheckRepeat(repeat, dueAt); err != nil {
+		return Item{}, err
+	}
+	day := repeatDay(repeat, dueAt, loc)
+	if sameDue(it.DueAt, it.DueAllDay, dueAt, allDay) && repeat == it.Repeat && day == it.RepeatDay {
 		return it, nil
 	}
-	return s.store.UpdateItem(ctx, userID, id,
-		Change{Text: it.Text, DueAt: dueAt, DueAllDay: allDay, ResetNotified: true, KeepLabels: true}, s.now())
+	return s.store.UpdateItem(ctx, it.UserID, it.ID,
+		Change{Text: it.Text, DueAt: dueAt, DueAllDay: allDay, ResetNotified: !sameDue(it.DueAt, it.DueAllDay, dueAt, allDay),
+			KeepLabels: true, Repeat: repeat, RepeatDay: day}, s.now())
 }
 
 // Postpone moves the due time by minutes, counted from the later of the
@@ -125,7 +156,8 @@ func (s *Service) Postpone(ctx context.Context, userID, id int64, minutes int) (
 	}
 	due := base.Add(time.Duration(minutes) * time.Minute)
 	return s.store.UpdateItem(ctx, userID, id,
-		Change{Text: it.Text, DueAt: &due, DueAllDay: false, ResetNotified: true, KeepLabels: true}, now)
+		Change{Text: it.Text, DueAt: &due, DueAllDay: false, ResetNotified: true, KeepLabels: true,
+			Repeat: it.Repeat, RepeatDay: it.RepeatDay}, now)
 }
 
 // ClaimDue returns the items that should notify now. Each item comes only once.
@@ -134,17 +166,46 @@ func (s *Service) ClaimDue(ctx context.Context, userID int64, now time.Time) ([]
 }
 
 func (s *Service) Toggle(ctx context.Context, userID, id int64) (Item, error) {
+	return s.ToggleIn(ctx, userID, id, nil)
+}
+
+// ToggleIn is Toggle, with the next date of a repeating item counted in loc
+// (nil: the service's zone).
+func (s *Service) ToggleIn(ctx context.Context, userID, id int64, loc *time.Location) (Item, error) {
 	it, err := s.store.Get(ctx, userID, id)
 	if err != nil {
 		return Item{}, err
 	}
-	return s.store.SetDone(ctx, userID, id, !it.Done, s.now())
+	return s.setDone(ctx, it, !it.Done, loc)
 }
 
 // SetDone marks the item done or not done. Unlike Toggle, sending it twice
 // gives the same result, so a stale tab cannot undo a change.
 func (s *Service) SetDone(ctx context.Context, userID, id int64, done bool) (Item, error) {
-	return s.store.SetDone(ctx, userID, id, done, s.now())
+	return s.SetDoneIn(ctx, userID, id, done, nil)
+}
+
+// SetDoneIn is SetDone, with the next date of a repeating item counted in
+// loc (nil: the service's zone).
+func (s *Service) SetDoneIn(ctx context.Context, userID, id int64, done bool, loc *time.Location) (Item, error) {
+	it, err := s.store.Get(ctx, userID, id)
+	if err != nil {
+		return Item{}, err
+	}
+	return s.setDone(ctx, it, done, loc)
+}
+
+// setDone marks the item done or not done. A repeating item that becomes
+// done stays open, and its due date moves to the next time (repeat.go).
+func (s *Service) setDone(ctx context.Context, it Item, done bool, loc *time.Location) (Item, error) {
+	now := s.now()
+	if done && !it.Done && it.Repeat != "" && it.DueAt != nil {
+		next := NextDue(*it.DueAt, it.Repeat, it.RepeatDay, now, s.zone(loc))
+		return s.store.UpdateItem(ctx, it.UserID, it.ID,
+			Change{Text: it.Text, DueAt: &next, DueAllDay: it.DueAllDay, ResetNotified: true, KeepLabels: true,
+				Repeat: it.Repeat, RepeatDay: it.RepeatDay}, now)
+	}
+	return s.store.SetDone(ctx, it.UserID, it.ID, done, now)
 }
 
 func (s *Service) Delete(ctx context.Context, userID, id int64) error {

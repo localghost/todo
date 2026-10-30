@@ -398,6 +398,8 @@ func (s *server) zoneFuncs(loc *time.Location) template.FuncMap {
 		"due":             func(it todo.Item) dueView { return dueLabel(it, s.now().In(loc)) },
 		"zone":            func() string { return loc.String() },
 		"postponeMinutes": func() []int { return todo.PostponeMinutes },
+		"repeatRules":     func() []string { return todo.RepeatRules },
+		"repeatText":      todo.RepeatText,
 	}
 }
 

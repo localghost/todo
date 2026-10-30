@@ -15,7 +15,7 @@ func (s *server) duePicker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	date, clock := dueInputs(item, s.zoneFor(r))
-	s.render(w, r, http.StatusOK, part{"due-picker", duePickerView{Item: item, DueDate: date, DueTime: clock}})
+	s.render(w, r, http.StatusOK, part{"due-picker", duePickerView{Item: item, DueDate: date, DueTime: clock, Repeat: item.Repeat}})
 }
 
 // setItemDue sets the due date of an item from the pop-up, or removes it
@@ -27,7 +27,7 @@ func (s *server) setItemDue(w http.ResponseWriter, r *http.Request) {
 		s.oobOnly(w, r, http.StatusNotFound)
 		return
 	}
-	date, clock := r.FormValue("due_date"), r.FormValue("due_time")
+	date, clock, repeat := r.FormValue("due_date"), r.FormValue("due_time"), r.FormValue("due_repeat")
 	// Read the time in the zone the pop-up was shown in, so an unchanged
 	// time stays the same moment even if the browser's zone changed since.
 	loc, ok := s.parseZone(r.FormValue("due_tz"))
@@ -35,7 +35,7 @@ func (s *server) setItemDue(w http.ResponseWriter, r *http.Request) {
 		loc = s.zoneFor(r)
 	}
 	old := s.oldItem(r, id)
-	item, err := s.svc.SetDue(r.Context(), userID(r), id, date, clock, loc)
+	item, err := s.svc.SetDueRepeat(r.Context(), userID(r), id, date, clock, repeat, loc)
 	var dueErr *todo.DueError
 	switch {
 	case errors.As(err, &dueErr):
@@ -51,7 +51,7 @@ func (s *server) setItemDue(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("HX-Retarget", "#due-picker-"+strconv.FormatInt(id, 10))
 		w.Header().Set("HX-Reswap", "outerHTML")
 		s.render(w, r, http.StatusUnprocessableEntity,
-			part{"due-picker", duePickerView{Item: cur, DueDate: date, DueTime: clock, Error: dueErr.Msg}})
+			part{"due-picker", duePickerView{Item: cur, DueDate: date, DueTime: clock, Repeat: repeat, Error: dueErr.Msg}})
 	case errors.Is(err, todo.ErrNotFound):
 		s.oobOnly(w, r, http.StatusNotFound)
 	case err != nil:

@@ -162,6 +162,29 @@ async function desktop() {
     await p.shot(out("sort-due.png"),["#toolbar", ".sort-hint", "#items"]);
     await p.click(".sort-due");
     await p.waitFor("document.getElementById('list-section').dataset.sortDue === 'false'");
+    await p.waitFor("document.getAnimations().length === 0");
+
+    // The search with "pl" (canvas page "19 · Search").
+    await p.click(".search-toggle");
+    await p.type("pl");
+    await p.move(990, 890);
+    await sleep(200);
+    await p.shot(out("search.png"), ["#toolbar", "#search-row", "#items"]);
+    await p.key("Escape");
+
+    // A repeating item right after its check (canvas page "20 · Repeat"),
+    // then its old date and no repeat again, for the phone shot.
+    const zone = await p.eval("Intl.DateTimeFormat().resolvedOptions().timeZone");
+    const back = { due_date: await day(p, 1), due_time: "10:00", due_tz: zone };
+    await send(p, "PUT", "/items/2/due", { ...back, due_repeat: "week" });
+    await p.goto(BASE + "/");
+    await p.click("#check-2");
+    await p.waitFor("!!document.querySelector('#item-2 .repeat-msg')");
+    await p.move(990, 890);
+    await p.eval("document.activeElement.blur()");
+    await sleep(200);
+    await p.shot(out("repeat.png"), ["#item-2"]);
+    await send(p, "PUT", "/items/2/due", { ...back, due_repeat: "" });
     return p.logs;
   } finally {
     p.close();

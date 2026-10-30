@@ -48,6 +48,7 @@ type duePickerView struct {
 	Draft   bool   // the pop-up of the add form (draft.go)
 	DueDate string // the date field (what the user typed, after an error)
 	DueTime string
+	Repeat  string // the repeat rule ("": never)
 	Error   string // why the last save failed
 }
 

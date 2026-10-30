@@ -66,6 +66,7 @@ type Input struct {
 	Text    string
 	DueDate string // YYYY-MM-DD or empty
 	DueTime string // HH:MM or empty
+	Repeat  string // "" or a rule of repeat.go; needs a due date
 	Labels  string // label names separated by commas (the add form sends the filter's label)
 }
 

@@ -238,8 +238,8 @@ document.addEventListener("keydown", (e) => {
   if (!pageHasFocus || e.defaultPrevented || e.isComposing || e.ctrlKey || e.altKey || e.metaKey) {
     return;
   }
-  if (e.key.length !== 1 || e.key === " ") {
-    return;
+  if (e.key.length !== 1 || e.key === " " || (e.key === "/" && searchAvailable())) {
+    return; // "/" opens the search (section 18)
   }
   const input = document.getElementById("new-item");
   if (!input) {
@@ -1193,3 +1193,278 @@ if (window.addEventListener) {
     fetch(p.url, { method: "DELETE", headers: { "HX-Request": "true" }, keepalive: true }).catch(() => {});
   });
 }
+
+// 17. A repeating item that is checked off moves to its next date (canvas
+// page "20 · Repeat", option R1). The server sends the header
+// X-Todo-Repeated (handlers.go, announceRepeat); a gray line under the row
+// says when the item comes again, with Undo for UNDO_MS. Undo sends the old
+// date back. One answer can settle more than one part (the row and the
+// toolbar): the line comes once per answer.
+const repeatShown = new WeakSet();
+document.addEventListener("htmx:afterSettle", (e) => {
+  const xhr = e.detail && e.detail.xhr;
+  const header = xhr && !repeatShown.has(xhr) && xhr.getResponseHeader("X-Todo-Repeated");
+  if (!header) {
+    return;
+  }
+  repeatShown.add(xhr);
+  let d;
+  try {
+    d = JSON.parse(header);
+  } catch {
+    return;
+  }
+  const row = document.getElementById("item-" + d.id);
+  const col = row && row.querySelector(".text-col");
+  if (!col) {
+    return;
+  }
+  const old = col.querySelector(".repeat-msg");
+  if (old) {
+    old.remove();
+  }
+  const line = document.createElement("div");
+  line.className = "repeat-msg";
+  line.setAttribute("role", "status");
+  const msg = document.createElement("span");
+  msg.textContent = "Done. Next time: " + d.next + ".";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "undo-btn";
+  button.textContent = "Undo";
+  button.addEventListener("click", () => {
+    htmx.ajax("PUT", "/items/" + d.id + "/due", {
+      target: row, swap: "outerHTML",
+      values: { due_date: d.date, due_time: d.time, due_tz: d.tz, due_repeat: d.repeat },
+    }).catch(() => {});
+  });
+  line.append(msg, button);
+  col.append(line);
+  setTimeout(() => line.remove(), UNDO_MS);
+});
+
+// 18. Search the items (canvas page "19 · Search", option A, match M2). The
+// ⌕ left of the buttons, or "/", opens a field between the buttons and the
+// list. While you type, the list shows only the rows that match, and the
+// matching letters are yellow. Fuzzy (M2): the typed letters must come in
+// this order in the text or the label names, with other letters between
+// them allowed; case and Polish letters do not matter. Esc or × closes it.
+// A row that comes after the search started (a new item) always shows. The
+// search needs no request: it works on the rows of the page.
+const search = { open: false, query: "", known: null };
+
+function searchAvailable() {
+  const toolbar = document.getElementById("toolbar");
+  return !!(toolbar && !toolbar.hidden && document.getElementById("search-row"));
+}
+
+// foldChars gives one lower-case letter without its accent for each
+// character of s ("Żółw" → z, o, l, w).
+function foldChars(s) {
+  return Array.from(s).map((c) => (c === "ł" || c === "Ł" ? "l" : c.normalize("NFD")[0].toLowerCase()));
+}
+
+// findMatch returns the places in hay of the letters of q: one run of them
+// if there is one, else the first letters in order; null if q is not there.
+function findMatch(q, hay) {
+  const at = hay.join("").indexOf(q.join(""));
+  if (at >= 0) {
+    return q.map((_, i) => at + i);
+  }
+  const places = [];
+  for (let k = 0; k < hay.length && places.length < q.length; k++) {
+    if (hay[k] === q[places.length]) {
+      places.push(k);
+    }
+  }
+  return places.length === q.length ? places : null;
+}
+
+// paint writes chars into el, with the letters at places in <mark>.
+function paint(el, chars, places) {
+  if (!places.length) {
+    if (el.querySelector("mark")) {
+      el.textContent = chars.join("");
+    }
+    return;
+  }
+  const marked = new Set(places);
+  el.textContent = "";
+  let run = "";
+  let inMark = marked.has(0);
+  const flush = () => {
+    if (!run) {
+      return;
+    }
+    if (inMark) {
+      const m = document.createElement("mark");
+      m.textContent = run;
+      el.append(m);
+    } else {
+      el.append(run);
+    }
+    run = "";
+  };
+  chars.forEach((c, i) => {
+    if (marked.has(i) !== inMark) {
+      flush();
+      inMark = marked.has(i);
+    }
+    run += c;
+  });
+  flush();
+}
+
+function applySearch() {
+  const items = document.getElementById("items");
+  if (!items) {
+    return;
+  }
+  const q = search.open ? foldChars(search.query).filter((c) => !/\s/.test(c)) : [];
+  let shown = 0;
+  let total = 0;
+  for (const row of items.querySelectorAll("li.item")) {
+    total++;
+    const textEl = row.querySelector(".text");
+    if (!textEl) {
+      row.classList.remove("search-miss"); // an edit row stays
+      shown++;
+      continue;
+    }
+    const chars = Array.from(textEl.textContent);
+    const labels = Array.from(row.querySelectorAll(".chip a"), (a) => a.textContent).join(" ");
+    const places = q.length ? findMatch(q, foldChars(textEl.textContent + " " + labels)) : [];
+    const keep = !q.length || !!places || (search.known && !search.known.has(row.id));
+    row.classList.toggle("search-miss", !keep);
+    paint(textEl, chars, places ? places.filter((p) => p < chars.length) : []);
+    if (keep) {
+      shown++;
+    }
+  }
+  const counter = document.querySelector("#toolbar .counter");
+  if (counter) {
+    if (!counter.dataset.base) {
+      counter.dataset.base = counter.textContent;
+    }
+    counter.textContent = q.length ? (shown ? shown + " of " + total + " items match" : "No match") : counter.dataset.base;
+  }
+  const status = document.getElementById("search-status");
+  if (status) {
+    status.textContent = q.length ? (shown ? shown + " of " + total + " items match" : "No items match") : "";
+  }
+  let empty = document.getElementById("search-empty");
+  if (q.length && !shown) {
+    if (!empty) {
+      empty = document.createElement("div");
+      empty.id = "search-empty";
+      empty.className = "search-empty";
+      items.before(empty);
+    }
+    const title = document.createElement("b");
+    title.textContent = "No items match “" + search.query.trim() + "”";
+    empty.replaceChildren(title, "Check the spelling, or press Esc to see all items.");
+  } else if (empty) {
+    empty.remove();
+  }
+  document.body.classList.toggle("searching", q.length > 0);
+}
+
+// syncSearch makes the page show the search state; list answers replace the
+// field and the rows, so it runs again after each of them.
+function syncSearch() {
+  const row = document.getElementById("search-row");
+  const input = document.getElementById("search");
+  const toggle = document.querySelector(".search-toggle");
+  if (row) {
+    row.hidden = !search.open;
+  }
+  if (input && input.value !== search.query) {
+    input.value = search.query;
+  }
+  if (toggle) {
+    toggle.setAttribute("aria-expanded", String(search.open));
+  }
+  applySearch();
+}
+
+function openSearch() {
+  if (!search.open) {
+    search.open = true;
+    search.known = new Set(Array.from(document.querySelectorAll("#items li.item"), (r) => r.id));
+  }
+  syncSearch();
+  const input = document.getElementById("search");
+  if (input) {
+    input.focus();
+  }
+}
+
+function closeSearch() {
+  search.open = false;
+  search.query = "";
+  search.known = null;
+  syncSearch();
+  const toggle = document.querySelector(".search-toggle");
+  if (toggle) {
+    toggle.focus();
+  }
+}
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest) {
+    return;
+  }
+  if (e.target.closest(".search-toggle")) {
+    if (search.open) {
+      closeSearch();
+    } else {
+      openSearch();
+    }
+  } else if (e.target.closest(".search-close")) {
+    closeSearch();
+  }
+});
+
+document.addEventListener("input", (e) => {
+  if (e.target.id === "search") {
+    search.query = e.target.value;
+    applySearch();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.target.id === "search" && e.key === "Escape") {
+    e.preventDefault();
+    closeSearch();
+    return;
+  }
+  if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey || e.isComposing || !searchAvailable()) {
+    return;
+  }
+  const el = document.activeElement;
+  if (el && (el.matches("input, textarea, select") || el.isContentEditable)) {
+    return;
+  }
+  e.preventDefault();
+  openSearch();
+});
+
+// A list answer replaces the field: if it had the focus, the new field gets
+// it. Other answers (a pop-up that opens) keep the focus where they put it.
+let searchFocused = null;
+document.addEventListener("htmx:beforeSwap", () => {
+  const el = document.activeElement;
+  searchFocused = el && el.id === "search" ? el : null;
+});
+document.addEventListener("htmx:afterSettle", () => {
+  if (!search.open) {
+    return;
+  }
+  syncSearch();
+  const input = document.getElementById("search");
+  if (searchFocused && !searchFocused.isConnected && input) {
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+  searchFocused = null;
+});

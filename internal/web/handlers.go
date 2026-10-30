@@ -45,7 +45,7 @@ func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	in := todo.Input{Text: r.FormValue("text"), DueDate: draft.DueDate, DueTime: draft.DueTime, Labels: draft.labelNames()}
+	in := todo.Input{Text: r.FormValue("text"), DueDate: draft.DueDate, DueTime: draft.DueTime, Repeat: draft.DueRepeat, Labels: draft.labelNames()}
 	var item todo.Item
 	if msg == "" {
 		item, err = s.svc.AddItem(r.Context(), userID(r), in, s.zoneFor(r))
@@ -99,11 +99,12 @@ func (s *server) toggleItem(w http.ResponseWriter, r *http.Request) {
 	// value, from a page loaded before this change, flips the item.
 	var item todo.Item
 	var err error
+	loc := s.zoneFor(r)
 	switch r.PostFormValue("done") {
 	case "1", "0":
-		item, err = s.svc.SetDone(r.Context(), userID(r), id, r.PostFormValue("done") == "1")
+		item, err = s.svc.SetDoneIn(r.Context(), userID(r), id, r.PostFormValue("done") == "1", loc)
 	default:
-		item, err = s.svc.Toggle(r.Context(), userID(r), id)
+		item, err = s.svc.ToggleIn(r.Context(), userID(r), id, loc)
 	}
 	if errors.Is(err, todo.ErrNotFound) {
 		s.oobOnly(w, r, http.StatusNotFound)
@@ -113,6 +114,7 @@ func (s *server) toggleItem(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
+	s.announceRepeat(w, r, old, item)
 	if placeChanged(old, item, s.nowFor(r), currentUser(r).SortDue) {
 		s.renderList(w, r, hideDone) // in due date order: into or out of the overdue group
 		return
@@ -428,6 +430,27 @@ func (s *server) setSortDue(w http.ResponseWriter, r *http.Request) {
 }
 
 // oldItem returns item id before a change (a zero item if it is missing).
+// announceRepeat tells the page, in the header X-Todo-Repeated, that a
+// check moved a repeating item to its next date (canvas page "20 · Repeat",
+// option R1): app.js shows "Done. Next time: …" under the row, with Undo,
+// which sends the old date back to the due date pop-up's address. (An htmx
+// event header would fire on the checkbox, which a list answer removes.)
+func (s *server) announceRepeat(w http.ResponseWriter, r *http.Request, old, item todo.Item) {
+	if old.Done || item.Done || item.Repeat == "" || old.DueAt == nil || item.DueAt == nil || old.DueAt.Equal(*item.DueAt) {
+		return
+	}
+	loc := s.zoneFor(r)
+	date, clock := dueInputs(old, loc)
+	b, err := json.Marshal(map[string]any{
+		"id": item.ID, "next": upperFirst(dueWhen(item.DueAt.In(loc), item.DueAllDay, s.nowFor(r))),
+		"date": date, "time": clock, "tz": loc.String(), "repeat": old.Repeat,
+	})
+	if err != nil {
+		return
+	}
+	w.Header().Set("X-Todo-Repeated", string(b))
+}
+
 func (s *server) oldItem(r *http.Request, id int64) todo.Item {
 	it, _ := s.svc.Get(r.Context(), userID(r), id)
 	return it
