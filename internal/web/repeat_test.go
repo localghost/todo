@@ -39,6 +39,10 @@ func TestDuePickerHasRepeat(t *testing.T) {
 		`<option value="">Never</option>`, `<option value="day">Every day</option>`,
 		`<option value="week" selected>Every week</option>`, `<option value="month">Every month</option>`,
 		`<option value="year">Every year</option>`, `<label class="due-picker-title" for="due-repeat-1">Repeat</label>`)
+	// A press on the list must go through, or the list does not open
+	// (app.js, the mousedown handler of the pop-ups).
+	js := do(t, env.H, "GET", "/static/app.js", nil, anon).Body.String()
+	assertContains(t, js, `e.target.closest(isDuePicker() ? "input, select" : ".picker-search")`)
 }
 
 // Saving the pop-up with a rule makes the item repeat; the date chip shows ↻.

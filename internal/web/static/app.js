@@ -745,7 +745,8 @@ document.addEventListener("click", (e) => {
 });
 
 // A press in a pop-up must not take the focus out of its field; a press on
-// another field of the due date pop-up still moves the focus there. Its
+// another field of the due date pop-up (also the Repeat list, which opens
+// only if its press goes through) still moves the focus there. Its
 // buttons must not take the focus first: Safari and Firefox on macOS do not
 // focus a pressed button, so the field would blur and focusout would close
 // the pop-up before the click. A press on the pop-up's own button keeps the
@@ -761,7 +762,7 @@ document.addEventListener("mousedown", (e) => {
     return;
   }
   if (picker.contains(e.target)) {
-    if (!e.target.closest(isDuePicker() ? "input" : ".picker-search")) {
+    if (!e.target.closest(isDuePicker() ? "input, select" : ".picker-search")) {
       e.preventDefault();
     }
   } else if (button === pickerButton) {
