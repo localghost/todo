@@ -34,6 +34,10 @@ main {
 
 h1 { margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.01em; }
 
+/* All links in the app's blue, also after a visit (canvas page "2 · Main
+   list", board "UI review", point 5). */
+a { color: var(--accent); }
+
 .visually-hidden {
   position: absolute; width: 1px; height: 1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
@@ -93,9 +97,27 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .item { display: flex; align-items: flex-start; gap: 4px; padding: 0 4px; }
 .item:first-child { border-top-left-radius: 9px; border-top-right-radius: 9px; }
 .item:last-child { border-bottom-left-radius: 9px; border-bottom-right-radius: 9px; }
+.item-undo:first-child { border-top-left-radius: 9px; border-top-right-radius: 9px; }
+.item-undo:last-child { border-bottom-left-radius: 9px; border-bottom-right-radius: 9px; }
 /* The 44 px box centre meets the centre of the first text line (canvas page 15). */
 .item .check { margin-top: -2px; }
 .item + .item { border-top: 1px solid var(--line); }
+/* The gray line with Undo after a delete (board "UI review", point 1). */
+.item-undo {
+  display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 4px 12px 4px 16px;
+  background: var(--ground); color: var(--muted); font-size: 15px;
+}
+.item-undo span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+#items > li + li { border-top: 1px solid var(--line); }
+.undo-btn {
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--accent);
+  background: #EEF2FC; border: 1px solid #C9D6F5; border-radius: 999px;
+  padding: 0 14px; min-height: 34px; cursor: pointer;
+}
+.undo-btn:hover { background: #DCE5FA; }
+@media (hover: none) {
+  .undo-btn { min-height: 44px; font-size: 15px; }
+}
 
 .check, .delete {
   width: 44px; height: 44px; flex-shrink: 0;
@@ -187,6 +209,12 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .user-nav { font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .user-nav strong { color: var(--ink); }
+/* On a phone the header has no "Signed in as" and no "Log out" (the Account
+   page has it): board "UI review", point 4. */
+.nav-who, .nav-logout { display: contents; }
+@media (max-width: 480px) {
+  .nav-who, .nav-logout { display: none; }
+}
 .inline-form { display: inline; margin: 0; }
 .link-button { font: inherit; color: var(--accent); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; }
 
@@ -195,6 +223,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .auth-brand { margin: 0; text-align: center; font-size: 30px; font-weight: 700; }
 .auth-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .auth-card h1 { margin: 0; font-size: 22px; }
+.not-found p { margin: 0; }
 .auth-form { display: flex; flex-direction: column; gap: 16px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-size: 14px; font-weight: 600; }
@@ -400,6 +429,12 @@ button.sw:focus-visible, .picker-name:focus-visible, .picker-back:focus-visible,
 .due-picker-title { margin: 0; font-size: 13px; font-weight: 700; color: var(--muted); }
 .due-picker .due-line { flex-wrap: nowrap; }
 .due-picker .due-line input[type="date"] { flex: 1; min-width: 0; }
+/* On a phone the time field goes under the date field, at full width, so
+   that it is not cut (board "UI review", point 2). */
+@media (max-width: 480px) {
+  .due-picker .due-line { flex-direction: column; align-items: stretch; }
+  .due-picker .due-line input.due-time { width: auto; }
+}
 .due-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .due-save {
   font: inherit; font-size: 14px; font-weight: 600; color: #FFFFFF;
@@ -466,6 +501,14 @@ button.sw:focus-visible, .picker-name:focus-visible, .picker-back:focus-visible,
 .toolbar { flex-wrap: wrap; }
 .toolbar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .toolbar-right { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Before the first item there is nothing to count, sort or hide (board "UI
+   review", point 6). */
+.toolbar[hidden], .toolbar[hidden] + .sort-hint { display: none; }
+/* On a phone the three buttons fit on one line (point 4). */
+@media (max-width: 480px) {
+  .toolbar-right { gap: 6px; }
+  .toolbar .filter { font-size: 13px; padding: 0 10px; }
+}
 /* The order of the list (canvas page "14 · Overdue at the top", board "sort
    the list by due date", option A). In due date order the grips and the
    empty grip column go away ("no empty space where the grip was", option

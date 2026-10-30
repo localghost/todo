@@ -16,7 +16,7 @@ There is no email address. If you forget your password, ask the admin of the app
 
 ### Log in and log out
 
-1. Type your username and password.
+1. Type your username and password. **Show** next to the password shows what you typed.
 2. If you use your own computer, select **Keep me logged in**. Then you stay logged in for 30
    days. You can be logged in on at most 20 devices or browsers at the same time. A new login
    ends the oldest one.
@@ -24,7 +24,8 @@ There is no email address. If you forget your password, ask the admin of the app
 
 ![The login page](guide-images/login.png "the login page with the fields Username and Password, the box “Keep me logged in”, the link to Sign up, and the links to the user guide and the privacy policy.")
 
-To log out, click **Log out** at the top right of your list.
+To log out, click **Log out** at the top right of your list. On a phone, **Log out** is on the
+**Account** page.
 
 The top right of your list also has the links **Labels** (see "The Labels page"), **Help** (this
 guide) and **Account**.
@@ -81,12 +82,14 @@ add field.
 ### Check off and delete
 
 - Click the box on the left of an item to mark it done. Click it again to mark it not done.
-- Click the × on the right of an item to delete it.
+- Click the × on the right of an item to delete it. A gray line with **Undo** shows in its
+  place. To get the item back, click **Undo** or press Ctrl+Z. The app deletes the item after 8
+  seconds, or before your next change.
 
 ### Done items
 
 Above the list, the app shows how many items are open and how many are done, for example
-"4 open · 1 done".
+"4 open · 1 done". Before your first item, the counter and the buttons do not show.
 
 - **Hide done** hides the done items. **Show done** shows them again. The app remembers your
   choice.
@@ -242,7 +245,13 @@ To see all items again, click the × next to "Label: name".
 
 ## On a phone
 
-The app works in the browser of a phone. On a touch screen:
+The app works in the browser of a phone. On a narrow screen:
+
+- The top of the list shows only the links **Labels**, **Help** and **Account**. **Log out** is
+  on the Account page.
+- In the due date pop-up, the time field is under the date field.
+
+On a touch screen:
 
 - The calendar icon and the + of an item are larger, and the × on a date or a label always
   shows.
@@ -316,6 +325,7 @@ web, so a change on the phone shows in the browser and the other way round.
 | Item in edit mode | Enter | Saves the text |
 | Item in edit mode | Esc | Cancels the change |
 | Grip (⋮⋮) | Up arrow, down arrow | Moves the item |
+| List, after a delete | Ctrl+Z | Brings the deleted item back (while **Undo** shows) |
 | Due date pop-up | Enter | Saves the date |
 | Due date pop-up | Esc | Closes the pop-up |
 | Label list, search field | Down arrow | Goes to the first label name |

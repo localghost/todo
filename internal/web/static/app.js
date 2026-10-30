@@ -542,7 +542,11 @@ function installPicker() {
   filterPicker();
   const el = picker.querySelector(".wheel");
   wheel = el ? makeWheel(el, previewColor) : null;
-  return focusPicker();
+  const input = focusPicker();
+  // Near the bottom of the screen, the page scrolls so that the whole pop-up
+  // shows (canvas page "2 · Main list", board "UI review", point 3).
+  picker.scrollIntoView({ block: "nearest" });
+  return input;
 }
 
 function openPicker(button) {
@@ -1022,4 +1026,168 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     closeClearConfirm();
   }
+});
+
+// 16. Undo after deleting an item (canvas page "2 · Main list", board "UI
+// review", point 1). A click on × does not send the delete at once: the row
+// becomes a gray line with Undo, in its place. As in the Android app, Undo
+// needs no request. The delete goes to the server after UNDO_MS, before the
+// next change (a request that is not a GET waits for it), before a link or a
+// plain form leaves the page, and when the page closes. Ctrl+Z also undoes.
+const UNDO_MS = 8000;
+let pendingDelete = null; // { id, url, html, text, timer }
+
+function undoLine(id, text) {
+  const line = document.createElement("li");
+  line.id = id;
+  line.className = "item-undo";
+  const msg = document.createElement("span");
+  msg.id = id + "-undo-text";
+  msg.textContent = "Deleted “" + text + "”.";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "undo-btn";
+  button.textContent = "Undo";
+  button.setAttribute("aria-describedby", msg.id);
+  line.append(msg, button);
+  return line;
+}
+
+// commitDelete sends the waiting delete. The server answers with an empty
+// row and the new toolbar, as for a delete without Undo.
+function commitDelete() {
+  const p = pendingDelete;
+  if (!p) {
+    return Promise.resolve();
+  }
+  pendingDelete = null;
+  clearTimeout(p.timer);
+  const line = document.getElementById(p.id);
+  if (!line) {
+    return fetch(p.url, { method: "DELETE", headers: { "HX-Request": "true" } }).catch(() => {});
+  }
+  // If the line has focus, go on at the next row's checkbox, else the
+  // previous row's, else the add field.
+  let near = null;
+  if (line.contains(document.activeElement)) {
+    const row = line.nextElementSibling || line.previousElementSibling;
+    near = (row && row.querySelector(".check")) || document.getElementById("new-item");
+  }
+  return htmx.ajax("DELETE", p.url, { source: line, target: line, swap: "outerHTML" }).then(() => {
+    if (near && document.body.contains(near) && (!document.activeElement || document.activeElement === document.body)) {
+      near.focus();
+    }
+    if (document.getElementById(p.id)) {
+      // A list answer brought the row back while the delete was on its way.
+      htmx.ajax("GET", "/", { target: "#list-section", swap: "outerHTML" });
+    }
+  }).catch(() => {});
+}
+
+function undoDelete() {
+  const p = pendingDelete;
+  if (!p) {
+    return;
+  }
+  pendingDelete = null;
+  clearTimeout(p.timer);
+  const line = document.getElementById(p.id);
+  if (!line) {
+    return;
+  }
+  const t = document.createElement("template");
+  t.innerHTML = p.html;
+  const row = t.content.firstElementChild;
+  line.replaceWith(row);
+  htmx.process(row);
+  const button = row.querySelector(".delete");
+  if (button) {
+    button.focus();
+  }
+}
+
+document.addEventListener("htmx:confirm", (e) => {
+  const elt = e.detail.elt;
+  const verb = String(e.detail.verb || "").toLowerCase();
+  const row = verb === "delete" && elt.matches && elt.matches(".delete") ? elt.closest("li.item") : null;
+  if (row) {
+    e.preventDefault();
+    commitDelete(); // one Undo at a time
+    const text = row.querySelector(".text");
+    pendingDelete = {
+      id: row.id, url: e.detail.path, html: row.outerHTML,
+      text: text ? text.textContent.trim() : "", timer: setTimeout(commitDelete, UNDO_MS),
+    };
+    const line = undoLine(row.id, pendingDelete.text);
+    row.replaceWith(line);
+    line.querySelector(".undo-btn").focus();
+    return;
+  }
+  if (!pendingDelete || verb === "get") {
+    return;
+  }
+  // The next change: first the delete, then this request.
+  e.preventDefault();
+  commitDelete().then(() => e.detail.issueRequest(true));
+});
+
+// A list answer (a GET) can bring the row back while Undo shows: keep the line.
+document.addEventListener("htmx:afterSettle", () => {
+  const p = pendingDelete;
+  const row = p && document.getElementById(p.id);
+  if (row && row.classList.contains("item")) {
+    p.html = row.outerHTML;
+    row.replaceWith(undoLine(p.id, p.text));
+  }
+});
+
+document.addEventListener("click", (e) => {
+  if (e.target.closest && e.target.closest(".undo-btn")) {
+    undoDelete();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (!pendingDelete || !(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "z") {
+    return;
+  }
+  const el = document.activeElement;
+  if (el && (el.matches("input, textarea, select") || el.isContentEditable)) {
+    return; // Ctrl+Z in a field undoes the typing
+  }
+  e.preventDefault();
+  undoDelete();
+});
+
+// A link or a plain form (Log out) leaves the page: delete first.
+document.addEventListener("click", (e) => {
+  if (!pendingDelete || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+    return;
+  }
+  const link = e.target.closest && e.target.closest("a[href]");
+  if (!link || link.target || link.hasAttribute("download") || link.matches("[hx-get], [hx-boost]")) {
+    return;
+  }
+  e.preventDefault();
+  commitDelete().finally(() => { location.href = link.href; });
+}, true);
+
+document.addEventListener("submit", (e) => {
+  const form = e.target;
+  if (!pendingDelete || form.matches("[hx-post], [hx-put], [hx-get], [hx-delete]")) {
+    return;
+  }
+  e.preventDefault();
+  commitDelete().finally(() => form.submit());
+}, true);
+
+// The page closes or reloads: the browser still sends the delete.
+window.addEventListener("pagehide", () => {
+  const p = pendingDelete;
+  if (!p) {
+    return;
+  }
+  pendingDelete = null;
+  clearTimeout(p.timer);
+  fetch(p.url, { method: "DELETE", headers: { "HX-Request": "true" }, keepalive: true }).catch(() => {});
 });

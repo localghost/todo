@@ -167,7 +167,22 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Op
 	mux.Handle("DELETE /labels/{id}", s.protect(s.deleteLabel))
 	s.apiRoutes(mux)
 	// Rejects changing requests that a browser marks as coming from another site.
-	return securityHeaders(http.NewCrossOriginProtection().Handler(limitBody(mux))), nil
+	return securityHeaders(http.NewCrossOriginProtection().Handler(limitBody(s.notFoundPage(mux)))), nil
+}
+
+// notFoundPage shows a page in the app style, with a way back, when a browser
+// opens an address that no route serves. htmx requests, the API and other
+// methods keep the short answers of the routes.
+func (s *server) notFoundPage(mux *http.ServeMux) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.Header.Get("HX-Request") == "" && !strings.HasPrefix(r.URL.Path, "/api/") {
+			if _, pattern := mux.Handler(r); pattern == "" {
+				s.render(w, r, http.StatusNotFound, part{"not-found", nil})
+				return
+			}
+		}
+		mux.ServeHTTP(w, r)
+	})
 }
 
 // noDirListing answers 404 for folder paths, so the file server never lists files.

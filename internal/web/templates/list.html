@@ -9,7 +9,9 @@
 <p id="move-help" class="visually-hidden">Use the Arrow Up and Arrow Down keys to move the item.</p>
 </section>{{end}}
 
-{{define "toolbar"}}<div id="toolbar" class="toolbar"{{if .OOB}} hx-swap-oob="true"{{end}} data-hide-done="{{.HideDone}}" data-sort-due="{{.SortDue}}"{{if .NextOverdue}} data-next-overdue="{{.NextOverdue}}"{{end}}>
+{{/* No counter and no buttons before the first item; a label filter keeps
+     them (canvas page "2 · Main list", board "UI review", point 6). */}}
+{{define "toolbar"}}<div id="toolbar" class="toolbar"{{if .OOB}} hx-swap-oob="true"{{end}}{{if and (eq .Total 0) (not .Filter)}} hidden{{end}} data-hide-done="{{.HideDone}}" data-sort-due="{{.SortDue}}"{{if .NextOverdue}} data-next-overdue="{{.NextOverdue}}"{{end}}>
 <div class="toolbar-left"><span class="counter">{{.Open}} open · {{.Done}} done</span>{{with .Filter}}
 <span class="active-filter">Label: <span class="chip" data-color="{{.Color}}" data-label="{{.ID}}">{{.Name}}</span><a class="clear-filter" href="/" aria-label="Show all labels" title="Show all labels">{{template "x-icon"}}</a></span>{{end}}</div>
 {{/* The number of done items shows once, in the counter: the buttons have no

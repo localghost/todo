@@ -12,7 +12,8 @@ Privacy policy: https://toodoo.fly.dev/privacy (the text is in
 
 ## What it does
 
-- Add, edit, check off and delete items. Hide the done ones, or clear them all at once.
+- Add, edit, check off and delete items. After a delete, Undo shows for 8 seconds. Hide the
+  done ones, or clear them all at once.
 - Give a new item its due date and labels with the calendar icon and the + under the add
   field, as on each item.
 - Give an item a due date and time with the calendar icon on each item. The date then shows

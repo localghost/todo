@@ -23,7 +23,8 @@
 <div class="field"><label for="login-username">Username</label>
 <input id="login-username" name="username" value="{{.Username}}" autocomplete="username" required{{if not .Username}} autofocus{{end}}></div>
 <div class="field"><label for="login-password">Password</label>
-<input id="login-password" name="password" type="password" autocomplete="current-password" required{{if .Username}} autofocus{{end}}></div>
+<div class="password-wrap"><input id="login-password" name="password" type="password" autocomplete="current-password" required{{if .Username}} autofocus{{end}}>
+<button type="button" class="show-password" data-target="login-password">Show</button></div></div>
 <label class="check-line"><input type="checkbox" name="keep" value="1"> Keep me logged in</label>
 <button type="submit" class="btn-primary">Log in</button>
 </form>
@@ -77,7 +78,8 @@
 {{if .PasswordError}}<div class="alert" role="alert">{{.PasswordError}}</div>{{end}}
 <form method="post" action="/account/password" class="auth-form">
 <div class="field"><label for="current-password">Current password</label>
-<input id="current-password" name="current_password" type="password" autocomplete="current-password" required></div>
+<div class="password-wrap"><input id="current-password" name="current_password" type="password" autocomplete="current-password" required>
+<button type="button" class="show-password" data-target="current-password">Show</button></div></div>
 <div class="field"><label for="new-password">New password</label>
 <div class="password-wrap"><input id="new-password" name="new_password" type="password" autocomplete="new-password" required>
 <button type="button" class="show-password" data-target="new-password">Show</button></div>
@@ -95,6 +97,21 @@
 <div><button type="submit" class="btn-danger">Delete my account and all items</button></div>
 </form>
 </section>
+</main>
+</body>
+</html>
+{{end}}
+
+{{/* An address that does not exist (canvas page "2 · Main list", board "UI
+     review", point 7). */}}
+{{define "not-found"}}{{template "auth-head" "Page not found"}}
+<main class="auth-wrap">
+<p class="auth-brand">TooDoo</p>
+<div class="auth-card not-found">
+<h1>Page not found</h1>
+<p>This address does not exist.</p>
+<p><a href="/">← Back to my list</a></p>
+</div>
 </main>
 </body>
 </html>

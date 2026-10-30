@@ -21,7 +21,7 @@ func TestLabelsPage(t *testing.T) {
 	addLabeled(t, env.Svc, env.User.ID, "Report", "work")
 	work, home := labelID(t, a, "work"), labelID(t, a, "home")
 
-	assertContains(t, do(t, env.H, "GET", "/", nil, nil).Body.String(), `· <a href="/labels">Labels</a> · <a href="/guide">Help</a>`)
+	assertContains(t, do(t, env.H, "GET", "/", nil, nil).Body.String(), `·</span> <a href="/labels">Labels</a> · <a href="/guide">Help</a>`)
 
 	rec := do(t, env.H, "GET", "/labels", nil, nil)
 	if rec.Code != http.StatusOK {
