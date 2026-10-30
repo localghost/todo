@@ -157,8 +157,9 @@ async function desktop() {
     await p.waitFor("document.getElementById('list-section').dataset.sortDue === 'true'");
     await p.move(990, 890);
     await p.eval("document.activeElement.blur()");
-    await sleep(200);
-    await p.shot(out("sort-due.png"), ["#toolbar", ".sort-hint", "#items"]);
+    // The rows slide to their places (app.js, SLIDE_MS): wait until they stop.
+    await p.waitFor("document.getAnimations().length === 0");
+    await p.shot(out("sort-due.png"),["#toolbar", ".sort-hint", "#items"]);
     await p.click(".sort-due");
     await p.waitFor("document.getElementById('list-section').dataset.sortDue === 'false'");
     return p.logs;
