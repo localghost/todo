@@ -1182,12 +1182,14 @@ document.addEventListener("submit", (e) => {
 }, true);
 
 // The page closes or reloads: the browser still sends the delete.
-window.addEventListener("pagehide", () => {
-  const p = pendingDelete;
-  if (!p) {
-    return;
-  }
-  pendingDelete = null;
-  clearTimeout(p.timer);
-  fetch(p.url, { method: "DELETE", headers: { "HX-Request": "true" }, keepalive: true }).catch(() => {});
-});
+if (window.addEventListener) {
+  window.addEventListener("pagehide", () => {
+    const p = pendingDelete;
+    if (!p) {
+      return;
+    }
+    pendingDelete = null;
+    clearTimeout(p.timer);
+    fetch(p.url, { method: "DELETE", headers: { "HX-Request": "true" }, keepalive: true }).catch(() => {});
+  });
+}
