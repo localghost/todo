@@ -72,11 +72,10 @@ func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	// An overdue item goes to the top, an item with a due date in due date
-	// order goes to its date, and an item without the filter label is not in
-	// the filtered list: the whole list comes back. Else the new row goes at
-	// the end.
-	if item.Overdue(s.nowFor(r)) || (lv.SortDue && item.DueAt != nil) || (lv.Filter != nil && !item.HasLabel(lv.Filter.ID)) {
+	// In due date order an item with a due date goes to its date, and an item
+	// without the filter label is not in the filtered list: the whole list
+	// comes back. Else the new row goes at the end, overdue or not.
+	if (lv.SortDue && item.DueAt != nil) || (lv.Filter != nil && !item.HasLabel(lv.Filter.ID)) {
 		w.Header().Set("HX-Retarget", "#list-section")
 		w.Header().Set("HX-Reswap", "outerHTML")
 		s.render(w, r, http.StatusOK, part{"list", lv}, part{"add-extras", fresh})
@@ -114,8 +113,8 @@ func (s *server) toggleItem(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	if now := s.nowFor(r); old.Overdue(now) != item.Overdue(now) {
-		s.renderList(w, r, hideDone) // the item enters or leaves the overdue group
+	if placeChanged(old, item, s.nowFor(r), currentUser(r).SortDue) {
+		s.renderList(w, r, hideDone) // in due date order: into or out of the overdue group
 		return
 	}
 	lv, err := s.listView(r, hideDone)
@@ -370,12 +369,10 @@ func (s *server) moveItem(w http.ResponseWriter, r *http.Request) {
 		s.renderListStatus(w, r, hideDone, http.StatusUnprocessableEntity)
 		return
 	}
-	err := s.svc.Move(r.Context(), userID(r), id, after, s.nowFor(r))
+	err := s.svc.Move(r.Context(), userID(r), id, after)
 	switch {
 	case errors.Is(err, todo.ErrNotFound):
 		s.renderListStatus(w, r, hideDone, http.StatusNotFound)
-	case errors.Is(err, todo.ErrCannotMove):
-		s.renderListStatus(w, r, hideDone, http.StatusUnprocessableEntity)
 	case err != nil:
 		s.serverError(w, r, err)
 	default:
@@ -436,17 +433,15 @@ func (s *server) oldItem(r *http.Request, id int64) todo.Item {
 	return it
 }
 
-// placeChanged reports whether a change moves the item in the list: into or
-// out of the overdue group, or to another place inside it. In due date order
-// (sortDue) each change of the due date moves the item.
+// placeChanged reports whether a change moves the item in the list. By hand
+// nothing moves it. In due date order (sortDue) a change of the due date moves
+// it, and so does done or not done, which takes it into or out of the overdue
+// group.
 func placeChanged(old, item todo.Item, now time.Time, sortDue bool) bool {
-	if old.Overdue(now) != item.Overdue(now) {
-		return true
+	if !sortDue {
+		return false
 	}
-	if sortDue && !sameDue(old, item) {
-		return true
-	}
-	return item.Overdue(now) && !old.DueAt.Equal(*item.DueAt)
+	return old.Overdue(now) != item.Overdue(now) || !sameDue(old, item)
 }
 
 // sameDue reports whether a and b have the same due date.
@@ -458,7 +453,7 @@ func sameDue(a, b todo.Item) bool {
 }
 
 // renderList answers with the whole list section instead of one row, for a
-// change that moves an item into or out of the overdue group at the top.
+// change that moves an item to another place.
 func (s *server) renderList(w http.ResponseWriter, r *http.Request, hideDone bool) {
 	s.renderListStatus(w, r, hideDone, http.StatusOK)
 }

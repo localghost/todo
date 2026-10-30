@@ -18,8 +18,8 @@
 
 {{define "plus-icon-18"}}<svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>{{end}}
 
-{{define "item"}}{{$d := due .}}<li id="item-{{.ID}}" class="item{{if .Done}} done{{end}}{{if $d.Overdue}} overdue-row{{end}}">
-{{if $d.Overdue}}<span class="grip-space" aria-hidden="true"></span>{{else}}<button class="grip" type="button" aria-label="Move: {{.Text}}" aria-describedby="move-help" title="Drag to move, or use the arrow keys">{{template "grip-icon"}}</button>{{end}}
+{{define "item"}}{{$d := due .}}<li id="item-{{.ID}}" class="item{{if .Done}} done{{end}}">
+<button class="grip" type="button" aria-label="Move: {{.Text}}" aria-describedby="move-help" title="Drag to move, or use the arrow keys">{{template "grip-icon"}}</button>
 <button id="check-{{.ID}}" class="check" type="button" aria-label="{{if .Done}}Mark not done{{else}}Mark done{{end}}: {{.Text}}"
   hx-post="/items/{{.ID}}/toggle" hx-vals='{"done":"{{if .Done}}0{{else}}1{{end}}"}' hx-target="closest li" hx-swap="outerHTML"><span class="box">{{if .Done}}{{template "check-icon"}}{{end}}</span></button>
 <div class="text-col">
@@ -34,7 +34,7 @@
   hx-delete="/items/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">{{template "x-icon"}}</button>
 </li>{{end}}
 
-{{define "item-edit"}}<li id="item-{{.Item.ID}}" class="item editing{{if .Item.Done}} done{{end}}{{if (due .Item).Overdue}} overdue-row{{end}}"
+{{define "item-edit"}}<li id="item-{{.Item.ID}}" class="item editing{{if .Item.Done}} done{{end}}"
   hx-get="/items/{{.Item.ID}}" hx-trigger="cancel-edit" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop">
 <span class="grip-space" aria-hidden="true"></span>
 <button class="check" type="button" disabled aria-label="Mark done (finish editing first)"><span class="box">{{if .Item.Done}}{{template "check-icon"}}{{end}}</span></button>

@@ -157,15 +157,11 @@ func (s *Service) ClearDone(ctx context.Context, userID, labelID int64) (int, er
 	return s.store.DeleteDone(ctx, userID, labelID)
 }
 
-// Move puts item id after item afterID (0: first). now carries the browser's
-// zone, because the overdue rule uses it for all-day items.
-func (s *Service) Move(ctx context.Context, userID, id, afterID int64, now time.Time) error {
-	it, err := s.store.Get(ctx, userID, id)
-	if err != nil {
+// Move puts item id after item afterID (0: first). An overdue item moves like
+// any other item.
+func (s *Service) Move(ctx context.Context, userID, id, afterID int64) error {
+	if _, err := s.store.Get(ctx, userID, id); err != nil {
 		return err
-	}
-	if it.Overdue(now) {
-		return ErrCannotMove
 	}
 	return s.store.Move(ctx, userID, id, afterID)
 }

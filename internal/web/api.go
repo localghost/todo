@@ -219,7 +219,7 @@ func (s *server) apiSettings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, r, s, http.StatusOK, apiUser{ID: u.ID, Username: u.Username, HideDone: u.HideDone})
 }
 
-// apiItems answers the list as the web shows it: overdue items first, done
+// apiItems answers the list as the web shows it by hand: the stored order, done
 // items left out if the user hides them, and only ?label= items if given.
 func (s *server) apiItems(w http.ResponseWriter, r *http.Request) {
 	// The Android app drags items, so it always gets the hand-made order.
@@ -342,7 +342,7 @@ func (s *server) apiMove(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusNotFound, "not_found", "This item no longer exists.")
 		return
 	}
-	s.apiNoContent(w, r, s.svc.Move(r.Context(), userID(r), id, in.After, s.nowFor(r)))
+	s.apiNoContent(w, r, s.svc.Move(r.Context(), userID(r), id, in.After))
 }
 
 // apiAddLabel puts the label "name" on an item, making it if needed.
@@ -505,8 +505,6 @@ func (s *server) apiChangeError(w http.ResponseWriter, r *http.Request, err erro
 		apiError(w, http.StatusBadRequest, "bad_postpone", "Unknown postpone amount.")
 	case errors.Is(err, todo.ErrCannotPostpone):
 		apiError(w, http.StatusConflict, "cannot_postpone", "Only open items with a due date can be postponed.")
-	case errors.Is(err, todo.ErrCannotMove):
-		apiError(w, http.StatusConflict, "cannot_move", "Overdue items stay at the top.")
 	default:
 		s.apiServerError(w, r, err)
 	}

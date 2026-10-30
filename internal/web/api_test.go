@@ -210,7 +210,8 @@ func TestAPIItemsListOrderAndCounts(t *testing.T) {
 	if l.Open != 2 || l.Done != 1 || l.HideDone || l.Label != nil || len(l.Items) != 3 {
 		t.Fatalf("list = %+v", l)
 	}
-	if l.Items[0].ID != late.ID || !l.Items[0].Overdue || l.Items[1].ID != first.ID || !l.Items[2].Done {
+	// The hand-made order: the overdue item stays at its place.
+	if l.Items[0].ID != first.ID || l.Items[1].ID != late.ID || !l.Items[1].Overdue || !l.Items[2].Done {
 		t.Fatalf("order = %+v", l.Items)
 	}
 	if l.Items[1].Labels == nil {
@@ -317,7 +318,11 @@ func TestAPIPostponeAndMove(t *testing.T) {
 		t.Fatalf("after move: %+v", l.Items)
 	}
 	late2, _ := env.Svc.Add(ctx, 1, "Late 2", "2020-01-01", "09:00")
-	wantError(t, apiDo(t, env, "POST", "/api/v1/items/"+ids(late2.ID)+"/move", env.Token, `{"after":0}`), http.StatusConflict, "cannot_move")
+	// An overdue item moves like any other item.
+	wantStatus(t, apiDo(t, env, "POST", "/api/v1/items/"+ids(late2.ID)+"/move", env.Token, `{"after":0}`), http.StatusNoContent)
+	if l := decode[jsonList](t, apiDo(t, env, "GET", "/api/v1/items", env.Token, "")); l.Items[0].ID != late2.ID {
+		t.Fatalf("after the move of an overdue item: %+v", l.Items)
+	}
 	wantError(t, apiDo(t, env, "POST", "/api/v1/items/"+ids(a.ID)+"/move", env.Token, `{"after":-1}`), http.StatusNotFound, "not_found")
 }
 

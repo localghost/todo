@@ -35,7 +35,7 @@ func TestSortByDueSwitch(t *testing.T) {
 	body := do(t, env.H, "GET", "/", nil, warsawHTMX()).Body.String()
 	assertContains(t, body, `data-sort-due="false"`, ">Sort by due date</button>", `hx-vals='{"sort_due":"1"}'`)
 	assertNotContains(t, body, sortHint)
-	assertOrder(t, body, "Pay the rent", "Call the dentist", "Return library books", "Water the plants", "Send the invoice")
+	assertOrder(t, body, "Return library books", "Call the dentist", "Pay the rent", "Water the plants", "Send the invoice")
 
 	rec := do(t, env.H, "POST", "/settings/sort-due", url.Values{"sort_due": {"1"}}, warsawHTMX())
 	if rec.Code != http.StatusOK {
@@ -53,7 +53,7 @@ func TestSortByDueSwitch(t *testing.T) {
 	body = do(t, env.H, "POST", "/settings/sort-due", url.Values{"sort_due": {"0"}}, warsawHTMX()).Body.String()
 	assertContains(t, body, `data-sort-due="false"`, ">Sort by due date</button>")
 	assertNotContains(t, body, sortHint)
-	assertOrder(t, body, "Pay the rent", "Call the dentist", "Return library books", "Water the plants", "Send the invoice")
+	assertOrder(t, body, "Return library books", "Call the dentist", "Pay the rent", "Water the plants", "Send the invoice")
 }
 
 func TestSortByDueWithoutHTMXRedirects(t *testing.T) {
@@ -133,7 +133,7 @@ func TestAPIItemsKeepHandOrder(t *testing.T) {
 		t.Fatalf("api items: %d", rec.Code)
 	}
 	body, last := rec.Body.String(), -1
-	for _, text := range []string{"Pay the rent", "Call the dentist", "Return library books", "Water the plants", "Send the invoice"} {
+	for _, text := range []string{"Return library books", "Call the dentist", "Pay the rent", "Water the plants", "Send the invoice"} {
 		i := strings.Index(body, `"text":"`+text+`"`)
 		if i < last {
 			t.Fatalf("%q is out of the hand-made order: %s", text, body)

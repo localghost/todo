@@ -59,9 +59,9 @@ and for how long. The login, sign-up and Account pages link to it.
    the date, point at that button and click the × that shows in it.
 3. If you want labels, click the **+** under the field. Click a label name to select it, or type
    a new name to create a label. The selected labels show before the +, each with an ×.
-4. Press Enter or click **Add**. The item goes to the end of the list. If its due date has
-   already passed, it goes to the top. If the list is sorted by due date, the item goes to its
-   place in that order. The date and the labels under the field then clear.
+4. Press Enter or click **Add**. The item goes to the end of the list, also if its due date has
+   already passed. If the list is sorted by due date, the item goes to its place in that order.
+   The date and the labels under the field then clear.
 
 ![The add field with a due date and two labels](guide-images/add-form.png "the add field with the text “Pay the rent”. Under it, the due date button shows “Tomorrow, 10:00”, then the selected labels “home” and “urgent”, then the +.")
 
@@ -106,8 +106,8 @@ You put the items in order by hand:
 - With the keyboard: press Tab until the grip has the focus, then press the up arrow or the down
   arrow.
 
-Overdue items always stay at the top. You cannot move them, and you cannot move other items
-above them.
+An overdue item stays where you put it, and you can move it like any other item. To see the
+overdue items at the top, use **Sort by due date**.
 
 ### Sort by due date
 
@@ -154,8 +154,9 @@ The app shows the times in the time zone of your browser.
 
 ### Overdue items
 
-When the due time passes, the date text becomes red ("Overdue since …"), and the item moves to
-the top of the list.
+When the due time passes, the date text becomes red ("Overdue since …"), and the postpone buttons
+show. In **Sort by hand** the item stays at its place. In **Sort by due date** it moves to the
+top of the list.
 
 ## Reminders
 
@@ -268,8 +269,9 @@ web, so a change on the phone shows in the browser and the other way round.
 - **The list:** swipe a row to the right to mark it done (on a done row, the same swipe marks it
   not done again). Swipe a row to the left to delete it. Both show Undo for a few seconds, and
   the change is saved when Undo goes away. Hold a row still for half a second until it lifts,
-  then drag it to change the order (overdue items stay at the top). Pull down to load the list
-  again. The first time, a blue hint above the list explains this; "Got it" closes it.
+  then drag it to change the order. For now, you cannot move an overdue row in the app. Pull
+  down to load the list again. The first time, a blue hint above the list explains this; "Got
+  it" closes it.
 - **Without swiping:** the item sheet has a "Mark as done" button. With TalkBack, each row has
   the actions Mark as done, Move up, Move down and Delete.
 - **An item:** tap it. The sheet has the text, the due date, Postpone, the labels, "Mark as

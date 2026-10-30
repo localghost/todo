@@ -90,16 +90,15 @@ func TestMoveNotFoundAnswersWithList(t *testing.T) {
 	}
 }
 
-func TestMoveOverdueAnswers422WithList(t *testing.T) {
+// An overdue item moves like any other item.
+func TestMoveOverdueItem(t *testing.T) {
 	env, ids := overdueEnv(t)
 	rec := do(t, env.H, "POST", moveURL(ids["Call the dentist"]), moveForm(0), warsawHTMX())
-	if rec.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("status = %d, want 422", rec.Code)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rec.Code)
 	}
-	if rec.Header().Get("HX-Retarget") != "#list-section" {
-		t.Fatalf("HX-Retarget = %q, want #list-section", rec.Header().Get("HX-Retarget"))
-	}
-	assertOrder(t, rec.Body.String(), "Pay the rent", "Call the dentist", "Return library books", "Water the plants")
+	assertOrder(t, do(t, env.H, "GET", "/", nil, tz("Europe/Warsaw")).Body.String(),
+		"Call the dentist", "Return library books", "Pay the rent", "Water the plants")
 }
 
 func TestMoveNeedsLogin(t *testing.T) {
@@ -130,20 +129,19 @@ func TestMoveWithHideDoneKeepsHiddenItemsInPlace(t *testing.T) {
 	assertOrder(t, body, "Alpha task", "Gamma task", "Finished task", "Beta task")
 }
 
-func TestGripOnNormalRowsOnly(t *testing.T) {
+func TestGripOnEveryRow(t *testing.T) {
 	env, ids := overdueEnv(t)
 	do(t, env.H, "POST", "/items/"+strconv.FormatInt(ids["Return library books"], 10)+"/toggle", nil, warsawHTMX())
 	body := do(t, env.H, "GET", "/", nil, map[string]string{"Cookie": "todo_tz=Europe/Warsaw"}).Body.String()
 
-	// A done row and an open row that is not overdue have a grip.
+	// A done row, an open row and the overdue rows all have a grip.
 	assertContains(t, body, `aria-label="Move: Return library books"`, `aria-label="Move: Water the plants"`,
+		`aria-label="Move: Call the dentist"`, `aria-label="Move: Pay the rent"`,
 		`<p id="move-status" class="visually-hidden" aria-live="polite"></p>`)
-	// Overdue rows have no grip, and they carry the class overdue-row.
-	assertNotContains(t, body, `aria-label="Move: Call the dentist"`, `aria-label="Move: Pay the rent"`)
-	assertContains(t, body, `id="item-`+strconv.FormatInt(ids["Call the dentist"], 10)+`" class="item overdue-row"`)
+	assertNotContains(t, body, "overdue-row", "grip-space")
 
-	edit := do(t, env.H, "GET", "/items/"+strconv.FormatInt(ids["Water the plants"], 10)+"/edit", nil, warsawHTMX()).Body.String()
-	assertNotContains(t, edit, `class="grip"`)
+	edit := do(t, env.H, "GET", "/items/"+strconv.FormatInt(ids["Call the dentist"], 10)+"/edit", nil, warsawHTMX()).Body.String()
+	assertNotContains(t, edit, `class="grip"`, "overdue-row")
 	assertContains(t, edit, `class="grip-space"`)
 }
 
@@ -155,14 +153,4 @@ func TestGripHasKeyHelp(t *testing.T) {
 	assertContains(t, body,
 		`<button class="grip" type="button" aria-label="Move: Water the plants" aria-describedby="move-help"`,
 		`<p id="move-help" class="visually-hidden">Use the Arrow Up and Arrow Down keys to move the item.</p>`)
-}
-
-// The edit row of an overdue item stays in the overdue group: the page must
-// not treat it as a normal row (no drop next to it, not counted in "N of M").
-func TestOverdueEditRowIsMarked(t *testing.T) {
-	env, ids := overdueEnv(t)
-	edit := do(t, env.H, "GET", "/items/"+strconv.FormatInt(ids["Call the dentist"], 10)+"/edit", nil, warsawHTMX()).Body.String()
-	assertContains(t, edit, `class="item editing overdue-row"`)
-	normal := do(t, env.H, "GET", "/items/"+strconv.FormatInt(ids["Water the plants"], 10)+"/edit", nil, warsawHTMX()).Body.String()
-	assertNotContains(t, normal, "overdue-row")
 }

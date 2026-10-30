@@ -1,18 +1,18 @@
 // Drag-and-drop and keyboard order (spec 2026-10-12-drag-order-design.md).
-// Only the grip starts a drag. Overdue rows (.overdue-row) stay at the top:
-// they cannot move, and nothing can be dropped between them. This file loads
+// Only the grip starts a drag. Overdue rows move like the other rows; only
+// "Sort by due date" puts them first, and it has no grips. This file loads
 // after app.js and uses its NETWORK_ERROR.
 
-// isNormal reports whether row is a list row that is not overdue.
-function isNormal(row) {
-  return !!row && row.classList.contains("item") && !row.classList.contains("overdue-row");
+// isRow reports whether node is a list row.
+function isRow(node) {
+  return !!node && node.classList.contains("item");
 }
 
 // afterFor returns the "after" value for row at its current place: the id of
-// the nearest normal row above it, or "" for the first place.
+// the nearest row above it, or "" for the first place.
 function afterFor(row) {
   for (let prev = row.previousElementSibling; prev; prev = prev.previousElementSibling) {
-    if (isNormal(prev)) {
+    if (isRow(prev)) {
       return prev.id.slice("item-".length);
     }
   }
@@ -24,7 +24,7 @@ function afterFor(row) {
 function stepTarget(row, dir) {
   if (dir < 0) {
     const prev = row.previousElementSibling;
-    return isNormal(prev) ? prev : undefined;
+    return isRow(prev) ? prev : undefined;
   }
   const next = row.nextElementSibling;
   return next ? next.nextElementSibling : undefined;
@@ -122,7 +122,7 @@ async function postMove(id, body, before) {
 // Say the new place of row to a screen reader, for example "Moved to 3 of 7".
 function announce(row) {
   const status = document.getElementById("move-status");
-  const rows = Array.from(row.parentElement.children).filter(isNormal);
+  const rows = Array.from(row.parentElement.children).filter(isRow);
   if (status) {
     status.textContent = `Moved to ${rows.indexOf(row) + 1} of ${rows.length}`;
   }
@@ -144,11 +144,10 @@ function startSortable(list) {
     // it. Do not add :not(.editing) here: SortableJS counts oldIndex and
     // newIndex only among draggable rows, so a move past the edit row would
     // keep the same index, and onEnd would not send it.
-    draggable: "li.item:not(.overdue-row)",
+    draggable: "li.item",
     ghostClass: "drag-ghost",
     chosenClass: "drag-chosen",
     animation: 150,
-    onMove: (e) => !e.related.classList.contains("overdue-row"),
     onStart: () => {
       document.body.classList.add("dragging");
       dragBefore = rowIds(list);

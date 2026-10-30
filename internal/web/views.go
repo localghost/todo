@@ -76,8 +76,8 @@ type pageView struct {
 	Username string
 }
 
-// listView loads the list of the request's user in the user's order:
-// overdue items first, most overdue first, in the browser's zone.
+// listView loads the list of the request's user in the user's order: by hand,
+// or by due date (overdue items first, in the browser's zone).
 func (s *server) listView(r *http.Request, hideDone bool) (listView, error) {
 	return s.listViewOrder(r, hideDone, currentUser(r).SortDue)
 }
@@ -102,10 +102,9 @@ func (s *server) listViewOrder(r *http.Request, hideDone, sortDue bool) (listVie
 	if err != nil {
 		return listView{}, err
 	}
+	// By hand, the items keep the stored order, overdue or not.
 	if sortDue {
 		items = todo.DueOrder(items, now)
-	} else {
-		items = todo.OverdueFirst(items, now)
 	}
 	lv := listView{Items: items, Open: open, Done: done, Total: open + done, HideDone: hideDone, SortDue: sortDue, Filter: filter}
 	if next, ok := todo.NextOverdue(items, now); ok {

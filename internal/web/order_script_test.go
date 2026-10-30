@@ -36,15 +36,15 @@ func TestPageLoadsOrderScripts(t *testing.T) {
 }
 
 // orderHarness runs order.js with a fake document and prints one JSON line
-// per case. A list is a string like "o1 o2 3 4": "o" marks an overdue row.
+// per case. A list is a string like "1 2 3": each name is a row id.
 const orderHarness = `
 const src = require("fs").readFileSync(process.argv[2], "utf8");
 const document = { addEventListener() {} };
 const fns = new Function("document", src + "\nreturn { afterFor, stepTarget };")(document);
 function rows(spec) {
   const out = spec.split(" ").map((s) => ({
-    id: "item-" + s.replace("o", ""),
-    classList: { contains: (c) => c === "item" || (c === "overdue-row" && s.startsWith("o")) },
+    id: "item-" + s,
+    classList: { contains: (c) => c === "item" },
   }));
   out.forEach((r, i) => {
     r.previousElementSibling = out[i - 1] || null;
@@ -57,11 +57,11 @@ function show(node) {
   if (node === null) return "end";
   return node.id;
 }
-const r = rows("o1 o2 3 4 5");
-console.log(JSON.stringify({ name: "after: first normal row", got: fns.afterFor(r[2]) }));
-console.log(JSON.stringify({ name: "after: second normal row", got: fns.afterFor(r[3]) }));
-console.log(JSON.stringify({ name: "after: first row, no overdue", got: fns.afterFor(rows("7 8")[0]) }));
-console.log(JSON.stringify({ name: "up: below overdue", got: show(fns.stepTarget(r[2], -1)) }));
+const r = rows("1 2 3 4 5");
+console.log(JSON.stringify({ name: "after: first row", got: fns.afterFor(r[0]) }));
+console.log(JSON.stringify({ name: "after: third row", got: fns.afterFor(r[2]) }));
+console.log(JSON.stringify({ name: "up: first", got: show(fns.stepTarget(r[0], -1)) }));
+console.log(JSON.stringify({ name: "up: second", got: show(fns.stepTarget(r[1], -1)) }));
 console.log(JSON.stringify({ name: "up: middle", got: show(fns.stepTarget(r[3], -1)) }));
 console.log(JSON.stringify({ name: "down: middle", got: show(fns.stepTarget(r[2], 1)) }));
 console.log(JSON.stringify({ name: "down: second last", got: show(fns.stepTarget(r[3], 1)) }));
@@ -82,14 +82,14 @@ func TestOrderScriptHelpers(t *testing.T) {
 		t.Fatalf("node: %v\n%s", err, out)
 	}
 	want := map[string]string{
-		"after: first normal row":      "",
-		"after: second normal row":     "3",
-		"after: first row, no overdue": "",
-		"up: below overdue":            "none",
-		"up: middle":                   "item-3",
-		"down: middle":                 "item-5",
-		"down: second last":            "end",
-		"down: last":                   "none",
+		"after: first row":  "",
+		"after: third row":  "2",
+		"up: first":         "none",
+		"up: second":        "item-1",
+		"up: middle":        "item-3",
+		"down: middle":      "item-5",
+		"down: second last": "end",
+		"down: last":        "none",
 	}
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	if len(lines) != len(want) {

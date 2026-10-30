@@ -46,11 +46,13 @@ func TestAddWithDueDate(t *testing.T) {
 		t.Fatalf("stored %+v, want the text and a due time", got)
 	}
 
+	// An overdue new item also goes at the end: only its row comes back.
 	rec = do(t, h, "POST", "/items", url.Values{"text": {"Pay rent"}, "due_date": {"2020-01-01"}}, htmxHeaders)
-	if rec.Code != http.StatusOK || rec.Header().Get("HX-Retarget") != "#list-section" {
-		t.Fatalf("overdue: status = %d, HX-Retarget = %q, want 200 #list-section", rec.Code, rec.Header().Get("HX-Retarget"))
+	if rec.Code != http.StatusOK || rec.Header().Get("HX-Retarget") != "" {
+		t.Fatalf("overdue: status = %d, HX-Retarget = %q, want 200 and none", rec.Code, rec.Header().Get("HX-Retarget"))
 	}
-	assertContains(t, rec.Body.String(), `<section id="list-section"`, "Pay rent", "Overdue since", `id="add-extras"`)
+	assertContains(t, rec.Body.String(), `<li id="item-2" class="item">`, "Pay rent", "Overdue since", `id="add-extras"`)
+	assertNotContains(t, rec.Body.String(), `<section id="list-section"`)
 
 	rec = do(t, h, "POST", "/items", url.Values{"text": {""}, "due_date": {"2099-01-01"}}, htmxHeaders)
 	if rec.Code != http.StatusUnprocessableEntity {

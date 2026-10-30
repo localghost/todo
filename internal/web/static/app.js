@@ -8,7 +8,7 @@ let focusAfterSwap = null;
 
 document.addEventListener("htmx:beforeSwap", (e) => {
   // The row of the element that sent the request; the target can be the whole
-  // list section when an item moves into or out of the overdue group.
+  // list section when an item moves to another place.
   const source = e.detail.elt;
   const row = source && source.closest ? source.closest("li.item") : null;
   const active = document.activeElement;
@@ -293,7 +293,8 @@ document.addEventListener("htmx:historyCacheMissLoadError", () => {
   location.reload();
 });
 
-// 10. Overdue items move to the top. The toolbar (swapped with every list and
+// 10. An overdue row turns red and gets the postpone buttons (in "Sort by due
+// date" it also moves to the top). The toolbar (swapped with every list and
 // row answer) names the moment when the next item becomes overdue
 // (data-next-overdue, Unix ms); refresh the list then. Never while an edit row
 // is open: try again later. Plan at most 6 hours ahead, so a sleeping laptop
@@ -328,8 +329,8 @@ function refreshForOverdue(next) {
 document.addEventListener("DOMContentLoaded", planOverdueRefresh);
 document.addEventListener("htmx:afterSettle", planOverdueRefresh);
 
-// 11. A whole-list answer (an item moved into or out of the overdue group, or
-// the overdue refresh) must not replace a row that is being edited elsewhere:
+// 11. A whole-list answer (an item moved to another place, or the overdue
+// refresh) must not replace a row that is being edited elsewhere:
 // put the open edit row back after the swap, with its focus.
 let keptEdit = null;
 let keptFocus = false;

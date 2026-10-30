@@ -18,11 +18,11 @@ Privacy policy: https://toodoo.fly.dev/privacy (the text is in
 - Give an item a due date and time with the calendar icon on each item. The date then shows
   as a chip, and its × removes it. Type the time as digits: 1430 becomes 14:30. The
   browser can remind you, and you can postpone by 5, 10, 15 or 30 minutes.
-- Overdue items move to the top of the list.
 - Drag items by the grip (⋮⋮) to change their order, or use the arrow keys. Overdue items
-  stay at the top.
-- Sort the list by due date with one click: the nearest date first, items without a date at
-  the end. "Sort by hand" brings your own order back. The app remembers the choice.
+  turn red and stay where you put them.
+- Sort the list by due date with one click: overdue items first, then the nearest date, items
+  without a date at the end. "Sort by hand" brings your own order back. The app remembers the
+  choice.
 - Put labels such as "work" or "home" on items with the small + on each item. It opens a
   searchable list of all your labels: click names to add or remove several labels, or create a
   new one. Point at a label on an item to remove it with its ×. Click a label to see only its

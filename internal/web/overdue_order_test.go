@@ -66,10 +66,12 @@ func assertRetarget(t *testing.T, rec *httptest.ResponseRecorder, want bool) {
 	}
 }
 
-func TestOverdueItemsComeFirst(t *testing.T) {
+// In "Sort by hand" an overdue item stays at its place. The list still names
+// the moment when the next item becomes overdue, so the row can turn red.
+func TestHandOrderKeepsOverdueItemsInPlace(t *testing.T) {
 	env, _ := overdueEnv(t)
 	body := do(t, env.H, "GET", "/", nil, tz("Europe/Warsaw")).Body.String()
-	assertOrder(t, body, "Pay the rent", "Call the dentist", "Return library books", "Water the plants")
+	assertOrder(t, body, "Return library books", "Call the dentist", "Pay the rent", "Water the plants")
 	next := time.Date(2026, 10, 3, 14, 0, 0, 0, mustZone(t, "Europe/Warsaw")).UnixMilli()
 	assertContains(t, body, `data-next-overdue="`+strconv.FormatInt(next, 10)+`"`)
 }
@@ -80,44 +82,52 @@ func TestNoNextOverdueWithoutDueItems(t *testing.T) {
 	assertNotContains(t, do(t, env.H, "GET", "/", nil, nil).Body.String(), "data-next-overdue")
 }
 
-func TestDoneOverdueItemMovesBack(t *testing.T) {
+// In "Sort by hand", done, postpone and a new due date change only the row.
+func TestOverdueChangesKeepThePlaceInHandOrder(t *testing.T) {
 	env, ids := overdueEnv(t)
-	rec := do(t, env.H, "POST", "/items/"+strconv.FormatInt(ids["Call the dentist"], 10)+"/toggle", url.Values{}, warsawHTMX())
-	assertRetarget(t, rec, true)
-	assertOrder(t, rec.Body.String(), "Pay the rent", "Return library books", "Call the dentist", "Water the plants")
-
-	rec = do(t, env.H, "POST", "/items/"+strconv.FormatInt(ids["Return library books"], 10)+"/toggle", url.Values{}, warsawHTMX())
-	assertRetarget(t, rec, false) // not overdue before or after: only the row
-}
-
-func TestPostponedItemMovesBack(t *testing.T) {
-	env, ids := overdueEnv(t)
-	rec := do(t, env.H, "POST", "/items/"+strconv.FormatInt(ids["Call the dentist"], 10)+"/postpone?minutes=10", nil, warsawHTMX())
+	dentist := strconv.FormatInt(ids["Call the dentist"], 10)
+	rec := do(t, env.H, "POST", "/items/"+dentist+"/postpone?minutes=10", nil, warsawHTMX())
 	if rec.Code != http.StatusOK {
 		t.Fatalf("postpone: %d", rec.Code)
 	}
-	assertRetarget(t, rec, true)
-	assertOrder(t, rec.Body.String(), "Pay the rent", "Return library books", "Call the dentist", "Water the plants")
-}
+	assertRetarget(t, rec, false)
 
-func TestDueChangeMovesItem(t *testing.T) {
-	env, ids := overdueEnv(t)
+	rent := strconv.FormatInt(ids["Pay the rent"], 10)
 	form := url.Values{"due_date": {"2026-10-04"}, "due_time": {"10:00"}, "due_tz": {"Europe/Warsaw"}}
-	rec := do(t, env.H, "PUT", "/items/"+strconv.FormatInt(ids["Call the dentist"], 10)+"/due", form, warsawHTMX())
-	assertRetarget(t, rec, true)
-	assertOrder(t, rec.Body.String(), "Pay the rent", "Return library books", "Call the dentist", "Water the plants")
+	assertRetarget(t, do(t, env.H, "PUT", "/items/"+rent+"/due", form, warsawHTMX()), false)
+
+	form = url.Values{"due_date": {"2026-10-01"}, "due_time": {"10:00"}, "due_tz": {"Europe/Warsaw"}}
+	assertRetarget(t, do(t, env.H, "PUT", "/items/"+rent+"/due", form, warsawHTMX()), false)
+	assertRetarget(t, do(t, env.H, "POST", "/items/"+rent+"/toggle", url.Values{}, warsawHTMX()), false)
+
+	assertOrder(t, do(t, env.H, "GET", "/", nil, tz("Europe/Warsaw")).Body.String(),
+		"Return library books", "Call the dentist", "Pay the rent", "Water the plants")
 }
 
-func TestOverdueOrderWithDoneHidden(t *testing.T) {
+// In "Sort by due date" an item that stops being overdue goes to its new place.
+func TestDoneOverdueItemMovesInDueOrder(t *testing.T) {
 	env, ids := overdueEnv(t)
-	env.Auth.SetHideDone(context.Background(), env.User.ID, true)
-	assertOrder(t, do(t, env.H, "GET", "/", nil, tz("Europe/Warsaw")).Body.String(),
-		"Pay the rent", "Call the dentist", "Return library books", "Water the plants")
+	env.Auth.SetSortDue(context.Background(), env.User.ID, true)
 	rec := do(t, env.H, "POST", "/items/"+strconv.FormatInt(ids["Call the dentist"], 10)+"/toggle", url.Values{}, warsawHTMX())
 	assertRetarget(t, rec, true)
-	body := rec.Body.String()
-	assertNotContains(t, body, ">Call the dentist<")
-	assertOrder(t, body, "Pay the rent", "Return library books", "Water the plants")
+	assertOrder(t, rec.Body.String(), "Pay the rent", "Call the dentist", "Water the plants", "Return library books")
+
+	rec = do(t, env.H, "POST", "/items/"+strconv.FormatInt(ids["Return library books"], 10)+"/toggle", url.Values{}, warsawHTMX())
+	assertRetarget(t, rec, false) // not overdue before or after: only the row
+
+	rec = do(t, env.H, "POST", "/items/"+strconv.FormatInt(ids["Pay the rent"], 10)+"/postpone?minutes=10", nil, warsawHTMX())
+	assertRetarget(t, rec, true)
+	// Postpone counts from the real clock, so only the overdue group is sure.
+	assertOrder(t, rec.Body.String(), "Call the dentist", "Pay the rent")
+}
+
+// With done items hidden, a done row goes away and nothing else moves.
+func TestOverdueItemDoneWithDoneHidden(t *testing.T) {
+	env, ids := overdueEnv(t)
+	env.Auth.SetHideDone(context.Background(), env.User.ID, true)
+	rec := do(t, env.H, "POST", "/items/"+strconv.FormatInt(ids["Call the dentist"], 10)+"/toggle", url.Values{}, warsawHTMX())
+	assertRetarget(t, rec, false)
+	assertNotContains(t, rec.Body.String(), ">Call the dentist<")
 }
 
 // app.js refreshes the list when the next item becomes overdue, never while an
@@ -225,27 +235,23 @@ func TestAppJSKeepsFocusAndEditRow(t *testing.T) {
 		"keptEdit", "fresh.replaceWith(keptEdit)", `getElementById("toolbar")`)
 }
 
-// The overdue order uses the browser's zone, not the server's: at 2 Oct 22:30
+// The overdue chip uses the browser's zone, not the server's: at 2 Oct 22:30
 // UTC it is already 3 Oct in Warsaw, so the all-day item of 2 Oct is overdue there.
-func TestOverdueOrderUsesBrowserZone(t *testing.T) {
+func TestOverdueChipUsesBrowserZone(t *testing.T) {
 	env := newTestEnv(t)
 	warsaw := mustZone(t, "Europe/Warsaw")
 	env.Clock.t = time.Date(2026, 10, 2, 22, 30, 0, 0, time.UTC) // server zone: UTC
-	env.Svc.AddIn(context.Background(), env.User.ID, "Buy milk", "", "", warsaw)
 	env.Svc.AddIn(context.Background(), env.User.ID, "Pay the rent", "2026-10-02", "", warsaw)
 
-	body := do(t, env.H, "GET", "/", nil, tz("Europe/Warsaw")).Body.String()
-	assertOrder(t, body, "Pay the rent", "Buy milk")
-	assertContains(t, body, `due-chip is-set is-over"`)
-
-	body = do(t, env.H, "GET", "/", nil, nil).Body.String() // no cookie: UTC, still 2 Oct
-	assertOrder(t, body, "Buy milk", "Pay the rent")
-	assertNotContains(t, body, `is-over"`)
+	assertContains(t, do(t, env.H, "GET", "/", nil, tz("Europe/Warsaw")).Body.String(), `due-chip is-set is-over"`)
+	assertNotContains(t, do(t, env.H, "GET", "/", nil, nil).Body.String(), `is-over"`) // no cookie: UTC, still 2 Oct
 }
 
-// A due change that keeps the item overdue but moves its due time re-sorts the group.
+// In "Sort by due date", a due change that keeps the item overdue but moves
+// its due time re-sorts the group.
 func TestDueChangeInsideOverdueGroupResorts(t *testing.T) {
 	env := newTestEnv(t)
+	env.Auth.SetSortDue(context.Background(), env.User.ID, true)
 	warsaw := mustZone(t, "Europe/Warsaw")
 	env.Clock.t = time.Date(2026, 10, 2, 16, 0, 0, 0, warsaw)
 	env.Svc.AddIn(context.Background(), env.User.ID, "Call Anna", "2026-10-02", "10:00", warsaw)
