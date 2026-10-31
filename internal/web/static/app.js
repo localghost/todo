@@ -1088,7 +1088,7 @@ document.addEventListener("keydown", (e) => {
 // needs no request. The delete goes to the server after UNDO_MS, before the
 // next change (a request that is not a GET waits for it), before a link or a
 // plain form leaves the page, and when the page closes. Ctrl+Z also undoes.
-const UNDO_MS = 8000;
+const UNDO_MS = 5000;
 let pendingDelete = null; // { id, url, html, text, timer }
 
 function undoLine(id, text) {

@@ -147,3 +147,19 @@ func TestGuideCoversTheFeatures(t *testing.T) {
 		"notification", "grip (⋮⋮)", "arrow", "Overdue items", "color wheel", "**Delete**",
 		"Show only the items of one label", "time zone")
 }
+
+// Every Undo (a deleted item, a repeating item checked off, removed notes)
+// shows for 5 seconds, and the guide says the same.
+func TestUndoShowsFiveSeconds(t *testing.T) {
+	h, _ := newTestApp(t)
+	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
+	assertContains(t, js, "const UNDO_MS = 5000;")
+	md, err := fs.ReadFile(docs.Guide, "user-guide.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := strings.Join(strings.Fields(string(md)), " ")
+	if n := strings.Count(text, "5 seconds"); n != 3 || strings.Contains(text, "8 seconds") {
+		t.Fatalf("the guide names \"5 seconds\" %d times (want 3) or still names \"8 seconds\"", n)
+	}
+}

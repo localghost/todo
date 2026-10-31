@@ -12,7 +12,7 @@ Privacy policy: https://toodoo.fly.dev/privacy (the text is in
 
 ## What it does
 
-- Add, edit, check off and delete items. After a delete, Undo shows for 8 seconds. Hide the
+- Add, edit, check off and delete items. After a delete, Undo shows for 5 seconds. Hide the
   done ones, or clear them all at once.
 - Search the items with the magnifying glass or `/`. The search is fuzzy: "jul" finds "Julek",
   and Polish letters do not matter.

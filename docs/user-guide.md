@@ -122,7 +122,7 @@ click **Edit**.
 
 To remove the notes, point at the **notes** chip and click the × that shows in it. "Notes
 removed." with **Undo** shows at the end of the row. To get the notes back, click **Undo** or
-press Ctrl+Z. After 8 seconds, **Undo** goes away.
+press Ctrl+Z. After 5 seconds, **Undo** goes away.
 
 ![The notes of an item](guide-images/notes.png "the notes of “Call the dentist”: a name, a phone number and a link, with the button Edit under them.")
 
@@ -134,7 +134,7 @@ text, its date or its labels, and when a repeating item moves to its next date.
 
 - Click the box on the left of an item to mark it done. Click it again to mark it not done.
 - Click the × on the right of an item to delete it. A gray line with **Undo** shows in its
-  place. To get the item back, click **Undo** or press Ctrl+Z. The app deletes the item after 8
+  place. To get the item back, click **Undo** or press Ctrl+Z. The app deletes the item after 5
   seconds, or before your next change.
 
 ### Done items
@@ -236,7 +236,7 @@ An item with a due date can repeat: every day, every week, every month or every 
 
 When you check off a repeating item, it stays open, and its date moves to the next time. A
 gray line under the item says "Done. Next time: …". To put the old date back, click **Undo**
-in this line within 8 seconds.
+in this line within 5 seconds.
 
 - The next date is always after today. If you check off an item late, the app skips the times
   that you missed. If you check it off early, the next time comes after the date that it had.
