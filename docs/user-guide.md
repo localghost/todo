@@ -430,6 +430,9 @@ web, so a change on the phone shows in the browser and the other way round.
 | List, after the notes are removed | Ctrl+Z | Brings the notes back (while **Undo** shows) |
 | Due date pop-up | Enter | Saves the date |
 | Due date pop-up | Esc | Closes the pop-up |
+| Repeat list of the due date pop-up | ↓ or ↑ | Opens the list, then moves between the rules |
+| Repeat list of the due date pop-up | Enter or Space | Chooses the rule |
+| Repeat list of the due date pop-up | Esc | Closes the list; the pop-up stays open |
 | Notes pop-up, field | Enter | Makes a new line |
 | Notes pop-up, field | Ctrl+Enter (⌘+Enter on a Mac) | Saves the notes |
 | Notes pop-up | Esc | Closes the pop-up without saving |

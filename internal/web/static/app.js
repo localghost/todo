@@ -808,7 +808,7 @@ document.addEventListener("mousedown", (e) => {
     return;
   }
   if (picker.contains(e.target)) {
-    if (!e.target.closest(isFormPicker() ? "input, select, textarea" : ".picker-search")) {
+    if (!e.target.closest(isFormPicker() ? "input, textarea" : ".picker-search")) {
       e.preventDefault();
     }
   } else if (button === pickerButton) {
@@ -865,7 +865,8 @@ document.addEventListener("keydown", (e) => {
   }
   if (e.key === "Escape") {
     e.preventDefault();
-    closePicker(true);
+    // An open Repeat list closes first; the next Esc closes the pop-up.
+    if (!closeRepeatMenu(true)) closePicker(true);
   } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && e.target.matches("textarea") && !e.isComposing) {
     e.preventDefault();
     picker.requestSubmit();
@@ -1855,3 +1856,108 @@ document.addEventListener("htmx:afterRequest", (e) => {
   }
 });
 document.addEventListener("htmx:afterSettle", drawTypedLine);
+
+// 21. The Repeat list of the due date pop-up (canvas page "20 · Repeat",
+// frame "The Repeat list open"). The page draws it, not a <select>: Firefox
+// draws the open list of a <select> with the system look, and CSS cannot
+// change it. A click on the button opens the list; ↑ ↓ Home End move, Enter
+// or Space or a click chooses; Esc, Tab or a click outside closes it. The
+// choice goes into the hidden field due_repeat, which the form sends.
+
+// repeatStep is the line that key moves to, from line at in a list of n
+// lines, or -1 if the key does not move.
+function repeatStep(at, key, n) {
+  switch (key) {
+    case "ArrowDown": return Math.min(at + 1, n - 1);
+    case "ArrowUp": return Math.max(at - 1, 0);
+    case "Home": return 0;
+    case "End": return n - 1;
+  }
+  return -1;
+}
+
+// openRepeatMenu shows the list of the button, with the focus on the chosen
+// line. The focus ring shows only when the keys are in use (byKey).
+function openRepeatMenu(button, byKey) {
+  const menu = button.nextElementSibling;
+  menu.classList.toggle("by-key", byKey);
+  menu.hidden = false;
+  button.setAttribute("aria-expanded", "true");
+  (menu.querySelector('[aria-selected="true"]') || menu.firstElementChild).focus();
+}
+
+// closeRepeatMenu hides the open Repeat list, if there is one, and says if
+// it did. With refocus, the focus goes back to its button.
+function closeRepeatMenu(refocus) {
+  const menu = document.querySelector(".repeat-menu:not([hidden])");
+  if (!menu) {
+    return false;
+  }
+  const button = menu.previousElementSibling;
+  menu.hidden = true;
+  button.setAttribute("aria-expanded", "false");
+  if (refocus) {
+    button.focus();
+  }
+  return true;
+}
+
+// chooseRepeat puts the rule of a line into the form and the button.
+function chooseRepeat(line) {
+  const menu = line.parentElement;
+  menu.querySelectorAll('[role="option"]').forEach((o) => o.setAttribute("aria-selected", String(o === line)));
+  menu.closest("form").elements.due_repeat.value = line.dataset.value;
+  menu.previousElementSibling.querySelector(".due-repeat-text").textContent = line.textContent;
+  closeRepeatMenu(true);
+}
+
+document.addEventListener("click", (e) => {
+  const button = e.target.closest && e.target.closest(".due-repeat");
+  if (button) {
+    if (button.getAttribute("aria-expanded") === "true") closeRepeatMenu(true);
+    else openRepeatMenu(button, e.detail === 0); // detail 0: Enter or Space
+    return;
+  }
+  const line = e.target.closest && e.target.closest('.repeat-menu [role="option"]');
+  if (line) {
+    chooseRepeat(line);
+  }
+});
+
+// A press outside the open list (and its button) closes it.
+document.addEventListener("mousedown", (e) => {
+  if (!e.target.closest || !e.target.closest(".repeat-field")) {
+    closeRepeatMenu(false);
+  }
+});
+
+// The focus that goes out of the list (Tab, a click on a field) closes it.
+document.addEventListener("focusin", (e) => {
+  if (!e.target.closest || !e.target.closest(".repeat-field")) {
+    closeRepeatMenu(false);
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  const line = e.target.closest && e.target.closest('.repeat-menu [role="option"]');
+  if (!line) {
+    if (e.target.matches && e.target.matches(".due-repeat") && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      e.preventDefault();
+      openRepeatMenu(e.target, true);
+    }
+    return;
+  }
+  line.parentElement.classList.add("by-key");
+  const lines = Array.from(line.parentElement.children);
+  const at = repeatStep(lines.indexOf(line), e.key, lines.length);
+  if (at >= 0) {
+    e.preventDefault();
+    lines[at].focus();
+  } else if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    chooseRepeat(line);
+  } else if (e.key === "Tab") {
+    // From the button, Tab goes on to the next field as usual.
+    closeRepeatMenu(true);
+  }
+});

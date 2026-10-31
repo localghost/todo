@@ -74,7 +74,8 @@ func TestDuePopupBadValue(t *testing.T) {
 		`name="due_date" value="" aria-label="Due date" aria-invalid="true" aria-describedby="due-error-1"`,
 		`name="due_time" value="10:00"`,
 		`<p class="hint error" id="due-error-1" role="alert">Pick a day for the due date.</p>`)
-	assertNotContains(t, body, "<li")
+	// The answer is the pop-up, not the row (the Repeat list has <li> lines).
+	assertNotContains(t, body, `<li id="item-`)
 	if got, _ := svc.Get(context.Background(), 1, 1); got.DueAt == nil {
 		t.Fatal("the due date was removed after a bad value")
 	}
@@ -177,7 +178,7 @@ func TestAppJSOpensTheDuePopup(t *testing.T) {
 func TestAppJSDuePopupButtonsKeepFocus(t *testing.T) {
 	h, _ := newTestApp(t)
 	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
-	assertContains(t, js, `e.target.closest(isFormPicker() ? "input, select, textarea" : ".picker-search")`)
+	assertContains(t, js, `e.target.closest(isFormPicker() ? "input, textarea" : ".picker-search")`)
 	assertNotContains(t, js, `isDuePicker() ? "input, button"`)
 }
 

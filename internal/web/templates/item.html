@@ -20,6 +20,8 @@
 
 {{define "repeat-icon"}}<svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M10 6a4 4 0 1 1-1.2-2.85" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M9.6 1.2v2.4H7.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>{{end}}
 
+{{define "chevron-icon"}}<svg class="chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 4.5L6 7.5l3-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>{{end}}
+
 {{define "notes-icon"}}<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 3h8M2 6h8M2 9h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>{{end}}
 
 {{define "plus-icon-18"}}<svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>{{end}}
@@ -88,11 +90,15 @@
 <input type="hidden" name="due_tz" value="{{zone}}">
 {{if .Error}}<p class="hint error" id="due-error-{{.Item.ID}}" role="alert">{{.Error}}</p>{{else}}<p class="hint">Leave the time empty for “all day”</p>{{end}}
 {{/* Repeating items (canvas page "20 · Repeat", option R1). */}}
-<label class="due-picker-title" for="due-repeat-{{.Item.ID}}">Repeat</label>
-<select name="due_repeat" id="due-repeat-{{.Item.ID}}" class="due-repeat">
-<option value=""{{if not .Repeat}} selected{{end}}>Never</option>
-{{range repeatRules}}<option value="{{.}}"{{if eq . $.Repeat}} selected{{end}}>{{repeatText .}}</option>
-{{end}}</select>
+{{/* The page draws the list (not a <select>), so that it looks the same in
+     each browser (app.js section 21). */}}
+<label class="due-picker-title" id="due-repeat-title-{{.Item.ID}}" for="due-repeat-{{.Item.ID}}">Repeat</label>
+<input type="hidden" name="due_repeat" value="{{.Repeat}}">
+<span class="repeat-field"><button type="button" id="due-repeat-{{.Item.ID}}" class="due-repeat" aria-haspopup="listbox" aria-expanded="false" aria-controls="due-repeat-menu-{{.Item.ID}}" aria-labelledby="due-repeat-title-{{.Item.ID}} due-repeat-{{.Item.ID}}"><span class="due-repeat-text">{{if .Repeat}}{{repeatText .Repeat}}{{else}}Never{{end}}</span>{{template "chevron-icon"}}</button>
+<ul class="repeat-menu" id="due-repeat-menu-{{.Item.ID}}" role="listbox" aria-labelledby="due-repeat-title-{{.Item.ID}}" hidden>
+<li role="option" data-value="" aria-selected="{{if .Repeat}}false{{else}}true{{end}}" tabindex="-1">Never</li>
+{{range repeatRules}}<li role="option" data-value="{{.}}" aria-selected="{{if eq . $.Repeat}}true{{else}}false{{end}}" tabindex="-1">{{repeatText .}}</li>
+{{end}}</ul></span>
 <div class="due-actions"><button type="submit" class="due-save">Save</button></div>
 </form>{{end}}
 

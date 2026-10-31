@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -35,14 +38,58 @@ func TestDuePickerHasRepeat(t *testing.T) {
 	if it.ID != 1 {
 		t.Fatalf("id = %d, want 1", it.ID)
 	}
-	assertContains(t, body, `<select name="due_repeat" id="due-repeat-1" class="due-repeat">`,
-		`<option value="">Never</option>`, `<option value="day">Every day</option>`,
-		`<option value="week" selected>Every week</option>`, `<option value="month">Every month</option>`,
-		`<option value="year">Every year</option>`, `<label class="due-picker-title" for="due-repeat-1">Repeat</label>`)
-	// A press on the list must go through, or the list does not open
-	// (app.js, the mousedown handler of the pop-ups).
-	js := do(t, env.H, "GET", "/static/app.js", nil, anon).Body.String()
-	assertContains(t, js, `e.target.closest(isFormPicker() ? "input, select, textarea" : ".picker-search")`)
+	// The page draws the list itself, so it looks the same in each browser
+	// (a <select> opens a list that the browser and the system draw).
+	assertContains(t, body,
+		`<label class="due-picker-title" id="due-repeat-title-1" for="due-repeat-1">Repeat</label>`,
+		`<input type="hidden" name="due_repeat" value="week">`,
+		`<span class="repeat-field"><button type="button" id="due-repeat-1" class="due-repeat" aria-haspopup="listbox" aria-expanded="false" aria-controls="due-repeat-menu-1" aria-labelledby="due-repeat-title-1 due-repeat-1"><span class="due-repeat-text">Every week</span>`,
+		`<ul class="repeat-menu" id="due-repeat-menu-1" role="listbox" aria-labelledby="due-repeat-title-1" hidden>`,
+		`<li role="option" data-value="" aria-selected="false" tabindex="-1">Never</li>`,
+		`<li role="option" data-value="day" aria-selected="false" tabindex="-1">Every day</li>`,
+		`<li role="option" data-value="week" aria-selected="true" tabindex="-1">Every week</li>`,
+		`<li role="option" data-value="month" aria-selected="false" tabindex="-1">Every month</li>`,
+		`<li role="option" data-value="year" aria-selected="false" tabindex="-1">Every year</li>`)
+	assertNotContains(t, body, "<select", "<option")
+	// Without a rule, "Never" is chosen.
+	mustAdd(t, env.Svc, "Pay the rent")
+	body = do(t, env.H, "GET", "/items/2/due", nil, warsawHTMX()).Body.String()
+	assertContains(t, body, `<input type="hidden" name="due_repeat" value="">`, `<span class="due-repeat-text">Never</span>`,
+		`<li role="option" data-value="" aria-selected="true" tabindex="-1">Never</li>`)
+}
+
+// repeatHarness runs repeatStep of app.js: the line that a key in the Repeat
+// list moves to, from line at in a list of n lines.
+const repeatHarness = `
+const src = require("fs").readFileSync(process.argv[2], "utf8");
+const document = {
+  addEventListener() {}, getElementById: () => null, querySelector: () => null, querySelectorAll: () => [],
+  activeElement: null, body: { classList: { contains: () => false } },
+};
+const fns = new Function("document", "window", "navigator", "fetch", "setInterval", "setTimeout", "clearTimeout", "htmx",
+  src + "\nreturn { repeatStep };")(document, {}, {}, () => new Promise(() => {}), () => 0, () => 0, () => {}, {});
+for (const [at, key] of [[2, "ArrowDown"], [4, "ArrowDown"], [2, "ArrowUp"], [0, "ArrowUp"], [2, "Home"], [2, "End"], [2, "a"]]) {
+  console.log(at + " " + key + " " + fns.repeatStep(at, key, 5));
+}
+`
+
+func TestRepeatListKeys(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is not installed")
+	}
+	harness := filepath.Join(t.TempDir(), "harness.js")
+	if err := os.WriteFile(harness, []byte(repeatHarness), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command(node, harness, "static/app.js").CombinedOutput()
+	if err != nil {
+		t.Fatalf("node: %v\n%s", err, out)
+	}
+	want := "2 ArrowDown 3\n4 ArrowDown 4\n2 ArrowUp 1\n0 ArrowUp 0\n2 Home 0\n2 End 4\n2 a -1"
+	if got := strings.TrimSpace(string(out)); got != want {
+		t.Fatalf("got:\n%s\nwant:\n%s", got, want)
+	}
 }
 
 // Saving the pop-up with a rule makes the item repeat; the date chip shows ↻.
@@ -66,7 +113,8 @@ func TestSetDueWithRepeat(t *testing.T) {
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("no date: %d, want 422", rec.Code)
 	}
-	assertContains(t, rec.Body.String(), "A repeating item needs a due date.", `<option value="week" selected>`)
+	assertContains(t, rec.Body.String(), "A repeating item needs a due date.", `<input type="hidden" name="due_repeat" value="week">`,
+		`<li role="option" data-value="week" aria-selected="true" tabindex="-1">Every week</li>`)
 
 	// The × of the date chip removes the date and the repeat.
 	rec = do(t, env.H, "PUT", "/items/1/due", nil, warsawHTMX())

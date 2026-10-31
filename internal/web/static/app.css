@@ -769,10 +769,29 @@ body.searching #items :is(.grip, .grip-space) { visibility: hidden; }
 
 /* Repeating items (canvas page "20 · Repeat", option R1): the Repeat list
    of the due date pop-up, the ↻ on the date chip, and the line after a check. */
+/* The page draws the Repeat list (app.js section 21), as the canvas frame
+   "The Repeat list open": a white list with a shadow under the button. */
+.repeat-field { position: relative; display: block; }
 .due-repeat {
+  box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; min-height: 36px; text-align: left; cursor: pointer;
   font: inherit; font-size: 15px; color: var(--ink);
   padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--card);
 }
+.due-repeat .chevron { flex: none; color: var(--muted); }
+.due-repeat[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+.due-repeat:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+.repeat-menu {
+  position: absolute; z-index: 1; top: calc(100% + 4px); left: 0; right: 0;
+  margin: 0; padding: 4px 0; list-style: none; font-size: 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(31, 30, 27, 0.12);
+}
+.repeat-menu[hidden] { display: none; }
+.repeat-menu [role="option"] { padding: 5px 10px; cursor: pointer; }
+.repeat-menu [role="option"]:hover, .repeat-menu [role="option"]:focus { background: var(--ground); outline: none; }
+.repeat-menu [role="option"][aria-selected="true"] { background: #EEF2FC; color: #1A3C99; font-weight: 600; }
+.repeat-menu.by-key [role="option"]:focus { box-shadow: inset 0 0 0 2px var(--accent); }
 .repeat-icon { display: inline-flex; margin-left: 3px; }
 .repeat-msg {
   display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 13px; color: var(--muted);
@@ -782,5 +801,7 @@ body.searching #items :is(.grip, .grip-space) { visibility: hidden; }
 .repeat-msg .undo-btn { font-size: 13px; min-height: 28px; padding: 0 10px; }
 @media (hover: none) {
   .due-repeat { font-size: 16px; min-height: 44px; }
+  .repeat-menu { font-size: 16px; }
+  .repeat-menu [role="option"] { display: flex; align-items: center; min-height: 44px; box-sizing: border-box; }
   .repeat-msg .undo-btn { min-height: 40px; font-size: 14px; }
 }
