@@ -223,3 +223,18 @@ func TestSearchMarkup(t *testing.T) {
 		t.Fatalf("want toolbar, search row, list in this order: %d %d %d", a, b, c)
 	}
 }
+
+// The open search field has 10px above and under it, as on the canvas (page
+// "19 · Search"). A negative margin moved it up over the buttons above it.
+func TestSearchRowSpace(t *testing.T) {
+	h, _ := newTestApp(t)
+	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
+	at := strings.Index(css, "\n.search-row {")
+	if at < 0 {
+		t.Fatal("no .search-row rule in app.css")
+	}
+	rule := css[at : at+strings.Index(css[at:], "}")]
+	if !strings.Contains(rule, "margin: 10px 0;") || strings.Contains(rule, "margin: -") {
+		t.Fatalf("want margin: 10px 0 and no negative margin:\n%s", rule)
+	}
+}

@@ -740,8 +740,10 @@ main.guide { display: block; max-width: 760px; font-size: 17px; line-height: 1.5
 .filter.search-toggle { width: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
 .filter.search-toggle:hover { color: var(--accent); }
 .filter.search-toggle[aria-expanded="true"] { color: var(--accent); background: #EEF2FC; border-color: #C9D6F5; }
+/* 10px above and under the field, as on the canvas (page "19 · Search");
+   the 10px under it and the 2px of the sort hint collapse to 10px. */
 .search-row {
-  display: flex; align-items: center; gap: 8px; margin: -8px 0 0;
+  display: flex; align-items: center; gap: 8px; margin: 10px 0;
   background: var(--card); border: 2px solid var(--accent); border-radius: 8px; padding: 0 4px 0 12px;
 }
 .search-row[hidden] { display: none; }
