@@ -167,7 +167,7 @@ func TestAppJSOpensTheDuePopup(t *testing.T) {
 	h, _ := newTestApp(t)
 	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
 	assertContains(t, js,
-		`closest(".label-add, .due-add, .draft-label, .draft-due")`, `classList.contains("due-picker")`,
+		`closest(".label-add, .due-add, .notes-add, .draft-label, .draft-due")`, `classList.contains("due-picker")`,
 		`focusAfterSwap = "due-add-"`, `input:not([type="hidden"])`)
 }
 
@@ -177,7 +177,7 @@ func TestAppJSOpensTheDuePopup(t *testing.T) {
 func TestAppJSDuePopupButtonsKeepFocus(t *testing.T) {
 	h, _ := newTestApp(t)
 	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
-	assertContains(t, js, `e.target.closest(isDuePicker() ? "input" : ".picker-search")`)
+	assertContains(t, js, `e.target.closest(isFormPicker() ? "input, select, textarea" : ".picker-search")`)
 	assertNotContains(t, js, `isDuePicker() ? "input, button"`)
 }
 

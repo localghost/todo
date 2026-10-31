@@ -42,7 +42,7 @@ func TestDuePickerHasRepeat(t *testing.T) {
 	// A press on the list must go through, or the list does not open
 	// (app.js, the mousedown handler of the pop-ups).
 	js := do(t, env.H, "GET", "/static/app.js", nil, anon).Body.String()
-	assertContains(t, js, `e.target.closest(isDuePicker() ? "input, select" : ".picker-search")`)
+	assertContains(t, js, `e.target.closest(isFormPicker() ? "input, select, textarea" : ".picker-search")`)
 }
 
 // Saving the pop-up with a rule makes the item repeat; the date chip shows ↻.

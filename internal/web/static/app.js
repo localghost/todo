@@ -35,6 +35,11 @@ document.addEventListener("htmx:beforeSwap", (e) => {
     focusAfterSwap = "due-add-" + row.id.slice("item-".length);
     return;
   }
+  if (active.closest(".notes-picker")) {
+    // The same for the notes pop-up: go on at its notes button.
+    focusAfterSwap = "notes-add-" + row.id.slice("item-".length);
+    return;
+  }
   if (active.matches(".due-x")) {
     // The date is gone, the row stays: go on at its "Due date" chip.
     focusAfterSwap = "due-add-" + row.id.slice("item-".length);
@@ -467,6 +472,9 @@ document.addEventListener("htmx:afterSwap", (e) => {
 // again", option P2).
 // The due date pop-up is a form: Enter saves and Tab moves inside it. The
 // due text opens it too.
+// The notes pop-up (canvas page "21 · Notes", option N2) is a form too. It
+// shows the notes with "Edit", or the field if the item has no notes. Enter
+// in the field makes a new line; Ctrl+Enter (⌘+Enter on a Mac) saves.
 let picker = null; // the open pop-up
 let pickerButton = null; // its + or calendar icon
 let reopenFor = null; // the item whose label list stays open after the next swap
@@ -481,13 +489,34 @@ function isDuePicker() {
   return picker !== null && picker.classList.contains("due-picker");
 }
 
+function isNotesPicker() {
+  return picker !== null && picker.classList.contains("notes-picker");
+}
+
+// isFormPicker: the pop-up is a form with fields (due date or notes).
+function isFormPicker() {
+  return isDuePicker() || isNotesPicker();
+}
+
 function isLabelPicker() {
-  return picker !== null && !isDuePicker();
+  return picker !== null && !isFormPicker();
 }
 
 // focusPicker puts the cursor in the first field of the pop-up: the search
-// of the label list, or the date of the due date pop-up.
+// of the label list, the date of the due date pop-up, or the end of the
+// notes field. Notes that show (not the field) give the focus to "Edit".
 function focusPicker() {
+  if (isNotesPicker()) {
+    const field = picker.querySelector(".notes-form:not([hidden]) textarea");
+    const el = field || picker.querySelector(".notes-edit");
+    if (el) {
+      el.focus();
+      if (field) {
+        field.setSelectionRange(field.value.length, field.value.length);
+      }
+    }
+    return field;
+  }
   const input = picker.querySelector('input:not([type="hidden"])');
   if (input) {
     input.focus();
@@ -495,10 +524,18 @@ function focusPicker() {
   return input;
 }
 
+// editNotes changes the notes pop-up from the notes to the field.
+function editNotes() {
+  picker.querySelector(".notes-view").hidden = true;
+  picker.querySelector(".notes-form").hidden = false;
+  focusPicker();
+  placePicker();
+}
+
 // popupButton is the date chip or the "Label" chip that a press on target
 // belongs to, on a row or under the add field.
 function popupButton(target) {
-  return target.closest ? target.closest(".label-add, .due-add, .draft-label, .draft-due") : null;
+  return target.closest ? target.closest(".label-add, .due-add, .notes-add, .draft-label, .draft-due") : null;
 }
 
 // resetPicker forgets the open pop-up. A color that the wheel shows but did
@@ -733,6 +770,10 @@ document.addEventListener("click", (e) => {
     }
     return;
   }
+  if (isNotesPicker() && e.target.closest(".notes-edit")) {
+    editNotes();
+    return;
+  }
   if (!isLabelPicker() || !picker.contains(e.target) || pickerBusy) {
     return;
   }
@@ -745,8 +786,8 @@ document.addEventListener("click", (e) => {
 });
 
 // A press in a pop-up must not take the focus out of its field; a press on
-// another field of the due date pop-up (also the Repeat list, which opens
-// only if its press goes through) still moves the focus there. Its
+// another field of the due date or notes pop-up (also the Repeat list,
+// which opens only if its press goes through) still moves the focus there. Its
 // buttons must not take the focus first: Safari and Firefox on macOS do not
 // focus a pressed button, so the field would blur and focusout would close
 // the pop-up before the click. A press on the pop-up's own button keeps the
@@ -762,7 +803,7 @@ document.addEventListener("mousedown", (e) => {
     return;
   }
   if (picker.contains(e.target)) {
-    if (!e.target.closest(isDuePicker() ? "input, select" : ".picker-search")) {
+    if (!e.target.closest(isFormPicker() ? "input, select, textarea" : ".picker-search")) {
       e.preventDefault();
     }
   } else if (button === pickerButton) {
@@ -811,11 +852,18 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// Esc closes the due date pop-up without saving. Enter submits its form.
+// Esc closes the due date or notes pop-up without saving. Enter submits
+// the due date form; in the notes field Ctrl+Enter or ⌘+Enter does.
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && isDuePicker() && picker.contains(e.target)) {
+  if (!isFormPicker() || !picker.contains(e.target)) {
+    return;
+  }
+  if (e.key === "Escape") {
     e.preventDefault();
     closePicker(true);
+  } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && e.target.matches("textarea") && !e.isComposing) {
+    e.preventDefault();
+    picker.requestSubmit();
   }
 });
 
@@ -1249,7 +1297,9 @@ document.addEventListener("htmx:afterSettle", (e) => {
 // list. While you type, the list shows only the rows that match, and the
 // matching letters are yellow. Fuzzy (M2): the typed letters must come in
 // this order in the text or the label names, with other letters between
-// them allowed; case and Polish letters do not matter. Esc or × closes it.
+// them allowed; case and Polish letters do not matter. The notes count too;
+// a match in them gives the notes chip a yellow edge (canvas page "21 ·
+// Notes"). Esc or × closes it.
 // A row that comes after the search started (a new item) always shows. The
 // search needs no request: it works on the rows of the page.
 const search = { open: false, query: "", known: null };
@@ -1334,9 +1384,15 @@ function applySearch() {
     }
     const chars = Array.from(textEl.textContent);
     const labels = Array.from(row.querySelectorAll(".chip a"), (a) => a.textContent).join(" ");
-    const places = q.length ? findMatch(q, foldChars(textEl.textContent + " " + labels)) : [];
+    const notesEl = row.querySelector(".notes-add[data-notes]");
+    const head = textEl.textContent + " " + labels;
+    const places = q.length ? findMatch(q, foldChars(head + (notesEl ? " " + notesEl.dataset.notes : ""))) : [];
     const keep = !q.length || !!places || (search.known && !search.known.has(row.id));
     row.classList.toggle("search-miss", !keep);
+    if (notesEl) {
+      const headLength = Array.from(head).length;
+      notesEl.classList.toggle("search-hit", !!places && places.some((p) => p > headLength));
+    }
     paint(textEl, chars, places ? places.filter((p) => p < chars.length) : []);
     if (keep) {
       shown++;

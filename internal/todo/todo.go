@@ -16,12 +16,15 @@ var (
 	ErrTextTooLong = errors.New("todo: text is too long")
 	// ErrTooManyItems means the user already has MaxItemsPerUser items.
 	ErrTooManyItems = errors.New("todo: too many items")
+	// ErrNotesTooLong means the notes have more than MaxNotesChars characters.
+	ErrNotesTooLong = errors.New("todo: notes are too long")
 )
 
 // Limits that keep one account from filling the disk (code review 1).
 const (
 	MaxTextChars    = 500  // characters (not bytes) in an item text, after whitespace is collapsed
 	MaxItemsPerUser = 5000 // items of one user, done or not
+	MaxNotesChars   = 2000 // characters (not bytes) in the notes of an item, after the ends are trimmed
 )
 
 // Item is one entry in a user's todo list.
@@ -39,6 +42,7 @@ type Item struct {
 	Labels     []Label    // sorted by name; empty from ClaimDue
 	Repeat     string     // "", RepeatDaily, RepeatWeekly, RepeatMonthly or RepeatYearly
 	RepeatDay  int        // the day of the month that the rule keeps (repeat.go); 0 without a rule
+	Notes      string     // a longer text under the title, with line breaks (\n); "" for none
 }
 
 // Change holds the editable fields of an item for Create and UpdateItem.
@@ -95,4 +99,6 @@ type Store interface {
 	// RemoveItemLabel takes label labelID off the item. ErrNotFound for an
 	// item of another user; a label the item does not have changes nothing.
 	RemoveItemLabel(ctx context.Context, userID, itemID, labelID int64, now time.Time) (Item, error)
+	// SetNotes changes only the notes of an item (UpdateItem keeps them).
+	SetNotes(ctx context.Context, userID, id int64, notes string, now time.Time) (Item, error)
 }

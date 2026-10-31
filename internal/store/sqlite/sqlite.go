@@ -17,10 +17,10 @@ import (
 	"todo/internal/todo"
 )
 
-const itemCols = `id, user_id, text, done, position, created_at, updated_at, due_at, due_all_day, notified_at, repeat, repeat_day`
+const itemCols = `id, user_id, text, done, position, created_at, updated_at, due_at, due_all_day, notified_at, repeat, repeat_day, notes`
 
 // currentVersion is the schema version this code writes (PRAGMA user_version).
-const currentVersion = 7
+const currentVersion = 8
 
 // schemaV2 is the schema since user accounts (PRAGMA user_version = 2).
 var schemaV2 = []string{
@@ -112,7 +112,10 @@ func migrate(db *sql.DB, opts Options) error {
 		if err := migrateToV6(db, max(version, 5)); err != nil {
 			return err
 		}
-		return migrateToV7(db, max(version, 6))
+		if err := migrateToV7(db, max(version, 6)); err != nil {
+			return err
+		}
+		return migrateToV8(db, max(version, 7))
 	}
 	tables, err := userTables(db)
 	if err != nil {
@@ -175,7 +178,10 @@ func migrate(db *sql.DB, opts Options) error {
 	if err := migrateToV6(db, 5); err != nil {
 		return err
 	}
-	return migrateToV7(db, 6)
+	if err := migrateToV7(db, 6); err != nil {
+		return err
+	}
+	return migrateToV8(db, 7)
 }
 
 // migrateToV3 adds the per-user setting hide_done (schema version 3).
@@ -300,6 +306,28 @@ func migrateToV7(db *sql.DB, version int) error {
 		`ALTER TABLE items ADD COLUMN repeat TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE items ADD COLUMN repeat_day INTEGER NOT NULL DEFAULT 0`,
 		`PRAGMA user_version = 7`,
+	} {
+		if _, err := tx.Exec(stmt); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// migrateToV8 adds the notes of an item (schema version 8; canvas page
+// "21 · Notes").
+func migrateToV8(db *sql.DB, version int) error {
+	if version >= 8 {
+		return nil
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, stmt := range []string{
+		`ALTER TABLE items ADD COLUMN notes TEXT NOT NULL DEFAULT ''`,
+		`PRAGMA user_version = 8`,
 	} {
 		if _, err := tx.Exec(stmt); err != nil {
 			return err
@@ -494,6 +522,16 @@ func (s *Store) UpdateItem(ctx context.Context, userID, id int64, c todo.Change,
 	}
 	if err := tx.Commit(); err != nil {
 		return todo.Item{}, fmt.Errorf("update item: %w", err)
+	}
+	return s.Get(ctx, userID, id)
+}
+
+// SetNotes changes only the notes of an item and its change time.
+func (s *Store) SetNotes(ctx context.Context, userID, id int64, notes string, now time.Time) (todo.Item, error) {
+	if err := updateOne(ctx, s.db,
+		`UPDATE items SET notes = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+		notes, formatTime(now), id, userID); err != nil {
+		return todo.Item{}, err
 	}
 	return s.Get(ctx, userID, id)
 }
@@ -719,7 +757,7 @@ func scanItem(r scanner) (todo.Item, error) {
 	var created, updated string
 	var dueAt, notifiedAt sql.NullString
 	if err := r.Scan(&it.ID, &it.UserID, &it.Text, &it.Done, &it.Position, &created, &updated,
-		&dueAt, &it.DueAllDay, &notifiedAt, &it.Repeat, &it.RepeatDay); err != nil {
+		&dueAt, &it.DueAllDay, &notifiedAt, &it.Repeat, &it.RepeatDay, &it.Notes); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return todo.Item{}, err
 		}

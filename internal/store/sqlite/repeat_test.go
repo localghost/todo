@@ -33,7 +33,7 @@ func TestMigrateV6ToV7AddsRepeat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, stmt := range []string{`ALTER TABLE items DROP COLUMN repeat`, `ALTER TABLE items DROP COLUMN repeat_day`, `PRAGMA user_version = 6`} {
+	for _, stmt := range []string{`ALTER TABLE items DROP COLUMN notes`, `ALTER TABLE items DROP COLUMN repeat`, `ALTER TABLE items DROP COLUMN repeat_day`, `PRAGMA user_version = 6`} {
 		if _, err := db.Exec(stmt); err != nil {
 			t.Fatalf("%s: %v", stmt, err)
 		}
@@ -45,8 +45,8 @@ func TestMigrateV6ToV7AddsRepeat(t *testing.T) {
 		t.Fatalf("Open v6: %v", err)
 	}
 	defer s.Close()
-	if v := userVersion(t, path); v != 7 {
-		t.Fatalf("user_version = %d, want 7", v)
+	if v := userVersion(t, path); v != 8 {
+		t.Fatalf("user_version = %d, want 8", v)
 	}
 	items, err := s.List(ctx, u.ID, false)
 	if err != nil || len(items) != 1 || items[0].Text != "Pay the rent" || items[0].Repeat != "" || items[0].RepeatDay != 0 {

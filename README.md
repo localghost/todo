@@ -16,6 +16,8 @@ Privacy policy: https://toodoo.fly.dev/privacy (the text is in
   done ones, or clear them all at once.
 - Search the items with the magnifying glass or `/`. The search is fuzzy: "jul" finds "Julek",
   and Polish letters do not matter.
+- Add notes to an item, for example an address, a phone number or a link. The notes icon on
+  each item opens them, and links in them can be clicked.
 - Repeat an item every day, week, month or year. When you check it off, its date moves to the
   next time.
 - Give a new item its due date and labels with the calendar icon and the + under the add

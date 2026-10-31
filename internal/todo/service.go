@@ -91,6 +91,23 @@ func (s *Service) EditText(ctx context.Context, userID, id int64, text string) (
 			Repeat: it.Repeat, RepeatDay: it.RepeatDay}, s.now())
 }
 
+// SetNotes changes only the notes of an item (canvas page "21 · Notes").
+// The line breaks stay; empty notes remove them.
+func (s *Service) SetNotes(ctx context.Context, userID, id int64, notes string) (Item, error) {
+	notes, err := cleanNotes(notes)
+	if err != nil {
+		return Item{}, err
+	}
+	it, err := s.store.Get(ctx, userID, id)
+	if err != nil {
+		return Item{}, err
+	}
+	if it.Notes == notes {
+		return it, nil
+	}
+	return s.store.SetNotes(ctx, userID, id, notes, s.now())
+}
+
 // SetDue changes only the due date of an item, read in loc (nil: the
 // service's zone). An empty date and time removes the due date, and with it
 // the repeat; a new date keeps the item's repeat rule.
@@ -247,6 +264,17 @@ func cleanText(text string) (string, error) {
 		return "", ErrTextTooLong
 	}
 	return text, nil
+}
+
+// cleanNotes writes each line break as \n and trims the whitespace at the
+// ends. The result has at most MaxNotesChars characters.
+func cleanNotes(notes string) (string, error) {
+	notes = strings.ReplaceAll(notes, "\r\n", "\n")
+	notes = strings.TrimSpace(strings.ReplaceAll(notes, "\r", "\n"))
+	if utf8.RuneCountInString(notes) > MaxNotesChars {
+		return "", ErrNotesTooLong
+	}
+	return notes, nil
 }
 
 // zone returns loc, or the service's zone if loc is nil.

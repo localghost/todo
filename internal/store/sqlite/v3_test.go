@@ -54,8 +54,8 @@ func TestMigrateV2ToV3KeepsData(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	defer s.Close()
-	if v := userVersion(t, path); v != 7 {
-		t.Fatalf("user_version = %d, want 7", v)
+	if v := userVersion(t, path); v != 8 {
+		t.Fatalf("user_version = %d, want 8", v)
 	}
 	ctx := context.Background()
 	_, u, err := s.SessionUser(ctx, "tok", time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC))

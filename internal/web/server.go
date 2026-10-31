@@ -158,6 +158,8 @@ func New(svc *todo.Service, accounts *auth.Service, log *slog.Logger, opts ...Op
 	mux.Handle("DELETE /items/{id}/labels/{label}", s.protect(s.removeItemLabel))
 	mux.Handle("GET /items/{id}/due", s.protect(s.duePicker))
 	mux.Handle("PUT /items/{id}/due", s.protect(s.setItemDue))
+	mux.Handle("GET /items/{id}/notes", s.protect(s.notesPicker))
+	mux.Handle("PUT /items/{id}/notes", s.protect(s.setItemNotes))
 	mux.Handle("POST /notifications/claim", s.protect(s.claimNotifications))
 	mux.Handle("POST /settings/hide-done", s.protect(s.setHideDone))
 	mux.Handle("POST /settings/sort-due", s.protect(s.setSortDue))
@@ -400,6 +402,7 @@ func (s *server) zoneFuncs(loc *time.Location) template.FuncMap {
 		"postponeMinutes": func() []int { return todo.PostponeMinutes },
 		"repeatRules":     func() []string { return todo.RepeatRules },
 		"repeatText":      todo.RepeatText,
+		"linkify":         linkify,
 	}
 }
 

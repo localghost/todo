@@ -16,7 +16,7 @@ const q = JSON.stringify;
 
 // The sample list. "due" is days from today and a time; "done" checks it off.
 const ITEMS = [
-  { text: "Call the dentist", due: [-1, "09:00"] },
+  { text: "Call the dentist", due: [-1, "09:00"], notes: "Dr Nowak, tel. 600 100 200\nBook online: https://dentist.example.com/booking" },
   { text: "Send the invoice", due: [1, "10:00"], labels: ["work"] },
   { text: "Water the plants", labels: ["home"] },
   { text: "Plan the team meeting", due: [3, ""], labels: ["work", "urgent"] },
@@ -51,6 +51,9 @@ async function addSamples(p) {
     }
     if (it.due) {
       await send(p, "PUT", `/items/${id}/due`, { due_date: await day(p, it.due[0]), due_time: it.due[1], due_tz: zone });
+    }
+    if (it.notes) {
+      await send(p, "PUT", `/items/${id}/notes`, { notes: it.notes });
     }
     if (it.done) {
       await send(p, "POST", `/items/${id}/toggle`, {});
@@ -124,6 +127,10 @@ async function desktop() {
 
     await openPicker(p, "#due-add-2", "!!document.querySelector('#due-picker-2 input[type=date]')");
     await p.shot(out("due-popup.png"), ["#item-2", "#due-picker-2"]);
+
+    // The notes of an item (canvas page "21 · Notes", option N2).
+    await openPicker(p, "#notes-add-1", "!!document.querySelector('#notes-picker-1 .notes-view')");
+    await p.shot(out("notes.png"), ["#item-1", "#notes-picker-1"]);
 
     const ready = "document.activeElement === document.querySelector('#picker-2 .picker-search')";
     await openPicker(p, "#label-add-2", ready);

@@ -61,6 +61,7 @@ type apiItem struct {
 	Overdue   bool       `json:"overdue"`
 	Labels    []apiLabel `json:"labels"`
 	Repeat    string     `json:"repeat"` // "", "day", "week", "month" or "year"
+	Notes     string     `json:"notes"`  // with line breaks (\n); "" for none
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 }
@@ -86,7 +87,7 @@ func toAPILabel(l todo.Label) apiLabel {
 
 func toAPIItem(it todo.Item, now time.Time) apiItem {
 	out := apiItem{ID: it.ID, Text: it.Text, Done: it.Done, DueAllDay: it.DueAllDay, Overdue: it.Overdue(now),
-		Labels: []apiLabel{}, Repeat: it.Repeat, CreatedAt: it.CreatedAt.UTC(), UpdatedAt: it.UpdatedAt.UTC()}
+		Labels: []apiLabel{}, Repeat: it.Repeat, Notes: it.Notes, CreatedAt: it.CreatedAt.UTC(), UpdatedAt: it.UpdatedAt.UTC()}
 	if it.DueAt != nil {
 		d := it.DueAt.UTC()
 		out.DueAt = &d
@@ -270,8 +271,9 @@ func (s *server) apiUpdateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		Text *string `json:"text"`
-		Done *bool   `json:"done"`
+		Text  *string `json:"text"`
+		Done  *bool   `json:"done"`
+		Notes *string `json:"notes"`
 	}
 	if !readJSON(w, r, &in) {
 		return
@@ -279,6 +281,9 @@ func (s *server) apiUpdateItem(w http.ResponseWriter, r *http.Request) {
 	item, err := s.svc.Get(r.Context(), userID(r), id)
 	if err == nil && in.Text != nil {
 		item, err = s.svc.EditText(r.Context(), userID(r), id, *in.Text)
+	}
+	if err == nil && in.Notes != nil {
+		item, err = s.svc.SetNotes(r.Context(), userID(r), id, *in.Notes)
 	}
 	if err == nil && in.Done != nil && *in.Done != item.Done {
 		item, err = s.svc.SetDoneIn(r.Context(), userID(r), id, *in.Done, s.zoneFor(r))
@@ -504,6 +509,8 @@ func (s *server) apiChangeError(w http.ResponseWriter, r *http.Request, err erro
 		apiError(w, http.StatusNotFound, "not_found", "This item no longer exists.")
 	case textMessage(err, "Please type some text first.") != "":
 		apiError(w, http.StatusUnprocessableEntity, "bad_text", textMessage(err, "Please type some text first."))
+	case notesMessage(err) != "":
+		apiError(w, http.StatusUnprocessableEntity, "bad_notes", notesMessage(err))
 	case labelsMessage(err) != "":
 		apiError(w, http.StatusUnprocessableEntity, "bad_label", labelsMessage(err))
 	case errors.Is(err, todo.ErrBadLabel):

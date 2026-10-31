@@ -79,6 +79,26 @@ add field.
 
 ![An item in edit mode](guide-images/edit.png "the item “Water the plants” in edit mode. Under the field is the hint “Enter to save · Esc to cancel”.")
 
+### Notes on an item
+
+An item can have notes: a longer text, for example an address, a phone number or a link.
+
+1. Click the notes icon (three short lines) next to the calendar icon of the item. A pop-up
+   with a field opens.
+2. Type the notes. Enter makes a new line.
+3. Click **Save**, or press Ctrl+Enter (⌘+Enter on a Mac). Esc closes the pop-up without
+   saving.
+
+An item with notes shows a gray **notes** chip in place of the icon. Click it to read the
+notes. A link that starts with http:// or https:// opens in a new tab. To change the notes,
+click **Edit**. To remove them, delete all the text and click **Save**.
+
+![The notes of an item](guide-images/notes.png "the notes of “Call the dentist”: a name, a phone number and a link, with the button Edit under them.")
+
+The notes have at most 2,000 characters. The app keeps the line breaks, but no other
+formatting (for example, no bold text). The notes stay with the item when you change its
+text, its date or its labels, and when a repeating item moves to its next date.
+
 ### Check off and delete
 
 - Click the box on the left of an item to mark it done. Click it again to mark it not done.
@@ -112,7 +132,8 @@ Above the list, the app shows how many items are open and how many are done, for
 - The letters that you type must come in this order in the text, but other letters can be
   between them. So "jul" finds "Julek", and also "January telephone bill".
 - Upper and lower case do not matter, and neither do Polish letters: "zolw" finds "żółw".
-- The search also looks at the label names of the items.
+- The search also looks at the label names and the notes of the items. If the match is in the
+  notes, the **notes** chip of the item gets a yellow edge.
 - The search covers the items that the list shows. With **Hide done** on, it does not find
   done items. With a label filter, it finds only the items with that label.
 - While the search is open, you cannot drag the items. A new item that you add shows in the
@@ -296,11 +317,12 @@ The app works in the browser of a phone. On a narrow screen:
 
 On a touch screen:
 
-- The calendar icon and the + of an item are larger, and the × on a date or a label always
-  shows.
+- The calendar icon, the notes icon and the + of an item are larger, and the × on a date or a
+  label always shows.
 - The calendar icon and the + under the add field are larger, and the × in the due date button
   always shows.
-- In the label list and the due date pop-up, the lines, the fields and the buttons are larger.
+- In the label list, the due date pop-up and the notes pop-up, the lines, the fields and the
+  buttons are larger.
 - On the Labels page, the × of a label and the color circles are larger.
 
 ![The list on a phone](guide-images/phone.png "the list in the browser of a phone, 375 pixels wide. The × on each label always shows.")
@@ -322,7 +344,8 @@ web, so a change on the phone shows in the browser and the other way round.
   the change is saved when Undo goes away. Hold a row still for half a second until it lifts,
   then drag it to change the order. For now, you cannot move an overdue row in the app. A
   repeating item that you mark done in the app comes back with its next date; for now, you can
-  set the repeat only on the web, and the app has no search. Pull
+  set the repeat only on the web, and the app has no search. The app does not show the notes of
+  an item yet; a change in the app keeps them. Pull
   down to load the list again. The first time, a blue hint above the list explains this; "Got
   it" closes it.
 - **Without swiping:** the item sheet has a "Mark as done" button. With TalkBack, each row has
@@ -375,6 +398,9 @@ web, so a change on the phone shows in the browser and the other way round.
 | List, after a delete | Ctrl+Z | Brings the deleted item back (while **Undo** shows) |
 | Due date pop-up | Enter | Saves the date |
 | Due date pop-up | Esc | Closes the pop-up |
+| Notes pop-up, field | Enter | Makes a new line |
+| Notes pop-up, field | Ctrl+Enter (⌘+Enter on a Mac) | Saves the notes |
+| Notes pop-up | Esc | Closes the pop-up without saving |
 | Label list, search field | Down arrow | Goes to the first label name |
 | Label list | Up arrow, down arrow | Moves between the label names |
 | Label list, search field | Enter | Adds or removes the first label, or creates the typed label |
