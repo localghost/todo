@@ -22,7 +22,8 @@ Privacy policy: https://toodoo.fly.dev/privacy (the text is in
 - Repeat an item every day, week, month or year. When you check it off, its date moves to the
   next time.
 - Give a new item its due date and labels with the calendar icon and the + under the add
-  field, as on each item.
+  field, as on each item. Or type the date at the end of the text, after "due" or "@"
+  ("Call the dentist due tomorrow 10:00"): a dotted line shows the words that give the date.
 - Give an item a due date and time with the calendar icon on each item. The date then shows
   as a chip, and its × removes it. Type the time as digits: 1430 becomes 14:30. The
   browser can remind you, and you can postpone by 5, 10, 15 or 30 minutes.

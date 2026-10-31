@@ -1616,3 +1616,242 @@ document.addEventListener("keydown", (e) => {
   e.preventDefault();
   undoNotes();
 });
+
+// 20. A due date typed at the end of the add field (issue #6, canvas page
+// "10 · Due date", board "due date typed in the add field", option H2). A
+// date counts only after the word "due" or the sign "@", and only at the end
+// of the text. While the user types, a dotted line marks the date words, and
+// the date button under the field shows the date. Enter adds the item
+// without these words. The × on the date button, or a date picked in the
+// calendar, says no: the words stay text, and the app does not take them
+// again. testdata/typed-due.json has the cases: a wrong date is worse than no
+// date.
+const TYPED_DAYS = new Map(Object.entries({
+  sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tuesday: 2, wed: 3, wednesday: 3,
+  thu: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6,
+}));
+const TYPED_MONTHS = new Map(Object.entries({
+  jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4, may: 5,
+  jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8, sep: 9, sept: 9, september: 9,
+  oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12,
+}));
+
+// parseTypedDue finds a due date at the end of text: after "due" or "@" at
+// the start of a word, with some text before it. It returns the place of the
+// date words (start, end) and the date as the date fields want it, or null.
+function parseTypedDue(text, now) {
+  const marker = /(?<=^|\s)(?:due\s+|@\s*)/gi;
+  let m;
+  while ((m = marker.exec(text))) {
+    if (!text.slice(0, m.index).trim()) {
+      continue;
+    }
+    const when = typedWhen(text.slice(m.index + m[0].length), now);
+    if (when) {
+      return { start: m.index, end: text.trimEnd().length, date: when.date, time: when.time };
+    }
+  }
+  return null;
+}
+
+// typedWhen reads the words after "due" or "@": a day word, a weekday or a
+// date, then a time; or only a time (today). Anything else gives null.
+function typedWhen(rest, now) {
+  const words = rest.trim().split(/\s+/).map((w) => w.toLowerCase());
+  if (!words[0]) {
+    return null;
+  }
+  let time = "";
+  const t = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(words[words.length - 1]);
+  if (t) {
+    time = t[1].padStart(2, "0") + ":" + t[2];
+    words.pop();
+  }
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const later = (days) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + days);
+  let day = null;
+  if (!words.length) {
+    day = time ? today : null;
+  } else if (words.length === 1 && words[0] === "today") {
+    day = today;
+  } else if (words.length === 1 && words[0] === "tomorrow") {
+    day = later(1);
+  } else if (words.length === 1 && TYPED_DAYS.has(words[0])) {
+    // The next such day. Today only with a time later than now.
+    let ahead = (TYPED_DAYS.get(words[0]) - today.getDay() + 7) % 7;
+    if (ahead === 0 && !(time && Number(time.slice(0, 2)) * 60 + Number(time.slice(3)) > now.getHours() * 60 + now.getMinutes())) {
+      ahead = 7;
+    }
+    day = later(ahead);
+  } else {
+    day = typedDate(words, today.getFullYear());
+  }
+  if (!day) {
+    return null;
+  }
+  const pad = (n) => String(n).padStart(2, "0");
+  return { date: day.getFullYear() + "-" + pad(day.getMonth() + 1) + "-" + pad(day.getDate()), time };
+}
+
+// typedDate reads "12.11", "12.11.2027", "12 Nov", "Nov 12", each with an
+// optional year. A day that does not exist (31 Feb) gives null.
+function typedDate(words, year) {
+  let d, mo, y = year;
+  const dots = words.length === 1 && /^(\d{1,2})\.(\d{1,2})(?:\.(\d{4}))?$/.exec(words[0]);
+  if (dots) {
+    [d, mo] = [Number(dots[1]), Number(dots[2])];
+    y = dots[3] ? Number(dots[3]) : year;
+  } else if (words.length === 2 || words.length === 3) {
+    const num = (w) => (/^\d{1,2}$/.test(w) ? Number(w) : 0);
+    if (num(words[0]) && TYPED_MONTHS.has(words[1])) {
+      [d, mo] = [num(words[0]), TYPED_MONTHS.get(words[1])];
+    } else if (TYPED_MONTHS.has(words[0]) && num(words[1])) {
+      [d, mo] = [num(words[1]), TYPED_MONTHS.get(words[0])];
+    } else {
+      return null;
+    }
+    if (words.length === 3) {
+      if (!/^\d{4}$/.test(words[2])) {
+        return null;
+      }
+      y = Number(words[2]);
+    }
+  } else {
+    return null;
+  }
+  const day = new Date(y, mo - 1, d);
+  return mo >= 1 && mo <= 12 && day.getMonth() === mo - 1 && day.getDate() === d ? day : null;
+}
+
+// The state of the add field: the date that the text put in the date button
+// ("date time"), and the date words that the user said no to.
+const typed = { applied: null, refused: null, timer: 0 };
+
+// typedMatch returns the date at the end of the add field, unless the user
+// said no to these words.
+function typedMatch() {
+  const input = document.getElementById("new-item");
+  const m = input && parseTypedDue(input.value, new Date());
+  if (!m) {
+    return null;
+  }
+  m.words = input.value.slice(m.start, m.end).toLowerCase().replace(/\s+/g, " ");
+  return m.words === typed.refused ? null : m;
+}
+
+// drawTypedLine repeats the text of the add field in its layer, with the
+// date words in <mark>, at the same place as in the field.
+function drawTypedLine() {
+  const input = document.getElementById("new-item");
+  const layer = input && input.parentElement.querySelector(".add-mirror");
+  if (!layer) {
+    return;
+  }
+  const m = typedMatch();
+  layer.textContent = "";
+  if (!m) {
+    return;
+  }
+  const cs = window.getComputedStyle(input);
+  for (const p of ["fontFamily", "fontSize", "fontWeight", "fontStyle", "lineHeight", "letterSpacing", "wordSpacing", "textIndent",
+    "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+    "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth"]) {
+    layer.style[p] = cs[p];
+  }
+  const mark = document.createElement("mark");
+  mark.textContent = input.value.slice(m.start, m.end);
+  layer.append(input.value.slice(0, m.start), mark, input.value.slice(m.end));
+  layer.scrollLeft = input.scrollLeft;
+}
+
+// syncTypedDue puts the typed date in the date button, or takes it out when
+// the text has no date any more. The server draws the button (draft.go).
+function syncTypedDue() {
+  const extras = document.getElementById("add-extras");
+  if (!extras) {
+    return;
+  }
+  const m = typedMatch();
+  const key = m ? m.date + " " + m.time : null;
+  if (key === typed.applied || (!m && !typed.applied)) {
+    return;
+  }
+  const values = {};
+  extras.querySelectorAll('input[type="hidden"]').forEach((i) => { values[i.name] = i.value; });
+  if (m) {
+    Object.assign(values, { due_date: m.date, due_time: m.time, due_repeat: "" });
+  } else {
+    values.clear = "1";
+  }
+  typed.applied = key;
+  htmx.ajax("POST", "/new/due", { target: "#add-extras", swap: "outerHTML", values });
+}
+
+// refuseTyped keeps the words of the field as text from now on.
+function refuseTyped() {
+  const m = typedMatch();
+  if (typed.applied && m) {
+    typed.refused = m.words;
+  }
+  typed.applied = null;
+  drawTypedLine();
+}
+
+document.addEventListener("input", (e) => {
+  if (e.target.id !== "new-item") {
+    return;
+  }
+  drawTypedLine();
+  clearTimeout(typed.timer);
+  typed.timer = setTimeout(syncTypedDue, 150);
+});
+
+// The field scrolls a long text; the layer follows it.
+for (const name of ["keyup", "click", "focusin", "select"]) {
+  document.addEventListener(name, (e) => {
+    if (e.target.id === "new-item") {
+      drawTypedLine();
+    }
+  });
+}
+if (window.addEventListener) {
+  window.addEventListener("resize", drawTypedLine);
+}
+
+// The × of the date button, or a date from the calendar: no to the words.
+document.addEventListener("click", (e) => {
+  if (e.target.closest && e.target.closest("#add-extras .pill-x")) {
+    refuseTyped();
+  }
+}, true);
+document.addEventListener("htmx:beforeRequest", (e) => {
+  if (e.detail.elt && e.detail.elt.closest && e.detail.elt.closest("#due-picker-0")) {
+    refuseTyped();
+  }
+});
+
+// Enter or Add: the item gets the date, and its text loses the date words.
+// The date goes with the request too, in case the button is not drawn yet.
+document.addEventListener("htmx:configRequest", (e) => {
+  if (!e.detail.elt || e.detail.elt.id !== "add-form") {
+    return;
+  }
+  const m = typedMatch();
+  if (!m) {
+    return;
+  }
+  clearTimeout(typed.timer);
+  const f = e.detail.formData;
+  f.set("text", document.getElementById("new-item").value.slice(0, m.start).trimEnd());
+  f.set("due_date", m.date);
+  f.set("due_time", m.time);
+  f.set("due_repeat", "");
+});
+
+document.addEventListener("htmx:afterRequest", (e) => {
+  if (e.detail.elt && e.detail.elt.id === "add-form" && e.detail.successful) {
+    typed.applied = null;
+    typed.refused = null;
+  }
+});
+document.addEventListener("htmx:afterSettle", drawTypedLine);

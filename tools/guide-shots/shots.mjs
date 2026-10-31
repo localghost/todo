@@ -114,6 +114,13 @@ async function desktop() {
     await p.click("#new-item");
     await p.shot(out("add-form.png"), ["#add-form", "#add-extras"]);
 
+    // A due date typed at the end of the text (issue #6).
+    await p.goto(BASE + "/");
+    await p.click("#new-item");
+    await p.type("Call the dentist due tomorrow 10:00");
+    await p.waitFor("!!document.querySelector('.add-mirror mark') && !!document.querySelector('.due-set #due-add-0')");
+    await p.shot(out("typed-due.png"), ["#add-form", "#add-extras"]);
+
     await p.goto(BASE + "/");
     await p.click("#item-3 .text");
     await p.waitFor("!!document.querySelector('#item-3.editing input')");

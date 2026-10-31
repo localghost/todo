@@ -23,6 +23,7 @@ type draftView struct {
 	DueDate string // as the date field wants it, or ""
 	DueTime string // HH:MM, or "" for all day
 	DueText string // "Tomorrow, 10:00", or "" without a due date
+	DueOver bool   // the due date has passed: the button is red, as on a row
 	// DueRepeat is the repeat rule of the due date ("": never).
 	DueRepeat string
 	Labels    []todo.Label
@@ -98,7 +99,7 @@ func (s *server) readDraft(r *http.Request) (draftView, error) {
 // setDraftDue checks a due date and puts it in d, in the form the fields
 // show it. On a bad value d keeps no due date.
 func (s *server) setDraftDue(r *http.Request, d *draftView, date, clock, repeat string) error {
-	d.DueDate, d.DueTime, d.DueText, d.DueRepeat = "", "", "", ""
+	d.DueDate, d.DueTime, d.DueText, d.DueRepeat, d.DueOver = "", "", "", "", false
 	loc := s.zoneFor(r)
 	at, allDay, err := todo.ParseDue(date, clock, loc)
 	if err != nil {
@@ -111,6 +112,7 @@ func (s *server) setDraftDue(r *http.Request, d *draftView, date, clock, repeat 
 	it := todo.Item{DueAt: at, DueAllDay: allDay}
 	d.DueDate, d.DueTime = dueInputs(it, loc)
 	d.DueText = upperFirst(dueWhen(at.In(loc), allDay, s.nowFor(r)))
+	d.DueOver = it.Overdue(s.nowFor(r))
 	return nil
 }
 

@@ -66,6 +66,33 @@ and for how long. The login, sign-up and Account pages link to it.
 
 ![The add field with a due date and two labels](guide-images/add-form.png "the add field with the text “Pay the rent”. Under it, the due date button shows “Tomorrow, 10:00”, then the selected labels “home” and “urgent”, then the +.")
 
+#### Type the due date
+
+You can also type the due date at the end of the text, after the word "due" or the sign "@".
+For example: "Call the dentist due tomorrow 10:00" or "Pay the rent @12 Nov".
+
+- A blue dotted line marks the words that give the date. The due date button under the field
+  shows the date.
+- Press Enter or click **Add**. The item gets the date, and its text does not have these words.
+- If the words must stay text, click the × in the due date button. The app does not take the
+  same words again. A date that you then pick with the calendar icon also counts in place of
+  the typed one.
+- If the date has passed, the due date button is red.
+
+![A due date typed in the add field](guide-images/typed-due.png "the add field with the text “Call the dentist due tomorrow 10:00”. A dotted line is under “due tomorrow 10:00”, and the due date button shows “Tomorrow, 10:00”.")
+
+After "due" or "@", the app knows these forms. Upper and lower case are the same.
+
+| Form | Examples |
+|---|---|
+| A day | today, tomorrow, a weekday (friday or fri: the next Friday) |
+| A date | 12 Nov, Nov 12, 12.11, 12.11.2027, 12 Nov 2027 |
+| A time | 10:00, 9:30 (alone it means today) |
+| A day or a date with a time | tomorrow 10:00, fri 9:30, 12 Nov 14:00 |
+
+The date words must be at the end of the text, with no word after them. A number without a dot
+or a colon ("due 10") is not a date. If the app is not sure, it keeps the words as text.
+
 An item text has at most 500 characters. You can have at most 5,000 items, done or not.
 
 If nothing on the page has the focus, you can start to type at once. The text goes into the
