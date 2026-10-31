@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"todo/internal/todo"
 )
@@ -23,6 +24,9 @@ type listView struct {
 	// overdue (0: none); app.js refreshes the list then.
 	NextOverdue int64
 	Filter      *todo.Label // the list shows only items with this label
+	// Today: the Today view (issue #7, canvas page "22 · Today"), only the
+	// items that are overdue or due today.
+	Today bool
 	// Ask shows the question of "Clear done" open; Changed adds that the
 	// number of done items changed since the last question (code review 7).
 	Ask, Changed bool
@@ -95,11 +99,17 @@ func (s *server) listViewOrder(r *http.Request, hideDone, sortDue bool) (listVie
 	if filter != nil {
 		labelID = filter.ID
 	}
-	items, err := s.svc.ListLabel(ctx, userID, hideDone, labelID)
-	if err != nil {
-		return listView{}, err
+	today := s.todayView(r)
+	var items []todo.Item
+	var open, done int
+	if today {
+		items, open, done, err = s.todayItems(r, hideDone, labelID)
+	} else {
+		items, err = s.svc.ListLabel(ctx, userID, hideDone, labelID)
+		if err == nil {
+			open, done, err = s.svc.CountsLabel(ctx, userID, labelID)
+		}
 	}
-	open, done, err := s.svc.CountsLabel(ctx, userID, labelID)
 	if err != nil {
 		return listView{}, err
 	}
@@ -107,8 +117,13 @@ func (s *server) listViewOrder(r *http.Request, hideDone, sortDue bool) (listVie
 	if sortDue {
 		items = todo.DueOrder(items, now)
 	}
-	lv := listView{Items: items, Open: open, Done: done, Total: open + done, HideDone: hideDone, SortDue: sortDue, Filter: filter}
-	if next, ok := todo.NextOverdue(items, now); ok {
+	lv := listView{Items: items, Open: open, Done: done, Total: open + done, HideDone: hideDone, SortDue: sortDue, Filter: filter, Today: today}
+	next, ok := todo.NextOverdue(items, now)
+	// At midnight the Today view changes: the page loads the list again then.
+	if day := todo.NextDay(now); today && (!ok || day.Before(next)) {
+		next, ok = day, true
+	}
+	if ok {
 		lv.NextOverdue = next.UnixMilli()
 	}
 	for _, it := range items {
@@ -120,16 +135,72 @@ func (s *server) listViewOrder(r *http.Request, hideDone, sortDue bool) (listVie
 	return lv, nil
 }
 
-// labelFilter returns the label in ?label= (nil: no filter). An htmx request
-// from the page carries the page's address in HX-Current-URL, so a row or
-// toolbar answer is filtered like the page. An unknown label is no filter.
-func (s *server) labelFilter(r *http.Request) (*todo.Label, error) {
-	v := r.URL.Query().Get("label")
+// todayItems returns the items of the Today view in the stored order (only
+// the open ones if hideDone), and how many of the view are open and done.
+func (s *server) todayItems(r *http.Request, hideDone bool, labelID int64) (items []todo.Item, open, done int, err error) {
+	all, err := s.svc.ListLabel(r.Context(), userID(r), false, labelID)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	for _, it := range todo.TodayView(all, s.nowFor(r)) {
+		if it.Done {
+			done++
+			if hideDone {
+				continue
+			}
+		} else {
+			open++
+		}
+		items = append(items, it)
+	}
+	return items, open, done, nil
+}
+
+// AllURL and TodayURL are the addresses of the switch "All · Today"; each
+// keeps the label filter. ClearFilterURL takes the label off and keeps the
+// view.
+func (lv listView) AllURL() string   { return lv.viewURL(lv.Filter, false) }
+func (lv listView) TodayURL() string { return lv.viewURL(lv.Filter, true) }
+func (lv listView) ClearFilterURL() string {
+	return lv.viewURL(nil, lv.Today)
+}
+
+func (lv listView) viewURL(filter *todo.Label, today bool) string {
+	var q []string
+	if filter != nil {
+		q = append(q, "label="+strconv.FormatInt(filter.ID, 10))
+	}
+	if today {
+		q = append(q, "due=today")
+	}
+	if len(q) == 0 {
+		return "/"
+	}
+	return "/?" + strings.Join(q, "&")
+}
+
+// todayView reports whether the page is the Today view (?due=today).
+func (s *server) todayView(r *http.Request) bool {
+	return pageQuery(r, "due") == "today"
+}
+
+// pageQuery returns the value of key in the address. An htmx request from
+// the page carries the page's address in HX-Current-URL, so a row or
+// toolbar answer is filtered like the page.
+func pageQuery(r *http.Request, key string) string {
+	v := r.URL.Query().Get(key)
 	if v == "" && isHTMX(r) {
 		if u, err := url.Parse(r.Header.Get("HX-Current-URL")); err == nil && u.Path == "/" {
-			v = u.Query().Get("label")
+			v = u.Query().Get(key)
 		}
 	}
+	return v
+}
+
+// labelFilter returns the label in ?label= (nil: no filter), also from the
+// page's address (pageQuery). An unknown label is no filter.
+func (s *server) labelFilter(r *http.Request) (*todo.Label, error) {
+	v := pageQuery(r, "label")
 	id, err := strconv.ParseInt(v, 10, 64)
 	if v == "" || err != nil || id <= 0 {
 		return nil, nil

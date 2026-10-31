@@ -1961,3 +1961,13 @@ document.addEventListener("keydown", (e) => {
     closeRepeatMenu(true);
   }
 });
+
+// 22. The Today view (issue #7, canvas page "22 · Today"): a click on a label
+// chip of a row keeps the view, so the list shows the label's items that
+// are overdue or due today.
+document.addEventListener("click", (e) => {
+  const a = e.target.closest && e.target.closest('.chip a[href^="/?label="]');
+  if (a && new URLSearchParams(location.search).get("due") === "today" && !a.getAttribute("href").includes("due=")) {
+    a.setAttribute("href", a.getAttribute("href") + "&due=today");
+  }
+});

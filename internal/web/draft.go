@@ -63,14 +63,23 @@ func (d draftView) draftItem() todo.Item {
 	return todo.Item{Text: "the new item", Labels: d.Labels}
 }
 
-// newDraft starts the add form's choices: no due date, and the list's
-// filter label, so a new item shows in the filtered list.
+// newDraft starts the add form's choices: the list's filter label, and in
+// the Today view today, all day, so a new item shows in the list.
 func (s *server) newDraft(r *http.Request) (draftView, error) {
 	filter, err := s.labelFilter(r)
-	if filter == nil || err != nil {
+	if err != nil {
 		return draftView{}, err
 	}
-	return draftView{Labels: []todo.Label{*filter}}, nil
+	var d draftView
+	if filter != nil {
+		d.Labels = []todo.Label{*filter}
+	}
+	if s.todayView(r) {
+		if err := s.setDraftDue(r, &d, s.nowFor(r).Format("2006-01-02"), "", ""); err != nil {
+			return draftView{}, err
+		}
+	}
+	return d, nil
 }
 
 // readDraft reads the add form's choices from the request. Labels that are

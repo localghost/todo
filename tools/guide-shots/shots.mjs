@@ -186,6 +186,13 @@ async function desktop() {
     await p.shot(out("search.png"), ["#toolbar", "#search-row", "#items"]);
     await p.key("Escape");
 
+    // The Today view (canvas page "22 · Today", option V1).
+    await p.goto(BASE + "/?due=today");
+    await p.move(990, 890);
+    await p.eval("document.activeElement.blur()");
+    await sleep(200);
+    await p.shot(out("today.png"), ["#add-extras", "#toolbar", "#items"]);
+
     // A repeating item right after its check (canvas page "20 · Repeat"),
     // then its old date and no repeat again, for the phone shot.
     const zone = await p.eval("Intl.DateTimeFormat().resolvedOptions().timeZone");

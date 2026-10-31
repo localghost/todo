@@ -255,6 +255,28 @@ When the due time passes, the date text becomes red ("Overdue since …"), and t
 show. In **Sort by hand** the item stays at its place. In **Sort by due date** it moves to the
 top of the list.
 
+### Show only the items for today
+
+Above the buttons over the list is the switch **All · Today**. Click **Today** to see only these
+items:
+
+- the items that are overdue,
+- the items that are due today, at any time,
+- the done items that were due today, while "Show done" is on.
+
+The other items do not show, but they stay in your list. Click **All** to see all items again.
+
+- Under the add field, the date "Today" is already set. So a new item that you add here shows in
+  the view. Click its × if the new item must not have a date.
+- The counter, "Clear done" and "Sort by due date" work on the items of the view. "Clear done"
+  deletes only the done items that the view shows.
+- The view works with a label. Click a label on an item, and the list shows the items with that
+  label that are overdue or due today.
+- At midnight, the view changes by itself.
+- The address of the view is `/?due=today`, so you can bookmark it.
+
+![The Today view](guide-images/today.png "the switch “All · Today” with “Today” chosen: only the overdue item shows, and under the add field the date “Today” is set for a new item.")
+
 ## Reminders
 
 The browser can show a notification when an item is due.
@@ -375,7 +397,7 @@ web, so a change on the phone shows in the browser and the other way round.
   the change is saved when Undo goes away. Hold a row still for half a second until it lifts,
   then drag it to change the order. For now, you cannot move an overdue row in the app. A
   repeating item that you mark done in the app comes back with its next date; for now, you can
-  set the repeat only on the web, and the app has no search. The app does not show the notes of
+  set the repeat only on the web, and the app has no search and no Today view. The app does not show the notes of
   an item yet; a change in the app keeps them. Pull
   down to load the list again. The first time, a blue hint above the list explains this; "Got
   it" closes it.

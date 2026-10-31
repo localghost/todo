@@ -32,6 +32,8 @@ Privacy policy: https://toodoo.fly.dev/privacy (the text is in
 - Sort the list by due date with one click: overdue items first, then the nearest date, items
   without a date at the end. "Sort by hand" brings your own order back. The app remembers the
   choice.
+- See only the items that are overdue or due today with the switch "All · Today" above the
+  list. It works together with a label, and a new item added there is due today.
 - Put labels such as "work" or "home" on items with the small + on each item. It opens a
   searchable list of all your labels: click names to add or remove several labels, or create a
   new one. Point at a label on an item to remove it with its ×. Click a label to see only its

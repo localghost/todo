@@ -590,6 +590,22 @@ button.sw:focus-visible, .picker-name:focus-visible, .picker-back:focus-visible,
 /* Before the first item there is nothing to count, sort or hide (board "UI
    review", point 6). */
 .toolbar[hidden], .toolbar[hidden] ~ .sort-hint { display: none; }
+/* The Today view (issue #7, canvas page "22 · Today", option V1): the switch
+   "All · Today" on its own line above the counter and the buttons. */
+.view-switch { flex: 0 0 100%; display: flex; }
+.view-switch a {
+  display: inline-flex; align-items: center; min-height: 30px; padding: 0 16px;
+  font-size: 14px; font-weight: 600; color: var(--muted); text-decoration: none;
+  background: var(--card); border: 1px solid var(--line);
+}
+.view-switch a:first-child { border-radius: 999px 0 0 999px; }
+.view-switch a:last-child { border-radius: 0 999px 999px 0; margin-left: -1px; }
+.view-switch a:hover { color: var(--accent); }
+.view-switch a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
+.view-switch a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; position: relative; }
+@media (hover: none) {
+  .view-switch a { min-height: 40px; font-size: 15px; padding: 0 20px; }
+}
 /* On a phone the three buttons fit on one line (point 4). */
 @media (max-width: 480px) {
   .toolbar-right { gap: 6px; }

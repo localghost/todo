@@ -75,7 +75,7 @@ func (s *server) addItem(w http.ResponseWriter, r *http.Request) {
 	// In due date order an item with a due date goes to its date, and an item
 	// without the filter label is not in the filtered list: the whole list
 	// comes back. Else the new row goes at the end, overdue or not.
-	if (lv.SortDue && item.DueAt != nil) || (lv.Filter != nil && !item.HasLabel(lv.Filter.ID)) {
+	if (lv.SortDue && item.DueAt != nil) || (lv.Filter != nil && !item.HasLabel(lv.Filter.ID)) || (lv.Today && !item.InToday(s.nowFor(r))) {
 		w.Header().Set("HX-Retarget", "#list-section")
 		w.Header().Set("HX-Reswap", "outerHTML")
 		s.render(w, r, http.StatusOK, part{"list", lv}, part{"add-extras", fresh})
@@ -115,7 +115,7 @@ func (s *server) toggleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.announceRepeat(w, r, old, item)
-	if placeChanged(old, item, s.nowFor(r), currentUser(r).SortDue) {
+	if s.moves(r, old, item) {
 		s.renderList(w, r, hideDone) // in due date order: into or out of the overdue group
 		return
 	}
@@ -189,7 +189,7 @@ func (s *server) clearDone(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if _, err := s.svc.ClearDone(r.Context(), userID(r), labelID); err != nil {
+	if err := s.clearDoneOf(r, labelID); err != nil {
 		s.serverError(w, r, err)
 		return
 	}
@@ -203,6 +203,28 @@ func (s *server) clearDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, http.StatusOK, part{"list", lv})
+}
+
+// clearDoneOf deletes the done items with the label (0: all), and in the
+// Today view only the done items of the view.
+func (s *server) clearDoneOf(r *http.Request, labelID int64) error {
+	if !s.todayView(r) {
+		_, err := s.svc.ClearDone(r.Context(), userID(r), labelID)
+		return err
+	}
+	items, _, _, err := s.todayItems(r, false, labelID)
+	if err != nil {
+		return err
+	}
+	for _, it := range items {
+		if !it.Done {
+			continue
+		}
+		if err := s.svc.Delete(r.Context(), userID(r), it.ID); err != nil && !errors.Is(err, todo.ErrNotFound) {
+			return err
+		}
+	}
+	return nil
 }
 
 // oobOnly answers with an empty main body (htmx removes the target row)
@@ -340,7 +362,7 @@ func (s *server) postponeItem(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.serverError(w, r, err)
 	default:
-		if placeChanged(old, item, s.nowFor(r), currentUser(r).SortDue) {
+		if s.moves(r, old, item) {
 			s.renderList(w, r, currentUser(r).HideDone)
 			return
 		}
@@ -454,6 +476,16 @@ func (s *server) announceRepeat(w http.ResponseWriter, r *http.Request, old, ite
 func (s *server) oldItem(r *http.Request, id int64) todo.Item {
 	it, _ := s.svc.Get(r.Context(), userID(r), id)
 	return it
+}
+
+// moves reports whether a change moves the item in the list of the page:
+// to another place (placeChanged), or into or out of the Today view.
+func (s *server) moves(r *http.Request, old, item todo.Item) bool {
+	now := s.nowFor(r)
+	if s.todayView(r) && old.InToday(now) != item.InToday(now) {
+		return true
+	}
+	return placeChanged(old, item, now, currentUser(r).SortDue)
 }
 
 // placeChanged reports whether a change moves the item in the list. By hand

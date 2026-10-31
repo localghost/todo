@@ -14,9 +14,12 @@
 
 {{/* No counter and no buttons before the first item; a label filter keeps
      them (canvas page "2 · Main list", board "UI review", point 6). */}}
-{{define "toolbar"}}<div id="toolbar" class="toolbar"{{if .OOB}} hx-swap-oob="true"{{end}}{{if and (eq .Total 0) (not .Filter)}} hidden{{end}} data-hide-done="{{.HideDone}}" data-sort-due="{{.SortDue}}"{{if .NextOverdue}} data-next-overdue="{{.NextOverdue}}"{{end}}>
+{{define "toolbar"}}<div id="toolbar" class="toolbar"{{if .OOB}} hx-swap-oob="true"{{end}}{{if and (eq .Total 0) (not .Filter) (not .Today)}} hidden{{end}} data-hide-done="{{.HideDone}}" data-sort-due="{{.SortDue}}"{{if .NextOverdue}} data-next-overdue="{{.NextOverdue}}"{{end}}>
+{{/* The Today view (issue #7, canvas page "22 · Today", option V1): a
+     switch on its own line above the counter and the buttons. */}}
+<nav class="view-switch" aria-label="Views"><a href="{{.AllURL}}"{{if not .Today}} aria-current="page"{{end}}>All</a><a href="{{.TodayURL}}"{{if .Today}} aria-current="page"{{end}}>Today</a></nav>
 <div class="toolbar-left"><span class="counter">{{.Open}} open · {{.Done}} done</span>{{with .Filter}}
-<span class="active-filter">Label: <span class="chip" data-color="{{.Color}}" data-label="{{.ID}}">{{.Name}}</span><a class="clear-filter" href="/" aria-label="Show all labels" title="Show all labels">{{template "x-icon"}}</a></span>{{end}}</div>
+<span class="active-filter">Label: <span class="chip" data-color="{{.Color}}" data-label="{{.ID}}">{{.Name}}</span><a class="clear-filter" href="{{$.ClearFilterURL}}" aria-label="Show all labels" title="Show all labels">{{template "x-icon"}}</a></span>{{end}}</div>
 {{/* The number of done items shows once, in the counter: the buttons have no
      number (canvas page "3 · Done hidden", board "the number of done items
      only once", option A). */}}
@@ -33,10 +36,10 @@
      is swapped with the toolbar, so a row change closes an open question. */}}
 {{define "clear-confirm-slot"}}<div id="clear-confirm"{{if .OOB}} hx-swap-oob="true"{{end}}>{{if .Ask}}{{template "clear-confirm" .}}{{end}}</div>{{end}}
 
-{{define "clear-confirm"}}{{if .Done}}<div class="confirm clear-confirm" role="alert"><p>{{if .Changed}}The number of done items changed. {{end}}Delete {{if eq .Done 1}}1 done item{{else}}{{.Done}} done items{{end}}{{with .Filter}} with the label “{{.Name}}”{{end}}? You cannot undo this.</p>
+{{define "clear-confirm"}}{{if .Done}}<div class="confirm clear-confirm" role="alert"><p>{{if .Changed}}The number of done items changed. {{end}}Delete {{if eq .Done 1}}1 done item{{else}}{{.Done}} done items{{end}}{{with .Filter}} with the label “{{.Name}}”{{end}}{{if .Today}} due today{{end}}? You cannot undo this.</p>
 <div class="confirm-buttons"><button type="button" class="btn-small danger-solid" hx-post="/items/done/delete" hx-vals='{"count":"{{.Done}}"}' hx-target="#list-section" hx-swap="outerHTML" autofocus>Delete {{if eq .Done 1}}1 item{{else}}{{.Done}} items{{end}}</button><button type="button" class="btn-small clear-cancel">Cancel</button></div></div>{{end}}{{end}}
 
-{{define "empty"}}<div id="empty-state"{{if .OOB}} hx-swap-oob="true"{{end}}>{{if not .Items}}{{if and .Filter (eq .Total 0)}}<p class="empty-title">No items with this label</p><p class="empty-hint">Add one above. It gets the label automatically.</p>{{else if eq .Total 0}}<p class="empty-title">No items yet</p><p class="empty-hint">Type a task above and press Enter.</p>{{else}}<p class="empty-title">All done</p><p class="empty-hint">Done items are hidden. Use “Show done” to see them.</p>{{end}}{{end}}</div>{{end}}
+{{define "empty"}}<div id="empty-state"{{if .OOB}} hx-swap-oob="true"{{end}}>{{if not .Items}}{{if and .Today (eq .Total 0)}}<p class="empty-title">Nothing due today</p><p class="empty-hint">Items that are overdue or due today show here. Click “All” to see all items.</p>{{else if and .Filter (eq .Total 0)}}<p class="empty-title">No items with this label</p><p class="empty-hint">Add one above. It gets the label automatically.</p>{{else if eq .Total 0}}<p class="empty-title">No items yet</p><p class="empty-hint">Type a task above and press Enter.</p>{{else}}<p class="empty-title">All done</p><p class="empty-hint">Done items are hidden. Use “Show done” to see them.</p>{{end}}{{end}}</div>{{end}}
 
 {{define "notify-bar"}}<div id="notify-bar" class="notify-bar" data-has-due="{{.HasDue}}"{{if .OOB}} hx-swap-oob="true"{{end}}></div>{{end}}
 
