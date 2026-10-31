@@ -91,7 +91,11 @@ An item can have notes: a longer text, for example an address, a phone number or
 
 An item with notes shows a gray **notes** chip in place of the icon. Click it to read the
 notes. A link that starts with http:// or https:// opens in a new tab. To change the notes,
-click **Edit**. To remove them, delete all the text and click **Save**.
+click **Edit**.
+
+To remove the notes, point at the **notes** chip and click the × that shows in it. "Notes
+removed." with **Undo** shows at the end of the row. To get the notes back, click **Undo** or
+press Ctrl+Z. After 8 seconds, **Undo** goes away.
 
 ![The notes of an item](guide-images/notes.png "the notes of “Call the dentist”: a name, a phone number and a link, with the button Edit under them.")
 
@@ -317,8 +321,8 @@ The app works in the browser of a phone. On a narrow screen:
 
 On a touch screen:
 
-- The calendar icon, the notes icon and the + of an item are larger, and the × on a date or a
-  label always shows.
+- The calendar icon, the notes icon and the + of an item are larger, and the × on a date, a
+  label or the **notes** chip always shows.
 - The calendar icon and the + under the add field are larger, and the × in the due date button
   always shows.
 - In the label list, the due date pop-up and the notes pop-up, the lines, the fields and the
@@ -396,6 +400,7 @@ web, so a change on the phone shows in the browser and the other way round.
 | Search field | Esc | Closes the search and shows all items |
 | Grip (⋮⋮) | Up arrow, down arrow | Moves the item |
 | List, after a delete | Ctrl+Z | Brings the deleted item back (while **Undo** shows) |
+| List, after the notes are removed | Ctrl+Z | Brings the notes back (while **Undo** shows) |
 | Due date pop-up | Enter | Saves the date |
 | Due date pop-up | Esc | Closes the pop-up |
 | Notes pop-up, field | Enter | Makes a new line |

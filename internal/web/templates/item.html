@@ -41,7 +41,8 @@
 </li>{{end}}
 
 {{/* Notes on an item (canvas page "21 · Notes", option N2). data-notes is for the search (app.js section 18). */}}
-{{define "notes-add"}}<span class="notes-add-wrap"><button type="button" id="notes-add-{{.ID}}" class="notes-add{{if .Notes}} is-set{{end}}" aria-label="{{if .Notes}}Show the notes of “{{.Text}}”{{else}}Add notes to “{{.Text}}”{{end}}" title="{{if .Notes}}Show the notes{{else}}Add notes{{end}}" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/notes"{{if .Notes}} data-notes="{{.Notes}}"{{end}}>{{template "notes-icon"}}{{if .Notes}}notes{{end}}</button></span>{{end}}
+{{define "notes-add"}}<span class="notes-add-wrap{{if .Notes}} is-set{{end}}"><button type="button" id="notes-add-{{.ID}}" class="notes-add{{if .Notes}} is-set{{end}}" aria-label="{{if .Notes}}Show the notes of “{{.Text}}”{{else}}Add notes to “{{.Text}}”{{end}}" title="{{if .Notes}}Show the notes{{else}}Add notes{{end}}" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/{{.ID}}/notes"{{if .Notes}} data-notes="{{.Notes}}"{{end}}>{{template "notes-icon"}}{{if .Notes}}notes{{end}}</button>{{if .Notes}}<button type="button" class="notes-x" aria-label="Remove the notes of “{{.Text}}”" title="Remove the notes"
+  hx-put="/items/{{.ID}}/notes" hx-params="none" hx-target="closest li" hx-swap="outerHTML">{{template "x-small-icon"}}</button>{{end}}</span>{{end}}
 
 {{define "item-edit"}}<li id="item-{{.Item.ID}}" class="item editing{{if .Item.Done}} done{{end}}"
   hx-get="/items/{{.Item.ID}}" hx-trigger="cancel-edit" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop">

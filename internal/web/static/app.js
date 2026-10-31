@@ -45,6 +45,11 @@ document.addEventListener("htmx:beforeSwap", (e) => {
     focusAfterSwap = "due-add-" + row.id.slice("item-".length);
     return;
   }
+  if (active.matches(".notes-x")) {
+    // The same for the notes: go on at the gray notes icon.
+    focusAfterSwap = "notes-add-" + row.id.slice("item-".length);
+    return;
+  }
   if (!active.matches(".check, .delete, .chip-x")) {
     return;
   }
@@ -1191,7 +1196,8 @@ document.addEventListener("htmx:afterSettle", () => {
 });
 
 document.addEventListener("click", (e) => {
-  if (e.target.closest && e.target.closest(".undo-btn")) {
+  // Only the Undo of a deleted item: the other Undo buttons have their own.
+  if (e.target.closest && e.target.closest(".item-undo .undo-btn")) {
     undoDelete();
   }
 });
@@ -1391,7 +1397,7 @@ function applySearch() {
     row.classList.toggle("search-miss", !keep);
     if (notesEl) {
       const headLength = Array.from(head).length;
-      notesEl.classList.toggle("search-hit", !!places && places.some((p) => p > headLength));
+      notesEl.parentElement.classList.toggle("search-hit", !!places && places.some((p) => p > headLength));
     }
     paint(textEl, chars, places ? places.filter((p) => p < chars.length) : []);
     if (keep) {
@@ -1524,4 +1530,89 @@ document.addEventListener("htmx:afterSettle", () => {
     input.setSelectionRange(input.value.length, input.value.length);
   }
   searchFocused = null;
+});
+
+// 19. The × on the notes chip removes the notes at once, with Undo (canvas
+// page "21 · Notes", board "Remove the notes", option X1). The row comes back
+// with the gray notes icon and "Notes removed. Undo" at the end of its chips.
+// Undo, or Ctrl+Z, sends the old notes back. The line goes away after
+// UNDO_MS, or when the row changes again.
+const notesRemoves = new WeakMap(); // xhr → { id, notes }
+let removedNotes = null; // { id, notes, line, timer }
+
+document.addEventListener("htmx:beforeRequest", (e) => {
+  const elt = e.detail.elt;
+  if (!elt || !elt.matches || !elt.matches(".notes-x") || !e.detail.xhr) {
+    return;
+  }
+  const button = elt.parentElement.querySelector(".notes-add[data-notes]");
+  if (button) {
+    notesRemoves.set(e.detail.xhr, { id: button.id.slice("notes-add-".length), notes: button.dataset.notes });
+  }
+});
+
+document.addEventListener("htmx:afterSettle", (e) => {
+  const xhr = e.detail && e.detail.xhr;
+  const removed = xhr && notesRemoves.get(xhr);
+  if (!removed) {
+    return;
+  }
+  notesRemoves.delete(xhr);
+  const row = document.getElementById("item-" + removed.id);
+  const meta = row && row.querySelector(".meta");
+  if (xhr.status !== 200 || !meta) {
+    return;
+  }
+  clearNotesUndo();
+  const line = document.createElement("span");
+  line.className = "notes-msg";
+  line.setAttribute("role", "status");
+  const msg = document.createElement("span");
+  msg.textContent = "Notes removed.";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "undo-btn notes-undo";
+  button.textContent = "Undo";
+  button.addEventListener("click", undoNotes);
+  line.append(msg, button);
+  meta.append(line);
+  removedNotes = { id: removed.id, notes: removed.notes, line, timer: setTimeout(clearNotesUndo, UNDO_MS) };
+});
+
+function clearNotesUndo() {
+  const r = removedNotes;
+  if (!r) {
+    return;
+  }
+  removedNotes = null;
+  clearTimeout(r.timer);
+  r.line.remove();
+}
+
+function undoNotes() {
+  const r = removedNotes;
+  if (!r || !document.body.contains(r.line)) {
+    clearNotesUndo(); // the row came back new: its notes may be new too
+    return;
+  }
+  const row = r.line.closest("li.item");
+  clearNotesUndo();
+  htmx.ajax("PUT", "/items/" + r.id + "/notes", { target: row, swap: "outerHTML", values: { notes: r.notes } }).then(() => {
+    const chip = document.getElementById("notes-add-" + r.id);
+    if (chip && (!document.activeElement || document.activeElement === document.body || !document.body.contains(document.activeElement))) {
+      chip.focus();
+    }
+  }).catch(() => {});
+}
+
+document.addEventListener("keydown", (e) => {
+  if (!removedNotes || pendingDelete || !(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "z") {
+    return;
+  }
+  const el = document.activeElement;
+  if (el && (el.matches("input, textarea, select") || el.isContentEditable)) {
+    return; // Ctrl+Z in a field undoes the typing
+  }
+  e.preventDefault();
+  undoNotes();
 });

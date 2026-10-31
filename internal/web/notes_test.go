@@ -27,7 +27,14 @@ func TestRowNotesButton(t *testing.T) {
 		`<span class="notes-add-wrap"><button type="button" id="notes-add-1" class="notes-add" aria-label="Add notes to “Pay the rent”" title="Add notes" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/1/notes">`,
 		`<button type="button" id="notes-add-2" class="notes-add is-set" aria-label="Show the notes of “Visit grandma”" title="Show the notes" aria-haspopup="dialog" aria-expanded="false" data-picker="/items/2/notes" data-notes="ul. Lipowa 12/4
 tel. 600 100 200">`,
-		`</svg>notes</button></span>`)
+		`</svg>notes</button><button type="button" class="notes-x" aria-label="Remove the notes of “Visit grandma”" title="Remove the notes"
+  hx-put="/items/2/notes" hx-params="none" hx-target="closest li" hx-swap="outerHTML">`)
+	// The chip look is on the wrap, so that the × is part of the chip; a row
+	// without notes has no ×.
+	assertContains(t, body, `<span class="notes-add-wrap is-set"><button type="button" id="notes-add-2"`)
+	if strings.Count(body, `class="notes-x"`) != 1 {
+		t.Fatalf("want one × (only the row with notes):\n%s", body)
+	}
 	// The notes button comes after the date chip and before the labels.
 	row := body[strings.Index(body, `id="item-2"`):]
 	if !strings.Contains(row, "notes-add-wrap") || strings.Index(row, "due-add-wrap") > strings.Index(row, "notes-add-wrap") || strings.Index(row, "notes-add-wrap") > strings.Index(row, "label-add-wrap") {
@@ -148,4 +155,38 @@ func TestAPINotes(t *testing.T) {
 		t.Fatalf("PATCH long notes: %d, want 422", rec.Code)
 	}
 	assertContains(t, rec.Body.String(), `"error":"bad_notes"`, `"message":"The notes are too long: at most 2000 characters."`)
+}
+
+// The × on the notes chip sends no values: the empty notes remove them, and
+// the row comes back with the gray notes icon (canvas page "21 · Notes",
+// board "Remove the notes", option X1).
+func TestRemoveNotesWithX(t *testing.T) {
+	env := newTestEnv(t)
+	mustAdd(t, env.Svc, "Visit grandma")
+	env.Svc.SetNotes(context.Background(), env.User.ID, 1, "ul. Lipowa 12/4")
+	rec := do(t, env.H, "PUT", "/items/1/notes", nil, htmxHeaders)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("PUT without notes: %d\n%s", rec.Code, rec.Body.String())
+	}
+	assertContains(t, rec.Body.String(), `<span class="notes-add-wrap"><button type="button" id="notes-add-1" class="notes-add"`)
+	assertNotContains(t, rec.Body.String(), "notes-x", "data-notes")
+	if it, _ := env.Svc.Get(context.Background(), env.User.ID, 1); it.Notes != "" {
+		t.Fatalf("notes = %q, want none", it.Notes)
+	}
+}
+
+// app.js shows "Notes removed." with Undo after the ×, and Undo sends the old
+// notes back; the CSS shows the × on hover, as the × of the date chip.
+func TestNotesRemoveUndoAssets(t *testing.T) {
+	h, _ := newTestApp(t)
+	js := do(t, h, "GET", "/static/app.js", nil, nil).Body.String()
+	assertContains(t, js,
+		`elt.matches(".notes-x")`, `"Notes removed."`, `"undo-btn notes-undo"`,
+		`htmx.ajax("PUT", "/items/" + r.id + "/notes"`, `values: { notes: r.notes }`,
+		`active.matches(".notes-x")`, `e.target.closest(".item-undo .undo-btn")`)
+	css := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
+	assertContains(t, css,
+		".notes-add-wrap.is-set {", ".notes-x {",
+		".notes-add-wrap:hover .notes-x, .notes-add-wrap:focus-within .notes-x {",
+		".notes-add-wrap.search-hit {", ".notes-msg {")
 }
