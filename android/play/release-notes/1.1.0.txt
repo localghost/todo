@@ -1,0 +1,4 @@
+<en-US>
+• New Today view: tap "Today" in the switch "All · Today" to see only the items that are overdue or due today
+• A new item that you add in the Today view is due today
+</en-US>
