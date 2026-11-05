@@ -54,6 +54,7 @@ fun labelsForItem(labels: List<Label>, first: List<Long>): List<Label> {
 /**
  * One row of label chips, scrolled to the side: under the add field and in
  * the item sheet. A tap selects a chip or clears it; the chips stay in their place.
+ * [leading] goes before the labels.
  */
 @Composable
 fun LabelChipRow(
@@ -62,6 +63,7 @@ fun LabelChipRow(
     description: String,
     modifier: Modifier = Modifier,
     sidePadding: Dp = 12.dp,
+    leading: (@Composable () -> Unit)? = null,
     onToggle: (Label) -> Unit,
 ) {
     LazyRow(
@@ -69,6 +71,7 @@ fun LabelChipRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier.fillMaxWidth().semantics { contentDescription = description },
     ) {
+        leading?.let { item(key = "leading") { it() } }
         items(labels, key = { it.id }) { label -> PickChip(label, label.id in picked) { onToggle(label) } }
     }
 }

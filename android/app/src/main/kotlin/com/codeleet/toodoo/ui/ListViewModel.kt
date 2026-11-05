@@ -9,7 +9,10 @@ import com.codeleet.toodoo.api.ItemList
 import com.codeleet.toodoo.api.Label
 import com.codeleet.toodoo.api.OfflineException
 import com.codeleet.toodoo.data.Session
+import java.time.LocalDate
+import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -23,6 +26,7 @@ data class ListState(
     val message: String? = null, // shown once in a snackbar
     val pending: Pending? = null, // changed on the phone, Undo still possible
     val filter: Label? = null, // only items with this label
+    val today: Boolean = false, // the Today view: only items overdue or due today
     val labels: List<Label>? = null, // all labels, loaded when a picker opens
     val sheet: Item? = null, // the item open in the item sheet
     val gestureHint: Boolean = false, // show the hint about swipe and hold
@@ -48,13 +52,15 @@ interface ListActions {
     fun exactReminders(): Boolean
     fun messageShown()
     fun refresh()
-    suspend fun add(text: String, labels: List<String>): Boolean
+    suspend fun add(text: String, labels: List<String>, dueDate: String?): Boolean
     fun toggle(item: Item)
     fun delete(item: Item)
     fun undo()
     fun commit(pending: Pending)
     fun gestureHintSeen()
     fun setFilter(label: Label?)
+    fun setToday(on: Boolean)
+    fun resumed()
     fun loadLabels()
     fun openSheet(item: Item)
     fun closeSheet()
@@ -81,15 +87,28 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
     /** Whether reminders ring on time (Android 12+ asks the user for exact alarms). */
     override fun exactReminders() = app.reminders.exact()
 
+    private var loadedDay: LocalDate? = null // the phone's day of the last load
+
     init {
         viewModelScope.launch {
-            app.cache.load()?.let { cached -> _state.update { if (it.list == null) it.copy(list = cached) else it } }
+            // The view first, so that the saved list and the first load show it.
+            val today = app.sessions.todayView.first()
+            _state.update { it.copy(today = today) }
+            showSaved()
+            refresh()
         }
         viewModelScope.launch {
             val seen = app.sessions.gestureHintSeen.first()
             _state.update { it.copy(gestureHint = !seen) }
         }
-        refresh()
+        viewModelScope.launch {
+            // At midnight the Today view changes. A sleeping phone wakes this
+            // late, so resumed() checks the day too.
+            while (true) {
+                delay(millisToNextDay(ZonedDateTime.now(phoneZone())))
+                if (_state.value.today) refresh()
+            }
+        }
         app.reminders.startBackgroundLoads()
     }
 
@@ -101,9 +120,12 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
     private suspend fun reload() {
         try {
             val filter = _state.value.filter
-            val list = api.items(filter?.id)
+            val today = _state.value.today
+            val list = api.items(filter?.id, today)
             val pending = _state.value.pending
             _state.update { s ->
+                // The view changed during the request: the load of the new view sets the list.
+                if (s.today != today) return@update s
                 // A filter on a label that is gone shows the whole list again (the server ignores it).
                 val f = if (s.filter?.id != filter?.id) s.filter else list.label
                 s.copy(
@@ -111,7 +133,9 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
                     sheet = s.sheet?.let { open -> list.items.find { it.id == open.id } ?: open },
                 )
             }
-            if (filter == null) {
+            loadedDay = LocalDate.now(phoneZone())
+            // Only the whole list can set the alarms and be the saved list.
+            if (filter == null && !today) {
                 app.cache.save(list)
                 app.reminders.sync(list.items)
             } else {
@@ -119,18 +143,32 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
             }
         } catch (e: Exception) {
             _state.update { it.copy(refreshing = false) }
+            if (e is OfflineException) showSaved()
             fail(e)
         }
     }
 
-    /** Adds an item with the [labels] (names). Returns false if the text was refused (the field keeps it). */
-    override suspend fun add(text: String, labels: List<String>): Boolean {
+    /** Shows the saved list in the current view, if the screen has no list yet. */
+    private suspend fun showSaved() {
+        if (_state.value.list != null) return
+        val saved = app.cache.load() ?: return
+        _state.update {
+            if (it.list != null) it
+            else it.copy(list = saved.viewOf(it.today, it.filter, ZonedDateTime.now(phoneZone())).with(it.pending))
+        }
+    }
+
+    /**
+     * Adds an item with the [labels] (names), due all day on [dueDate] if given.
+     * Returns false if the text was refused (the field keeps it).
+     */
+    override suspend fun add(text: String, labels: List<String>, dueDate: String?): Boolean {
         if (text.isBlank()) {
             _state.update { it.copy(message = "Please type some text first.") }
             return false
         }
         return try {
-            api.addItem(text, labels)
+            api.addItem(text, labels, dueDate)
             reload()
             true
         } catch (e: Exception) {
@@ -173,6 +211,19 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
     override fun setFilter(label: Label?) {
         _state.update { it.copy(filter = label, list = if (it.filter?.id == label?.id) it.list else null) }
         refresh()
+    }
+
+    /** Shows the Today view, or the whole list with false. The app keeps the choice. */
+    override fun setToday(on: Boolean) {
+        if (_state.value.today == on) return
+        _state.update { it.copy(today = on, list = null) }
+        viewModelScope.launch { app.sessions.setTodayView(on) }
+        refresh()
+    }
+
+    /** The app is on the screen again: the Today view needs a new load on a new day. */
+    override fun resumed() {
+        if (_state.value.today && loadedDay != LocalDate.now(phoneZone())) refresh()
     }
 
     /** Loads all labels, for the label picker and the filter. */
@@ -254,7 +305,7 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
     override fun setHideDone(hide: Boolean) = change { api.setHideDone(hide) }
 
     override fun clearDone() = change {
-        val n = api.clearDone(_state.value.filter?.id)
+        val n = api.clearDone(_state.value.filter?.id, _state.value.today)
         _state.update { it.copy(message = if (n == 1) "1 done item deleted." else "$n done items deleted.") }
     }
 

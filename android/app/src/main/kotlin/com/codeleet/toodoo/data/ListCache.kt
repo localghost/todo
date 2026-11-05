@@ -4,6 +4,8 @@ import com.codeleet.toodoo.api.ItemList
 import com.codeleet.toodoo.api.json
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -12,15 +14,18 @@ import kotlinx.coroutines.withContext
  */
 class ListCache(dir: File) {
     private val file = File(dir, "list.json")
+    private val writing = Mutex() // the list screen and the background load both save
 
     suspend fun load(): ItemList? = withContext(Dispatchers.IO) {
         runCatching { json.decodeFromString<ItemList>(file.readText()) }.getOrNull()
     }
 
     suspend fun save(list: ItemList) = withContext(Dispatchers.IO) {
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        tmp.writeText(json.encodeToString(ItemList.serializer(), list))
-        tmp.renameTo(file)
+        writing.withLock {
+            val tmp = File(file.parentFile, file.name + ".tmp")
+            tmp.writeText(json.encodeToString(ItemList.serializer(), list))
+            tmp.renameTo(file)
+        }
     }
 
     suspend fun clear() = withContext(Dispatchers.IO) {

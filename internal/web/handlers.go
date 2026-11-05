@@ -189,7 +189,7 @@ func (s *server) clearDone(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if err := s.clearDoneOf(r, labelID); err != nil {
+	if _, err := s.clearDoneOf(r, labelID); err != nil {
 		s.serverError(w, r, err)
 		return
 	}
@@ -206,25 +206,28 @@ func (s *server) clearDone(w http.ResponseWriter, r *http.Request) {
 }
 
 // clearDoneOf deletes the done items with the label (0: all), and in the
-// Today view only the done items of the view.
-func (s *server) clearDoneOf(r *http.Request, labelID int64) error {
+// Today view only the done items of the view. It returns how many went.
+func (s *server) clearDoneOf(r *http.Request, labelID int64) (int, error) {
 	if !s.todayView(r) {
-		_, err := s.svc.ClearDone(r.Context(), userID(r), labelID)
-		return err
+		return s.svc.ClearDone(r.Context(), userID(r), labelID)
 	}
 	items, _, _, err := s.todayItems(r, false, labelID)
 	if err != nil {
-		return err
+		return 0, err
 	}
+	deleted := 0
 	for _, it := range items {
 		if !it.Done {
 			continue
 		}
-		if err := s.svc.Delete(r.Context(), userID(r), it.ID); err != nil && !errors.Is(err, todo.ErrNotFound) {
-			return err
+		switch err := s.svc.Delete(r.Context(), userID(r), it.ID); {
+		case err == nil:
+			deleted++
+		case !errors.Is(err, todo.ErrNotFound):
+			return deleted, err
 		}
 	}
-	return nil
+	return deleted, nil
 }
 
 // oobOnly answers with an empty main body (htmx removes the target row)

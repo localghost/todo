@@ -89,8 +89,8 @@ the same texts the web shows ("Text is too long", "At most 5 labels per item", .
 | Route | What it does |
 |---|---|
 | `GET /api/v1/me` | `{"id", "username", "hide_done"}`. |
-| `GET /api/v1/items?label=<id>` | `{"items": [...], "open": 3, "done": 1, "hide_done": false, "label": null}`, in list order (overdue first). Respects the user's "hide done" setting, like the web. |
-| `POST /api/v1/items` | `{"text", "labels": ["work"]}`. Returns the item. |
+| `GET /api/v1/items?label=<id>&due=today` | `{"items": [...], "open": 3, "done": 1, "hide_done": false, "label": null}`, in list order (overdue first). Respects the user's "hide done" setting, like the web. `due=today`: only the items of the Today view, in the zone of the `Time-Zone` header. |
+| `POST /api/v1/items` | `{"text", "labels": ["work"], "due_date": "2026-11-05"}` (`due_date` is optional: all day). Returns the item. |
 | `GET /api/v1/items/{id}` | One item. |
 | `PATCH /api/v1/items/{id}` | Any of `{"text", "done"}`. Returns the item. |
 | `DELETE /api/v1/items/{id}` | 204. |
@@ -99,7 +99,7 @@ the same texts the web shows ("Text is too long", "At most 5 labels per item", .
 | `POST /api/v1/items/{id}/move` | `{"after": <id or 0>}`. 409 for an overdue item. |
 | `POST /api/v1/items/{id}/labels` | `{"name"}`: adds the label, creating it if needed. |
 | `DELETE /api/v1/items/{id}/labels/{label}` | Removes it from the item. |
-| `POST /api/v1/items/done/delete?label=<id>` | Clears done items. Returns `{"deleted": 4}`. |
+| `POST /api/v1/items/done/delete?label=<id>&due=today` | Clears done items (with `due=today` only the done items of the Today view). Returns `{"deleted": 4}`. |
 | `GET /api/v1/labels` | `[{"id", "name", "color", "items"}]`. |
 | `PUT /api/v1/labels/{id}/color` | `{"color": "#rrggbb"}`. |
 | `DELETE /api/v1/labels/{id}` | 204. |

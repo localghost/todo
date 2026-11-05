@@ -397,7 +397,7 @@ web, so a change on the phone shows in the browser and the other way round.
   the change is saved when Undo goes away. Hold a row still for half a second until it lifts,
   then drag it to change the order. For now, you cannot move an overdue row in the app. A
   repeating item that you mark done in the app comes back with its next date; for now, you can
-  set the repeat only on the web, and the app has no search and no Today view. The app does not show the notes of
+  set the repeat only on the web, and the app has no search. The app does not show the notes of
   an item yet; a change in the app keeps them. Pull
   down to load the list again. The first time, a blue hint above the list explains this; "Got
   it" closes it.
@@ -422,12 +422,26 @@ web, so a change on the phone shows in the browser and the other way round.
 - **Show only the items of one label:** open "Labels" with the tag button at the top. The text
   under the field says "Tap a label to show only its items." Tap a label to do that. From "All
   labels" in the sheet, a tap on a label adds it to the item or removes it.
+- **Show only the items for today:** under the top bar is the switch **All · Today**. Tap
+  **Today** to see only the items that are overdue, the items that are due today, and the done
+  items that were due today (unless you hide done items). The other items stay in your list. Tap
+  **All** to see all items again.
+  - The app keeps your choice when you close it. At midnight, the view changes by itself.
+  - The counter and "Clear done items" work on the items of the view. "Clear done items" deletes
+    only the done items that the view shows.
+  - The view works with the label filter: the list shows the items with that label that are
+    overdue or due today.
+  - A new item that you add here gets today, all day. When you tap the add field, "Today ×" is the
+    first chip in the row above the keyboard. Tap it if the new item must not have a date.
+  - Without a connection, the view uses the last list that the app loaded.
 - **Reminders:** the phone reminds you when an item is due, also when the app is closed. The
   reminder has the buttons Done and Postpone 10 min. The app asks for permission to notify when
   you set your first due date. Without a connection the app shows the last list it loaded; changes
   need the connection.
 
 ![The list in the Android app](guide-images/android-list.png "the list in the Android app, with five open items and one done item. The tag button at the top opens the label list.")
+
+![The Today view in the Android app](guide-images/android-listToday.png "the switch “All · Today” under the top bar, with “Today” chosen: only the overdue item and the item due today show.")
 
 ![The item sheet](guide-images/android-itemSheet.png "the item sheet of “Send invoice to Kowalski”. The labels “money” and “work” are selected, and the others follow.")
 

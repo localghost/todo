@@ -91,13 +91,15 @@ abstract class Screens {
         override fun exactReminders() = true
         override fun messageShown() {}
         override fun refresh() {}
-        override suspend fun add(text: String, labels: List<String>) = true
+        override suspend fun add(text: String, labels: List<String>, dueDate: String?) = true
         override fun toggle(item: Item) {}
         override fun delete(item: Item) {}
         override fun undo() {}
         override fun commit(pending: Pending) {}
         override fun gestureHintSeen() {}
         override fun setFilter(label: Label?) {}
+        override fun setToday(on: Boolean) {}
+        override fun resumed() {}
         override fun loadLabels() {}
         override fun openSheet(item: Item) {}
         override fun closeSheet() {}
@@ -205,6 +207,35 @@ class ScreenshotTest : Screens() {
     fun listFiltered() = snap {
         val only = items.filter { home in it.labels }
         ListScreen(screen(ListState(list = ItemList(only, 2, 0, false, home), filter = home)))
+    }
+
+    // The Today view (canvas page "22 · Today", option A1).
+    private val todayItems = items.filter { it.id in listOf(10L, 11L) }
+
+    @Test
+    fun listToday() = snap { ListScreen(screen(ListState(list = ItemList(todayItems, 2, 0, false), today = true))) }
+
+    @Test
+    fun listTodayFiltered() = snap {
+        val only = todayItems.filter { work in it.labels }
+        ListScreen(screen(ListState(list = ItemList(only, 1, 0, false, work), filter = work, today = true)))
+    }
+
+    @Test
+    fun listTodayEmpty() = snap { ListScreen(screen(ListState(list = ItemList(emptyList(), 0, 0, false), today = true))) }
+
+    // The new item gets today: "Today ×" comes first in the row of labels.
+    @Test
+    fun addTodayKeyboard() = snap {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f)) {
+                ListScreen(
+                    screen(ListState(list = ItemList(todayItems, 2, 0, false), labels = sheetLabels, today = true)),
+                    AddBarPreview("Buy flowers for mum", emptyList()),
+                )
+            }
+            Keyboard()
+        }
     }
 
     @Test

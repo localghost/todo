@@ -42,7 +42,7 @@ Privacy policy: https://toodoo.fly.dev/privacy (the text is in
   color from a color wheel, delete a label, and see how many items use each one.
 - Times are shown in your browser's time zone.
 - An Android app on Google Play (https://play.google.com/store/apps/details?id=com.codeleet.toodoo) with the same list: add, edit, swipe right to check off, swipe left to delete
-  (both with Undo), hold a row to drag it, due dates, labels and the label filter, label chips
+  (both with Undo), hold a row to drag it, due dates, labels and the label filter, the switch "All · Today", label chips
   under the add field and in the item sheet to label an item with one tap, creating a label from
   the label list at the top, and
   reminders on the phone (also when the app is closed), with Done and Postpone buttons. See [docs/android.md](docs/android.md).

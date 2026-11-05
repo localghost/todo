@@ -8,13 +8,15 @@ import com.codeleet.toodoo.api.ApiException
 import com.codeleet.toodoo.api.OfflineException
 import kotlinx.coroutines.flow.first
 
-/** Loads the whole list in the background and sets the alarms for it. */
+/** Loads the whole list in the background, saves it for when there is no connection, and sets the alarms for it. */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val app = applicationContext as TooDooApp
         val session = app.sessions.session.first() ?: return Result.success()
         return try {
-            app.reminders.sync(app.api(session).items().items)
+            val list = app.api(session).items()
+            app.cache.save(list)
+            app.reminders.sync(list.items)
             Result.success()
         } catch (e: OfflineException) {
             Result.retry()

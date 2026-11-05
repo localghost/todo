@@ -52,6 +52,45 @@ class ApiClientTest {
         assertNotNull(req.getHeader("Time-Zone"))
     }
 
+    private val emptyList = """{"items":[],"open":0,"done":0,"hide_done":false,"label":null}"""
+
+    // The Today view (issue #15): the server filters, in the phone's zone.
+    @Test
+    fun itemsOfTheTodayView() = runTest {
+        server.enqueue(MockResponse().setBody(emptyList))
+        client().items(today = true)
+        assertEquals("/api/v1/items?due=today", server.takeRequest().path)
+    }
+
+    @Test
+    fun itemsOfTheTodayViewWithLabel() = runTest {
+        server.enqueue(MockResponse().setBody(emptyList))
+        client().items(labelId = 3, today = true)
+        assertEquals("/api/v1/items?label=3&due=today", server.takeRequest().path)
+    }
+
+    @Test
+    fun clearDoneOfTheTodayView() = runTest {
+        server.enqueue(MockResponse().setBody("""{"deleted":2}"""))
+        assertEquals(2, client().clearDone(today = true))
+        assertEquals("/api/v1/items/done/delete?due=today", server.takeRequest().path)
+    }
+
+    @Test
+    fun addItemWithDueDate() = runTest {
+        server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":1,"text":"Buy flowers","done":false}"""))
+        client().addItem("Buy flowers", listOf("home"), dueDate = "2026-11-05")
+        assertEquals("""{"text":"Buy flowers","labels":["home"],"due_date":"2026-11-05"}""", server.takeRequest().body.readUtf8())
+    }
+
+    // Without a date the request stays as before.
+    @Test
+    fun addItemWithoutDueDate() = runTest {
+        server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":1,"text":"Buy flowers","done":false}"""))
+        client().addItem("Buy flowers")
+        assertEquals("""{"text":"Buy flowers","labels":[]}""", server.takeRequest().body.readUtf8())
+    }
+
     @Test
     fun createLabelSendsTheName() = runTest {
         server.enqueue(MockResponse().setBody("""{"id":7,"name":"garden","color":"#e9bd16"}"""))

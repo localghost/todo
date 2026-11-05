@@ -46,13 +46,16 @@ class ApiClient(private val http: OkHttpClient, server: String, private val toke
         call("POST", "logout")
     }
 
-    suspend fun items(labelId: Long? = null): ItemList =
-        json.decodeFromString(call("GET", "items", query = labelId?.let { mapOf("label" to it.toString()) })!!)
+    /** The list, only with the label [labelId] if given; [today]: only the items of the Today view. */
+    suspend fun items(labelId: Long? = null, today: Boolean = false): ItemList =
+        json.decodeFromString(call("GET", "items", query = viewQuery(labelId, today))!!)
 
-    suspend fun addItem(text: String, labels: List<String> = emptyList()): Item =
+    /** Adds an item; [dueDate] ("2026-11-05") makes it due that day, all day. */
+    suspend fun addItem(text: String, labels: List<String> = emptyList(), dueDate: String? = null): Item =
         item("POST", "items", buildJsonObject {
             put("text", text)
             putJsonArray("labels") { labels.forEach { add(it) } }
+            if (dueDate != null) put("due_date", dueDate)
         })
 
     suspend fun setDone(id: Long, done: Boolean): Item =
@@ -68,8 +71,8 @@ class ApiClient(private val http: OkHttpClient, server: String, private val toke
     suspend fun setHideDone(hide: Boolean): User =
         json.decodeFromString(call("PUT", "settings", buildJsonObject { put("hide_done", hide) })!!)
 
-    suspend fun clearDone(labelId: Long? = null): Int {
-        val body = call("POST", "items/done/delete", query = labelId?.let { mapOf("label" to it.toString()) })!!
+    suspend fun clearDone(labelId: Long? = null, today: Boolean = false): Int {
+        val body = call("POST", "items/done/delete", query = viewQuery(labelId, today))!!
         return json.decodeFromString<Map<String, Int>>(body)["deleted"] ?: 0
     }
 
@@ -147,6 +150,11 @@ class ApiClient(private val http: OkHttpClient, server: String, private val toke
             }
             if (it.code == 204) null else text
         }
+    }
+
+    private fun viewQuery(labelId: Long?, today: Boolean): Map<String, String> = buildMap {
+        if (labelId != null) put("label", labelId.toString())
+        if (today) put("due", "today")
     }
 
     companion object {

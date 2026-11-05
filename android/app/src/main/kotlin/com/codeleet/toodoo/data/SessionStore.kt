@@ -18,6 +18,7 @@ private val SERVER = stringPreferencesKey("server")
 private val TOKEN = stringPreferencesKey("token")
 private val USERNAME = stringPreferencesKey("username")
 private val GESTURE_HINT_SEEN = booleanPreferencesKey("gesture_hint_seen")
+private val TODAY_VIEW = booleanPreferencesKey("today_view")
 
 /** Keeps the session in the app's private storage (never in backups). */
 class SessionStore(private val context: Context) {
@@ -39,6 +40,13 @@ class SessionStore(private val context: Context) {
         context.sessionData.edit { it[GESTURE_HINT_SEEN] = true }
     }
 
+    /** Whether the list shows the Today view; the app keeps the choice after a restart. */
+    val todayView: Flow<Boolean> = context.sessionData.data.map { it[TODAY_VIEW] == true }
+
+    suspend fun setTodayView(on: Boolean) {
+        context.sessionData.edit { it[TODAY_VIEW] = on }
+    }
+
     suspend fun save(s: Session) {
         context.sessionData.edit {
             it[SERVER] = s.server
@@ -47,8 +55,11 @@ class SessionStore(private val context: Context) {
         }
     }
 
-    /** Logs out: the token goes, the server and username stay for the next log-in. */
+    /** Logs out: the token and the view go, the server and username stay for the next log-in. */
     suspend fun clear() {
-        context.sessionData.edit { it.remove(TOKEN) }
+        context.sessionData.edit {
+            it.remove(TOKEN)
+            it.remove(TODAY_VIEW)
+        }
     }
 }

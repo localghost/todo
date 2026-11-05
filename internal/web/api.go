@@ -244,14 +244,15 @@ func (s *server) apiItems(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) apiAddItem(w http.ResponseWriter, r *http.Request) {
 	var in struct {
-		Text   string   `json:"text"`
-		Labels []string `json:"labels"`
+		Text    string   `json:"text"`
+		Labels  []string `json:"labels"`
+		DueDate string   `json:"due_date"` // YYYY-MM-DD, all day; a new item in the Today view
 	}
 	if !readJSON(w, r, &in) {
 		return
 	}
 	// Label names cannot hold a comma (ParseLabels splits on it).
-	item, err := s.svc.AddItem(r.Context(), userID(r), todo.Input{Text: in.Text, Labels: strings.Join(in.Labels, ",")}, s.zoneFor(r))
+	item, err := s.svc.AddItem(r.Context(), userID(r), todo.Input{Text: in.Text, DueDate: in.DueDate, Labels: strings.Join(in.Labels, ",")}, s.zoneFor(r))
 	s.apiItemAnswer(w, r, http.StatusCreated, item, err)
 }
 
@@ -402,7 +403,7 @@ func (s *server) apiClearDone(w http.ResponseWriter, r *http.Request) {
 	if filter != nil {
 		labelID = filter.ID
 	}
-	n, err := s.svc.ClearDone(r.Context(), userID(r), labelID)
+	n, err := s.clearDoneOf(r, labelID)
 	if err != nil {
 		s.apiServerError(w, r, err)
 		return

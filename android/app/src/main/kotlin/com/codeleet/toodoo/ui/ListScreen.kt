@@ -69,6 +69,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -105,10 +108,12 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.codeleet.toodoo.api.ApiClient
 import com.codeleet.toodoo.api.Item
 import com.codeleet.toodoo.api.Label
+import java.time.LocalDate
 import java.time.ZonedDateTime
 import kotlinx.coroutines.launch
 
@@ -134,6 +139,10 @@ fun ListScreen(vm: ListActions, addBarPreview: AddBarPreview? = null) {
     val askNotify = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     val openWeb = { path: String -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(vm.server.trimEnd('/') + path))) }
 
+    LifecycleResumeEffect(Unit) {
+        vm.resumed()
+        onPauseOrDispose {}
+    }
     LaunchedEffect(state.message) {
         state.message?.let {
             vm.messageShown()
@@ -161,66 +170,69 @@ fun ListScreen(vm: ListActions, addBarPreview: AddBarPreview? = null) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("TooDoo", fontWeight = FontWeight.Bold)
-                        if (list != null) {
-                            Text("${list.open} open · ${list.done} done", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text("TooDoo", fontWeight = FontWeight.Bold)
+                            if (list != null) {
+                                Text("${list.open} open · ${list.done} done", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        vm.loadLabels()
-                        picker = PickerFor.Filter
-                    }) {
-                        Box(Modifier.semantics { contentDescription = "Filter by label" }) { TagIcon(MaterialTheme.colorScheme.onSurface) }
-                    }
-                    Box {
-                        IconButton(onClick = { menuOpen = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "More") }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            val hide = list?.hideDone == true
-                            DropdownMenuItem(text = { Text(if (hide) "Show done items" else "Hide done items") }, onClick = {
-                                menuOpen = false
-                                vm.setHideDone(!hide)
-                            })
-                            DropdownMenuItem(text = { Text("Clear done items") }, enabled = (list?.done ?: 0) > 0, onClick = {
-                                menuOpen = false
-                                confirmClear = true
-                            })
-                            DropdownMenuItem(text = { Text("Labels") }, onClick = {
-                                menuOpen = false
-                                vm.loadLabels()
-                                picker = PickerFor.Filter
-                            })
-                            if (!vm.exactReminders()) {
-                                DropdownMenuItem(text = { Text("Allow exact reminders") }, onClick = {
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            vm.loadLabels()
+                            picker = PickerFor.Filter
+                        }) {
+                            Box(Modifier.semantics { contentDescription = "Filter by label" }) { TagIcon(MaterialTheme.colorScheme.onSurface) }
+                        }
+                        Box {
+                            IconButton(onClick = { menuOpen = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "More") }
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                val hide = list?.hideDone == true
+                                DropdownMenuItem(text = { Text(if (hide) "Show done items" else "Hide done items") }, onClick = {
                                     menuOpen = false
-                                    // Without it, Android may deliver reminders a few minutes late.
-                                    context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + context.packageName)))
+                                    vm.setHideDone(!hide)
+                                })
+                                DropdownMenuItem(text = { Text("Clear done items") }, enabled = (list?.done ?: 0) > 0, onClick = {
+                                    menuOpen = false
+                                    confirmClear = true
+                                })
+                                DropdownMenuItem(text = { Text("Labels") }, onClick = {
+                                    menuOpen = false
+                                    vm.loadLabels()
+                                    picker = PickerFor.Filter
+                                })
+                                if (!vm.exactReminders()) {
+                                    DropdownMenuItem(text = { Text("Allow exact reminders") }, onClick = {
+                                        menuOpen = false
+                                        // Without it, Android may deliver reminders a few minutes late.
+                                        context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + context.packageName)))
+                                    })
+                                }
+                                DropdownMenuItem(text = { Text("Account (web)") }, onClick = {
+                                    menuOpen = false
+                                    openWeb("/account")
+                                })
+                                DropdownMenuItem(text = { Text("Privacy policy") }, onClick = {
+                                    menuOpen = false
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ApiClient.PRIVACY_POLICY)))
+                                })
+                                HorizontalDivider()
+                                DropdownMenuItem(text = { Text("Log out ${vm.username}") }, onClick = {
+                                    menuOpen = false
+                                    vm.logOut()
                                 })
                             }
-                            DropdownMenuItem(text = { Text("Account (web)") }, onClick = {
-                                menuOpen = false
-                                openWeb("/account")
-                            })
-                            DropdownMenuItem(text = { Text("Privacy policy") }, onClick = {
-                                menuOpen = false
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ApiClient.PRIVACY_POLICY)))
-                            })
-                            HorizontalDivider()
-                            DropdownMenuItem(text = { Text("Log out ${vm.username}") }, onClick = {
-                                menuOpen = false
-                                vm.logOut()
-                            })
                         }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                )
+                ViewSwitch(today = state.today, onChange = vm::setToday)
+            }
         },
-        bottomBar = { AddBar(labels = state.labels, filter = state.filter, onOpen = vm::loadLabels, onAdd = vm::add, preview = addBarPreview) },
+        bottomBar = { AddBar(labels = state.labels, filter = state.filter, today = state.today, onOpen = vm::loadLabels, onAdd = vm::add, preview = addBarPreview) },
         snackbarHost = { SnackbarHost(snackbar) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
@@ -264,6 +276,12 @@ fun ListScreen(vm: ListActions, addBarPreview: AddBarPreview? = null) {
                 }
                 when {
                     list == null -> {}
+                    list.items.isEmpty() && state.today && list.open + list.done == 0 -> item(key = "empty") {
+                        Column(Modifier.padding(horizontal = 8.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Nothing due today", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                            Text("Items that are overdue or due today show here. Tap “All” to see all items.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                     list.items.isEmpty() -> item(key = "empty") {
                         Text(
                             if (list.open + list.done == 0) "Nothing to do. Add your first item below." else "No items to show.",
@@ -327,7 +345,10 @@ fun ListScreen(vm: ListActions, addBarPreview: AddBarPreview? = null) {
         AlertDialog(
             onDismissRequest = { confirmClear = false },
             title = { Text("Clear done items?") },
-            text = { Text(if (list.done == 1) "1 done item will be deleted." else "${list.done} done items will be deleted.") },
+            text = {
+                val what = if (list.done == 1) "1 done item" else "${list.done} done items"
+                Text(what + (if (state.today) " due today" else "") + " will be deleted.")
+            },
             confirmButton = {
                 TextButton(onClick = {
                     confirmClear = false
@@ -596,6 +617,33 @@ private fun SwipeBackground(item: Item, direction: SwipeToDismissBoxValue, armed
     }
 }
 
+/** The switch "All · Today" under the top bar (canvas page "22 · Today", option A1). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ViewSwitch(today: Boolean, onChange: (Boolean) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val colors = SegmentedButtonDefaults.colors(
+        activeContainerColor = scheme.primary,
+        activeContentColor = scheme.onPrimary,
+        activeBorderColor = scheme.primary,
+        inactiveContainerColor = scheme.surface,
+        inactiveContentColor = scheme.onSurfaceVariant,
+        inactiveBorderColor = scheme.outline,
+    )
+    SingleChoiceSegmentedButtonRow(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp).width(192.dp)) {
+        listOf("All" to false, "Today" to true).forEachIndexed { i, (name, value) ->
+            SegmentedButton(
+                selected = today == value,
+                onClick = { onChange(value) },
+                shape = SegmentedButtonDefaults.itemShape(i, 2),
+                colors = colors,
+                icon = {},
+                label = { Text(name, fontWeight = FontWeight.SemiBold) },
+            )
+        }
+    }
+}
+
 /** Shown above the list until the user closes it. */
 @Composable
 private fun GestureHint(onClose: () -> Unit) {
@@ -659,19 +707,22 @@ fun LabelChip(label: Label) {
 /**
  * The add field. While the keyboard is open, a row of [labels] shows under it;
  * the labels picked there go with the new item. With a [filter], its label is
- * picked at the start, so the new item stays in the filtered list.
+ * picked at the start, so the new item stays in the filtered list. In the
+ * [today] view, the new item gets today, all day, until its chip's × removes the date.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AddBar(
     labels: List<Label>?,
     filter: Label?,
+    today: Boolean,
     onOpen: () -> Unit,
-    onAdd: suspend (String, List<String>) -> Boolean,
+    onAdd: suspend (String, List<String>, String?) -> Boolean,
     preview: AddBarPreview? = null,
 ) {
     var text by rememberSaveable { mutableStateOf(preview?.text ?: "") }
     var picked by rememberSaveable(filter?.id) { mutableStateOf(preview?.picked ?: listOfNotNull(filter?.id)) }
+    var dated by rememberSaveable(today) { mutableStateOf(today) }
     var focused by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -684,16 +735,17 @@ private fun AddBar(
             val names = (shown + listOfNotNull(filter)).distinctBy { it.id }.filter { it.id in picked }.map { it.name }
             scope.launch {
                 // Text typed while the request ran stays in the field, and so do the picked labels.
-                if (onAdd(sent, names) && text == sent) {
+                if (onAdd(sent, names, if (dated) LocalDate.now(phoneZone()).toString() else null) && text == sent) {
                     text = ""
                     picked = listOfNotNull(filter?.id)
+                    dated = today
                 }
                 busy = false
             }
         }
     }
     // The back key closes the keyboard but leaves the focus in the field, so check both.
-    val withLabels = (preview != null || focused && WindowInsets.isImeVisible) && shown.isNotEmpty()
+    val withLabels = (preview != null || focused && WindowInsets.isImeVisible) && (shown.isNotEmpty() || dated)
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(Modifier.navigationBarsPadding().imePadding()) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -721,7 +773,24 @@ private fun AddBar(
                 }
             }
             if (withLabels) {
-                LabelChipRow(shown, picked, "Labels for the new item", Modifier.padding(bottom = 12.dp)) { label ->
+                val dateChip: (@Composable () -> Unit)? = if (!dated) null else {
+                    {
+                        InputChip(
+                            selected = true,
+                            onClick = { dated = false },
+                            label = { Text("Today", fontSize = 15.sp, fontWeight = FontWeight.SemiBold) },
+                            trailingIcon = { Icon(Icons.Filled.Close, contentDescription = "Remove today's date from the new item", modifier = Modifier.size(InputChipDefaults.IconSize)) },
+                            colors = InputChipDefaults.inputChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                            shape = RoundedCornerShape(50),
+                            modifier = Modifier.heightIn(min = 40.dp),
+                        )
+                    }
+                }
+                LabelChipRow(shown, picked, "Labels for the new item", Modifier.padding(bottom = 12.dp), leading = dateChip) { label ->
                     picked = if (label.id in picked) picked - label.id else picked + label.id
                 }
             }
