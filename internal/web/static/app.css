@@ -19,8 +19,10 @@ body {
   font-family: "Source Sans 3", system-ui, sans-serif;
 }
 
+/* The list page: 20% wider on a computer screen (canvas page "23 · Wider
+   content"), a list of 883 px. Other pages set their own max-width. */
 main {
-  max-width: 784px;
+  max-width: 931px;
   margin: 0 auto;
   padding: 48px 24px;
   display: flex;

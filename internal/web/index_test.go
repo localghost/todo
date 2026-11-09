@@ -109,12 +109,14 @@ func TestStaticDirectoryListingIs404(t *testing.T) {
 	}
 }
 
-// The content column is 40% wider than the first design (560 px → 784 px).
+// The content column is 40% wider than the first design (560 px → 784 px),
+// and then 20% wider again for the list (canvas page "23 · Wider content"):
+// a list of 883 px, plus 24 px padding on each side.
 func TestContentColumnWidth(t *testing.T) {
 	h, _ := newTestApp(t)
 	body := do(t, h, "GET", "/static/app.css", nil, nil).Body.String()
-	// The list column (main) is 784 px; other pages, like the account page, have their own width.
-	assertContains(t, body, "main {\n  max-width: 784px;")
+	// The list column (main) is 931 px; other pages, like the account page, have their own width.
+	assertContains(t, body, "main {\n  max-width: 931px;")
 }
 
 // The rows do not show when an item was added (canvas page 15, option A); a
