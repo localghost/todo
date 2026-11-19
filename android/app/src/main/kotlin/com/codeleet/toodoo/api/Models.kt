@@ -31,6 +31,7 @@ data class ItemList(
     val done: Int,
     @SerialName("hide_done") val hideDone: Boolean,
     val label: Label? = null, // the filter
+    @SerialName("sort_due") val sortDue: Boolean = false, // in due date order, not by hand
 )
 
 @Serializable
@@ -38,6 +39,7 @@ data class User(
     val id: Long,
     val username: String,
     @SerialName("hide_done") val hideDone: Boolean = false,
+    @SerialName("sort_due") val sortDue: Boolean = false,
 )
 
 @Serializable

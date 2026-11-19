@@ -71,6 +71,10 @@ class ApiClient(private val http: OkHttpClient, server: String, private val toke
     suspend fun setHideDone(hide: Boolean): User =
         json.decodeFromString(call("PUT", "settings", buildJsonObject { put("hide_done", hide) })!!)
 
+    /** Sorts the list by due date ([on]) or by hand; the web shares the setting. */
+    suspend fun setSortDue(on: Boolean): User =
+        json.decodeFromString(call("PUT", "settings", buildJsonObject { put("sort_due", on) })!!)
+
     suspend fun clearDone(labelId: Long? = null, today: Boolean = false): Int {
         val body = call("POST", "items/done/delete", query = viewQuery(labelId, today))!!
         return json.decodeFromString<Map<String, Int>>(body)["deleted"] ?: 0

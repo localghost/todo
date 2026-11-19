@@ -72,13 +72,19 @@ type apiList struct {
 	Open     int       `json:"open"`
 	Done     int       `json:"done"`
 	HideDone bool      `json:"hide_done"`
-	Label    *apiLabel `json:"label"` // the filter, or null
+	SortDue  bool      `json:"sort_due"` // the items are in due date order, not by hand
+	Label    *apiLabel `json:"label"`    // the filter, or null
 }
 
 type apiUser struct {
 	ID       int64  `json:"id"`
 	Username string `json:"username"`
 	HideDone bool   `json:"hide_done"`
+	SortDue  bool   `json:"sort_due"`
+}
+
+func toAPIUser(u auth.User) apiUser {
+	return apiUser{ID: u.ID, Username: u.Username, HideDone: u.HideDone, SortDue: u.SortDue}
 }
 
 func toAPILabel(l todo.Label) apiLabel {
@@ -186,7 +192,7 @@ func (s *server) apiLogin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, r, s, http.StatusOK, map[string]any{"token": token, "expires_at": sess.ExpiresAt.UTC(),
-			"user": apiUser{ID: u.ID, Username: u.Username, HideDone: u.HideDone}})
+			"user": toAPIUser(u)})
 	}
 }
 
@@ -200,12 +206,13 @@ func (s *server) apiLogout(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) apiMe(w http.ResponseWriter, r *http.Request) {
 	u := currentUser(r)
-	writeJSON(w, r, s, http.StatusOK, apiUser{ID: u.ID, Username: u.Username, HideDone: u.HideDone})
+	writeJSON(w, r, s, http.StatusOK, toAPIUser(u))
 }
 
 func (s *server) apiSettings(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		HideDone *bool `json:"hide_done"`
+		SortDue  *bool `json:"sort_due"`
 	}
 	if !readJSON(w, r, &in) {
 		return
@@ -218,20 +225,28 @@ func (s *server) apiSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		u.HideDone = *in.HideDone
 	}
-	writeJSON(w, r, s, http.StatusOK, apiUser{ID: u.ID, Username: u.Username, HideDone: u.HideDone})
+	if in.SortDue != nil {
+		if err := s.accounts.SetSortDue(r.Context(), u.ID, *in.SortDue); err != nil {
+			s.apiServerError(w, r, err)
+			return
+		}
+		u.SortDue = *in.SortDue
+	}
+	writeJSON(w, r, s, http.StatusOK, toAPIUser(u))
 }
 
-// apiItems answers the list as the web shows it by hand: the stored order, done
-// items left out if the user hides them, and only ?label= items if given.
+// apiItems answers the list as the web shows it: by hand or in due date order
+// (the user's sort_due), done items left out if the user hides them, and only
+// ?label= items if given.
 func (s *server) apiItems(w http.ResponseWriter, r *http.Request) {
-	// The Android app drags items, so it always gets the hand-made order.
-	lv, err := s.listViewOrder(r, currentUser(r).HideDone, false)
+	u := currentUser(r)
+	lv, err := s.listViewOrder(r, u.HideDone, u.SortDue)
 	if err != nil {
 		s.apiServerError(w, r, err)
 		return
 	}
 	now := s.nowFor(r)
-	out := apiList{Items: []apiItem{}, Open: lv.Open, Done: lv.Done, HideDone: lv.HideDone}
+	out := apiList{Items: []apiItem{}, Open: lv.Open, Done: lv.Done, HideDone: lv.HideDone, SortDue: lv.SortDue}
 	for _, it := range lv.Items {
 		out.Items = append(out.Items, toAPIItem(it, now))
 	}
@@ -355,6 +370,11 @@ func (s *server) apiMove(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.After < 0 {
 		apiError(w, http.StatusNotFound, "not_found", "This item no longer exists.")
+		return
+	}
+	// In due date order nothing can be dragged, as on the web.
+	if currentUser(r).SortDue {
+		apiError(w, http.StatusConflict, "sort_due", "The list is sorted by due date.")
 		return
 	}
 	s.apiNoContent(w, r, s.svc.Move(r.Context(), userID(r), id, in.After))

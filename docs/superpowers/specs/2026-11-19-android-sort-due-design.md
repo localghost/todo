@@ -1,7 +1,7 @@
 # Android: sort by hand or by due date
 
 Date: 2026-11-19
-Status: draft, waiting for approval
+Status: approved 2026-11-19 (S3, the sort button); built.
 Issue: #17 (and #1, overdue items in the hand order)
 Builds on: `2026-10-22-android-gestures-design.md` (hold to move)
 Mockup: canvas "Todo app UI proposal", page "24 · Android sort".

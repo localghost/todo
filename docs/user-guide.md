@@ -395,7 +395,7 @@ web, so a change on the phone shows in the browser and the other way round.
 - **The list:** swipe a row to the right to mark it done (on a done row, the same swipe marks it
   not done again). Swipe a row to the left to delete it. Both show Undo for a few seconds, and
   the change is saved when Undo goes away. Hold a row still for half a second until it lifts,
-  then drag it to change the order. For now, you cannot move an overdue row in the app. A
+  then drag it to change the order, also an overdue row. A
   repeating item that you mark done in the app comes back with its next date; for now, you can
   set the repeat only on the web, and the app has no search. The app does not show the notes of
   an item yet; a change in the app keeps them. Pull
@@ -434,6 +434,15 @@ web, so a change on the phone shows in the browser and the other way round.
   - A new item that you add here gets today, all day. When you tap the add field, "Today ×" is the
     first chip in the row above the keyboard. Tap it if the new item must not have a date.
   - Without a connection, the view uses the last list that the app loaded.
+- **Sort by due date:** right of the switch **All · Today** is the button **By hand**. Tap it to
+  sort the list by due date, in the same order as **Sort by due date** on the web: the overdue
+  items first, then the nearest date, then the items without a date. The button then says **By
+  due date** on light blue; tap it again for your order by hand.
+  - The choice is the same as on the web: change it on the phone, and the web shows the same
+    order, and the other way round.
+  - In this order you cannot hold a row to move it; the app says so. A new item, or an item with
+    a new due date, goes to its place at once.
+  - It works with the Today view and the label filter.
 - **Reminders:** the phone reminds you when an item is due, also when the app is closed. The
   reminder has the buttons Done and Postpone 10 min. The app asks for permission to notify when
   you set your first due date. Without a connection the app shows the last list it loaded; changes
@@ -442,6 +451,8 @@ web, so a change on the phone shows in the browser and the other way round.
 ![The list in the Android app](guide-images/android-list.png "the list in the Android app, with five open items and one done item. The tag button at the top opens the label list.")
 
 ![The Today view in the Android app](guide-images/android-listToday.png "the switch “All · Today” under the top bar, with “Today” chosen: only the overdue item and the item due today show.")
+
+![The list sorted by due date in the Android app](guide-images/android-listSortDue.png "the button “By due date” on light blue, right of the switch “All · Today”. The overdue item is first, then the items by date, then the items without a date.")
 
 ![The item sheet](guide-images/android-itemSheet.png "the item sheet of “Send invoice to Kowalski”. The labels “money” and “work” are selected, and the others follow.")
 
