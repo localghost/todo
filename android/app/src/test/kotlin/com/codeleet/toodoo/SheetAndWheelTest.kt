@@ -71,15 +71,17 @@ class SheetAndWheelTest {
     }
 
     @Test
-    fun moveStepsKeepOverdueOnTop() {
+    fun moveStepsMoveOverdueItemsToo() {
+        // By hand an overdue item moves like any other, as on the web (#1).
         val late = Item(1, "late", false, overdue = true)
         val a = Item(2, "a", false)
         val b = Item(3, "b", false)
         val shown = listOf(late, a, b)
         assertEquals(listOf(1L, 3L, 2L), moveBy(shown, a, 1))
         assertEquals(listOf(1L, 3L, 2L), moveBy(shown, b, -1))
-        assertNull(moveBy(shown, a, -1)) // not above an overdue item
-        assertNull(moveBy(shown, late, 1))
+        assertEquals(listOf(2L, 1L, 3L), moveBy(shown, a, -1))
+        assertEquals(listOf(2L, 1L, 3L), moveBy(shown, late, 1))
+        assertNull(moveBy(shown, late, -1))
         assertNull(moveBy(shown, b, 1))
     }
 }

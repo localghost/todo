@@ -11,23 +11,10 @@ import android.view.View
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.InputChip
-import androidx.compose.material3.InputChipDefaults
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.zIndex
-import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,6 +27,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
@@ -48,7 +36,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -56,9 +46,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,7 +58,11 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -88,6 +84,8 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -97,6 +95,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
@@ -108,6 +110,8 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.codeleet.toodoo.api.ApiClient
@@ -162,9 +166,9 @@ fun ListScreen(vm: ListActions, addBarPreview: AddBarPreview? = null) {
     }
     val scope = rememberCoroutineScope()
     val view = LocalView.current
-    val overdueHeld = {
+    val sortedHeld = {
         haptic(view, rejected = true)
-        scope.launch { snackbar.showSnackbar("Overdue items stay at the top.") }
+        scope.launch { snackbar.showSnackbar("Sorted by due date. Tap “By due date” to sort by hand and move items.") }
         Unit
     }
 
@@ -229,7 +233,11 @@ fun ListScreen(vm: ListActions, addBarPreview: AddBarPreview? = null) {
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
                 )
-                ViewSwitch(today = state.today, onChange = vm::setToday)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    ViewSwitch(today = state.today, onChange = vm::setToday)
+                    Spacer(Modifier.weight(1f))
+                    if (list != null) SortButton(sortDue = list.sortDue, onChange = vm::setSortDue)
+                }
             }
         },
         bottomBar = { AddBar(labels = state.labels, filter = state.filter, today = state.today, onOpen = vm::loadLabels, onAdd = vm::add, preview = addBarPreview) },
@@ -293,7 +301,8 @@ fun ListScreen(vm: ListActions, addBarPreview: AddBarPreview? = null) {
                         val now = ZonedDateTime.now(phoneZone())
                         val byId = list.items.associateBy { it.id }
                         val shown = if (reorder.dragging != null) reorder.order.mapNotNull { byId[it] } else list.items
-                        reorder.movable = { byId[it]?.overdue == false }
+                        // By hand every row moves, overdue or not, as on the web; by due date none.
+                        val sortDue = list.sortDue
                         reorder.current = list.items.map { it.id }
                         items(shown, key = { it.id }) { item ->
                             val first = item.id == shown.first().id
@@ -304,11 +313,12 @@ fun ListScreen(vm: ListActions, addBarPreview: AddBarPreview? = null) {
                                 onToggle = { vm.toggle(item) },
                                 onDelete = { vm.delete(item) },
                                 onOpen = { vm.openSheet(item) },
+                                movable = !sortDue,
                                 onMoveBy = { step -> moveBy(shown, item, step)?.let { vm.move(item.id, it) } },
-                                // Hold a row to lift it. Overdue rows stay at the top, as on the web.
-                                hold = Modifier.pointerInput(item.id, item.overdue) {
-                                    if (item.overdue) {
-                                        detectDragGesturesAfterLongPress(onDragStart = { overdueHeld() }, onDrag = { change, _ -> change.consume() })
+                                // Hold a row to lift it. In due date order the rows do not lift, as on the web.
+                                hold = Modifier.pointerInput(item.id, sortDue) {
+                                    if (sortDue) {
+                                        detectDragGesturesAfterLongPress(onDragStart = { sortedHeld() }, onDrag = { change, _ -> change.consume() })
                                     } else {
                                         detectDragGesturesAfterLongPress(
                                             onDragStart = {
@@ -429,13 +439,13 @@ private enum class PickerFor { Item, Filter }
 
 /**
  * The new order of [shown] after moving [item] one place up (-1) or down
- * (+1), or null if it cannot move there: overdue items stay at the top.
+ * (+1), or null if it cannot move there.
  */
 internal fun moveBy(shown: List<Item>, item: Item, step: Int): List<Long>? {
     val ids = shown.map { it.id }.toMutableList()
     val from = ids.indexOf(item.id)
     val to = from + step
-    if (item.overdue || from < 0 || to !in ids.indices || shown[to].overdue) return null
+    if (from < 0 || to !in ids.indices) return null
     ids.removeAt(from)
     ids.add(to, item.id)
     return ids
@@ -443,8 +453,7 @@ internal fun moveBy(shown: List<Item>, item: Item, step: Int): List<Long>? {
 
 /**
  * Drag to reorder: the dragged row follows the finger, and the rows swap
- * places when its middle crosses another row. Rows that are not [movable]
- * (overdue) do not swap.
+ * places when its middle crosses another row.
  */
 private class Reorder(private val listState: LazyListState) {
     var dragging by mutableStateOf<Long?>(null)
@@ -452,7 +461,6 @@ private class Reorder(private val listState: LazyListState) {
     var offset by mutableFloatStateOf(0f)
         private set
     val order = mutableStateListOf<Long>()
-    var movable: (Long) -> Boolean = { true }
 
     /** The list's ids as the server sent them; the screen keeps it up to date. */
     var current: List<Long> = emptyList()
@@ -474,7 +482,7 @@ private class Reorder(private val listState: LazyListState) {
         val middle = me.offset + offset + me.size / 2f
         val target = rows.find {
             val key = it.key
-            key is Long && key != id && movable(key) && middle >= it.offset && middle <= it.offset + it.size
+            key is Long && key != id && middle >= it.offset && middle <= it.offset + it.size
         } ?: return
         val from = order.indexOf(id)
         val to = order.indexOf(target.key as Long)
@@ -508,6 +516,7 @@ private fun ItemRow(
     first: Boolean,
     last: Boolean,
     dragged: Boolean,
+    movable: Boolean,
     onToggle: () -> Unit,
     onDelete: () -> Unit,
     onOpen: () -> Unit,
@@ -559,7 +568,7 @@ private fun ItemRow(
                         stateDescription = if (item.done) "Done" else "Not done"
                         customActions = buildList {
                             add(CustomAccessibilityAction(if (item.done) "Mark as not done" else "Mark as done") { onToggle(); true })
-                            if (!item.overdue) {
+                            if (movable) {
                                 add(CustomAccessibilityAction("Move up") { onMoveBy(-1); true })
                                 add(CustomAccessibilityAction("Move down") { onMoveBy(1); true })
                             }
@@ -641,6 +650,31 @@ private fun ViewSwitch(today: Boolean, onChange: (Boolean) -> Unit) {
                 label = { Text(name, fontWeight = FontWeight.SemiBold) },
             )
         }
+    }
+}
+
+/**
+ * The order of the list, right of "All · Today": "By hand" or "By due date"
+ * (light blue). A tap switches; the web shares the setting.
+ */
+@Composable
+private fun SortButton(sortDue: Boolean, onChange: (Boolean) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    OutlinedButton(
+        onClick = { onChange(!sortDue) },
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (sortDue) scheme.primaryContainer else scheme.surface,
+            contentColor = if (sortDue) scheme.onPrimaryContainer else scheme.onSurface,
+        ),
+        border = BorderStroke(1.dp, if (sortDue) scheme.primaryContainer else scheme.outline),
+        contentPadding = PaddingValues(start = 10.dp, end = 14.dp),
+        modifier = Modifier.padding(end = 12.dp, bottom = 10.dp).height(40.dp).semantics {
+            contentDescription = if (sortDue) "Sorted by due date. Tap to sort by hand" else "Sorted by hand. Tap to sort by due date"
+        },
+    ) {
+        SortIcon(LocalContentColor.current)
+        Spacer(Modifier.width(6.dp))
+        Text(if (sortDue) "By due date" else "By hand", fontWeight = FontWeight.SemiBold)
     }
 }
 

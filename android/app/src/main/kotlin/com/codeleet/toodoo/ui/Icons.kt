@@ -55,6 +55,23 @@ fun TagIcon(color: Color, modifier: Modifier = Modifier) {
     }
 }
 
+/** Sort: a down arrow beside three lines that get shorter, for the sort button. */
+@Composable
+fun SortIcon(color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier.size(20.dp)) {
+        val u = size.width / 24f
+        val stroke = Stroke(width = 1.8f * u, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val path = Path().apply {
+            moveTo(7 * u, 4 * u); lineTo(7 * u, 20 * u)
+            moveTo(4 * u, 17 * u); lineTo(7 * u, 20 * u); lineTo(10 * u, 17 * u)
+            moveTo(14 * u, 6 * u); lineTo(20 * u, 6 * u)
+            moveTo(14 * u, 11 * u); lineTo(18.5f * u, 11 * u)
+            moveTo(14 * u, 16 * u); lineTo(17 * u, 16 * u)
+        }
+        drawPath(path, color, style = stroke)
+    }
+}
+
 /** A clock, for the time button and for the dial switch of the time picker. */
 @Composable
 fun ClockIcon(color: Color, modifier: Modifier = Modifier, size: Dp = 18.dp) {

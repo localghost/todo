@@ -41,8 +41,8 @@ data class Pending(val item: Item, val delete: Boolean)
 
 /**
  * The list screen. Every change is sent to the server and the list is loaded
- * again after it, so the order (overdue first), counts and "hide done" are
- * always the server's.
+ * again after it, so the order (by hand or by due date), counts and "hide
+ * done" are always the server's.
  */
 /** What the list screen shows and does; [ListViewModel] in the app, a fake in the screenshot tests. */
 interface ListActions {
@@ -73,6 +73,7 @@ interface ListActions {
     fun deleteLabel(label: Label)
     fun move(id: Long, order: List<Long>)
     fun setHideDone(hide: Boolean)
+    fun setSortDue(on: Boolean)
     fun clearDone()
     fun logOut()
 }
@@ -303,6 +304,12 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
     }
 
     override fun setHideDone(hide: Boolean) = change { api.setHideDone(hide) }
+
+    /** The button shows the new order at once; the list then comes in that order. */
+    override fun setSortDue(on: Boolean) {
+        _state.update { s -> s.copy(list = s.list?.copy(sortDue = on)) }
+        change { api.setSortDue(on) }
+    }
 
     override fun clearDone() = change {
         val n = api.clearDone(_state.value.filter?.id, _state.value.today)

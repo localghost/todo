@@ -112,6 +112,7 @@ abstract class Screens {
         override fun deleteLabel(label: Label) {}
         override fun move(id: Long, order: List<Long>) {}
         override fun setHideDone(hide: Boolean) {}
+        override fun setSortDue(on: Boolean) {}
         override fun clearDone() {}
         override fun logOut() {}
     }
@@ -195,6 +196,13 @@ class ScreenshotTest : Screens() {
 
     @Test
     fun list() = snap { ListScreen(screen(ListState(list = list))) }
+
+    // Sorted by due date: overdue first, then the nearest date, then no date (as the server sends it).
+    @Test
+    fun listSortDue() = snap {
+        val byDue = listOf(items[0], items[1], items[3], items[2], items[4], items[5])
+        ListScreen(screen(ListState(list = list.copy(items = byDue, sortDue = true))))
+    }
 
     // The first start after the update: the hint about swipe and hold.
     @Test
