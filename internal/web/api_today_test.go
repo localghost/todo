@@ -94,6 +94,20 @@ func TestAPIAddItemWithDueDate(t *testing.T) {
 	}
 }
 
+func TestAPIAddItemWithDueTime(t *testing.T) {
+	env := todayEnv(t)
+	rec := apiDo(t, env, "POST", "/api/v1/items", env.Token, `{"text":"Call the dentist","due_date":"2026-11-06","due_time":"1000"}`, phoneInWarsaw)
+	wantStatus(t, rec, http.StatusCreated)
+	got := decode[jsonItem](t, rec)
+	want := time.Date(2026, 11, 6, 10, 0, 0, 0, warsawZone(t))
+	if got.DueAllDay || got.DueAt == nil || !got.DueAt.Equal(want) {
+		t.Fatalf("due = %v (all day %v), want %v", got.DueAt, got.DueAllDay, want)
+	}
+	// A time needs a day.
+	rec = apiDo(t, env, "POST", "/api/v1/items", env.Token, `{"text":"Call the dentist","due_time":"10:00"}`, phoneInWarsaw)
+	wantError(t, rec, http.StatusUnprocessableEntity, "bad_due")
+}
+
 func TestAPIAddItemNoDueDate(t *testing.T) {
 	env := todayEnv(t)
 	rec := apiDo(t, env, "POST", "/api/v1/items", env.Token, `{"text":"Buy flowers"}`, phoneInWarsaw)

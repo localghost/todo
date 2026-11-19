@@ -52,7 +52,7 @@ interface ListActions {
     fun exactReminders(): Boolean
     fun messageShown()
     fun refresh()
-    suspend fun add(text: String, labels: List<String>, dueDate: String?): Boolean
+    suspend fun add(text: String, labels: List<String>, dueDate: String?, dueTime: String = ""): Boolean
     fun toggle(item: Item)
     fun delete(item: Item)
     fun undo()
@@ -159,17 +159,22 @@ class ListViewModel(private val app: TooDooApp, private val session: Session) : 
     }
 
     /**
-     * Adds an item with the [labels] (names), due all day on [dueDate] if given.
-     * Returns false if the text was refused (the field keeps it).
+     * Adds an item with the [labels] (names), due on [dueDate] if given, at
+     * [dueTime] ("HH:MM", or "" for all day). Returns false if the text was
+     * refused (the field keeps it).
      */
-    override suspend fun add(text: String, labels: List<String>, dueDate: String?): Boolean {
+    override suspend fun add(text: String, labels: List<String>, dueDate: String?, dueTime: String): Boolean {
         if (text.isBlank()) {
             _state.update { it.copy(message = "Please type some text first.") }
             return false
         }
         return try {
-            api.addItem(text, labels, dueDate)
+            api.addItem(text, labels, dueDate, dueTime)
             reload()
+            // In the Today view an item for a later day does not show, so say where it went.
+            if (_state.value.today && dueDate != null) {
+                notInTodayMessage(LocalDate.parse(dueDate), LocalDate.now(phoneZone()))?.let { m -> _state.update { it.copy(message = m) } }
+            }
             true
         } catch (e: Exception) {
             fail(e)

@@ -113,6 +113,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.codeleet.toodoo.api.ApiClient
 import com.codeleet.toodoo.api.Item
 import com.codeleet.toodoo.api.Label
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.VisualTransformation
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import kotlinx.coroutines.launch
@@ -122,7 +132,7 @@ import kotlinx.coroutines.launch
  * labels [picked]. Only for the screenshots of the guide: they have no real
  * keyboard, so the row of labels would not show.
  */
-data class AddBarPreview(val text: String, val picked: List<Long>)
+data class AddBarPreview(val text: String, val picked: List<Long>, val dueDate: String? = null, val dueTime: String? = null)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -705,50 +715,85 @@ fun LabelChip(label: Label) {
 }
 
 /**
- * The add field. While the keyboard is open, a row of [labels] shows under it;
- * the labels picked there go with the new item. With a [filter], its label is
- * picked at the start, so the new item stays in the filtered list. In the
- * [today] view, the new item gets today, all day, until its chip's × removes the date.
+ * The add field. While the keyboard is open, a row of chips shows under it:
+ * first the due date of the new item ("Date", or the date with a ×), then the
+ * [labels]; the labels picked there go with the new item. With a [filter],
+ * its label is picked at the start, so the new item stays in the filtered
+ * list. In the [today] view, the new item starts with today, all day. A date
+ * typed at the end of the text ("due tomorrow 10:00", "@fri") counts as on
+ * the web, until the chip's × says no to these words.
  */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun AddBar(
     labels: List<Label>?,
     filter: Label?,
     today: Boolean,
     onOpen: () -> Unit,
-    onAdd: suspend (String, List<String>, String?) -> Boolean,
+    onAdd: suspend (String, List<String>, String?, String) -> Boolean,
     preview: AddBarPreview? = null,
 ) {
+    val zone = phoneZone()
+    val startDate = { if (today) LocalDate.now(zone).toString() else null }
     var text by rememberSaveable { mutableStateOf(preview?.text ?: "") }
     var picked by rememberSaveable(filter?.id) { mutableStateOf(preview?.picked ?: listOfNotNull(filter?.id)) }
-    var dated by rememberSaveable(today) { mutableStateOf(today) }
+    // The picked due date ("YYYY-MM-DD" or null) and time ("" all day).
+    var pickedDate by rememberSaveable(today) { mutableStateOf(preview?.dueDate ?: startDate()) }
+    var pickedTime by rememberSaveable(today) { mutableStateOf(preview?.dueTime ?: "") }
+    // The typed date words that the user said no to (the × on the chip, or a picked date).
+    var refused by rememberSaveable { mutableStateOf<String?>(null) }
+    var pickingDate by remember { mutableStateOf(false) }
+    var pickingTime by remember { mutableStateOf(false) }
+    var refocus by remember { mutableStateOf(0) }
     var focused by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
     val shown = remember(labels, filter) { labelsByUse(labels.orEmpty(), filter) }
+    val now = LocalDateTime.now(zone)
+    val due = newDue(text, pickedDate?.let { NewDue(LocalDate.parse(it), pickedTime) }, refused, now)
+    // A date from the chip counts in place of the typed one, as on the web.
+    val pick = { date: LocalDate?, time: String ->
+        due?.typed?.let { refused = it.words(text) }
+        pickedDate = date?.toString()
+        pickedTime = if (date == null) "" else time
+    }
     val submit = {
         if (!busy) {
             busy = true
             val sent = text
+            val sentDue = due
+            // The typed date words are not part of the item's text.
+            val itemText = sentDue?.typed?.let { sent.substring(0, it.start).trimEnd() } ?: sent
             // The filter's label can be picked before the label list has loaded.
             val names = (shown + listOfNotNull(filter)).distinctBy { it.id }.filter { it.id in picked }.map { it.name }
             scope.launch {
-                // Text typed while the request ran stays in the field, and so do the picked labels.
-                if (onAdd(sent, names, if (dated) LocalDate.now(phoneZone()).toString() else null) && text == sent) {
+                // Text typed while the request ran stays in the field, and so do the picked labels and date.
+                if (onAdd(itemText, names, sentDue?.date?.toString(), sentDue?.time ?: "") && text == sent) {
                     text = ""
                     picked = listOfNotNull(filter?.id)
-                    dated = today
+                    pickedDate = startDate()
+                    pickedTime = ""
+                    refused = null
                 }
                 busy = false
             }
         }
     }
+    // After a picker, the focus (and the keyboard, and the chip row) comes back.
+    LaunchedEffect(refocus) {
+        if (refocus > 0) {
+            focus.requestFocus()
+            keyboard?.show()
+        }
+    }
     // The back key closes the keyboard but leaves the focus in the field, so check both.
-    val withLabels = (preview != null || focused && WindowInsets.isImeVisible) && (shown.isNotEmpty() || dated)
-    Surface(color = MaterialTheme.colorScheme.background) {
+    val withLabels = preview != null || focused && WindowInsets.isImeVisible
+    val colors = MaterialTheme.colorScheme
+    Surface(color = colors.background) {
         Column(Modifier.navigationBarsPadding().imePadding()) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(color = colors.outlineVariant)
             Row(
                 Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = if (withLabels) 8.dp else 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -760,9 +805,10 @@ private fun AddBar(
                     placeholder = { Text("Add an item…") },
                     singleLine = true,
                     shape = RoundedCornerShape(26.dp),
+                    visualTransformation = due?.typed?.let { TypedDueMark(it.start, it.end, colors.primary) } ?: VisualTransformation.None,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = { submit() }),
-                    modifier = Modifier.weight(1f).semantics { contentDescription = "New item" }.onFocusChanged {
+                    modifier = Modifier.weight(1f).focusRequester(focus).semantics { contentDescription = "New item" }.onFocusChanged {
                         // The label counts change, so load them each time the field gets the focus.
                         if (it.isFocused && !focused) onOpen()
                         focused = it.isFocused
@@ -773,27 +819,56 @@ private fun AddBar(
                 }
             }
             if (withLabels) {
-                val dateChip: (@Composable () -> Unit)? = if (!dated) null else {
-                    {
-                        InputChip(
-                            selected = true,
-                            onClick = { dated = false },
-                            label = { Text("Today", fontSize = 15.sp, fontWeight = FontWeight.SemiBold) },
-                            trailingIcon = { Icon(Icons.Filled.Close, contentDescription = "Remove today's date from the new item", modifier = Modifier.size(InputChipDefaults.IconSize)) },
-                            colors = InputChipDefaults.inputChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimary,
-                            ),
-                            shape = RoundedCornerShape(50),
-                            modifier = Modifier.heightIn(min = 40.dp),
-                        )
-                    }
+                val todayDate = now.toLocalDate()
+                val dateChip: @Composable () -> Unit = {
+                    NewDueChip(
+                        due = due,
+                        today = todayDate,
+                        passed = due != null && newDuePassed(due, now),
+                        onDay = { pick(it, due?.time ?: "") },
+                        onPickDate = { pickingDate = true },
+                        onPickTime = { pickingTime = true },
+                        onClear = { pick(null, "") },
+                    )
                 }
-                LabelChipRow(shown, picked, "Labels for the new item", Modifier.padding(bottom = 12.dp), leading = dateChip) { label ->
+                LabelChipRow(shown, picked, "Due date and labels for the new item", Modifier.padding(bottom = 12.dp), leading = dateChip) { label ->
                     picked = if (label.id in picked) picked - label.id else picked + label.id
                 }
             }
         }
+    }
+
+    if (pickingDate) {
+        val state = rememberDatePickerState(
+            initialSelectedDateMillis = (due?.date ?: LocalDate.now(zone)).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+        )
+        val close = {
+            pickingDate = false
+            refocus += 1
+            Unit
+        }
+        DatePickerDialog(
+            onDismissRequest = close,
+            confirmButton = {
+                TextButton(onClick = {
+                    // The picker's days are UTC midnights.
+                    state.selectedDateMillis?.let { pick(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate(), due?.time ?: "") }
+                    close()
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = close) { Text("Cancel") } },
+        ) { DatePicker(state) }
+    }
+
+    if (pickingTime && due != null) {
+        val close = {
+            pickingTime = false
+            refocus += 1
+            Unit
+        }
+        TimePickerDialog(due.time, zone, onPick = {
+            pick(due.date, it)
+            close()
+        }, onDismiss = close)
     }
 }

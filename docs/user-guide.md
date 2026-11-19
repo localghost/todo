@@ -407,8 +407,20 @@ web, so a change on the phone shows in the browser and the other way round.
   done", and Delete. Tap "Date" to pick the day. Then tap the time button to pick the time on a 24-hour
   clock. The keyboard icon in the time picker lets you type the time instead. "All day" removes
   the time. Save sends the text and the due date.
+- **A due date for a new item:** when you tap the add field, a row of chips shows between the
+  field and the keyboard. The first chip is "Date". Tap it and choose **Today**, **Tomorrow** or
+  **Pick a date…**. The chip then shows the date in blue, for example "Tomorrow". Tap the chip
+  again to change the date, or choose **Set a time…** to pick a time; without a time the item is
+  due all day. The × on the chip removes the date. A date that has passed shows in red.
+  - You can also type the date at the end of the text, as on the web: "Call the dentist due
+    tomorrow 10:00" or "Pay the rent @fri". The app knows the same forms as the web (see "Type
+    the due date"). The date words turn blue and underlined, and the chip shows the date. The
+    item gets the date, and its text does not have these words. If the words must stay text, tap
+    the × on the chip.
+  - In the Today view a new item starts with "Today". If you give it a later day, the item is
+    added but does not show in the view, and a short message says so.
 - **Labels for a new item:** when you tap the add field, a row of your labels shows between the
-  field and the keyboard. The labels with the most items come first; swipe the row to see more.
+  field and the keyboard, after the date chip. The labels with the most items come first; swipe the row to see more.
   Tap a label to select it, and tap it again to clear it. "Add" gives the new item the selected
   labels, then the row clears. With the label filter on, its label is already selected. To
   create a new label, use "All labels" in the item sheet or the label list from the top bar.
@@ -432,7 +444,8 @@ web, so a change on the phone shows in the browser and the other way round.
   - The view works with the label filter: the list shows the items with that label that are
     overdue or due today.
   - A new item that you add here gets today, all day. When you tap the add field, "Today ×" is the
-    first chip in the row above the keyboard. Tap it if the new item must not have a date.
+    first chip in the row above the keyboard. Tap its × if the new item must not have a date, or
+    tap the chip to pick another day.
   - Without a connection, the view uses the last list that the app loaded.
 - **Reminders:** the phone reminds you when an item is due, also when the app is closed. The
   reminder has the buttons Done and Postpone 10 min. The app asks for permission to notify when
@@ -449,7 +462,9 @@ web, so a change on the phone shows in the browser and the other way round.
 
 ![The label list from the top bar](guide-images/android-labelPickerFilter.png "the label list from the tag button at the top. A tap on a label shows only its items.")
 
-![Adding an item with labels](guide-images/android-addLabelsKeyboard.png "the Android app while you add an item. The keyboard is open, and the row of labels is between the add field and the keyboard. “home” and “health” are selected.")
+![Adding an item with labels](guide-images/android-addLabelsKeyboard.png "the Android app while you add an item. The keyboard is open, and the row of chips is between the add field and the keyboard: first “Date”, then the labels. “home” and “health” are selected.")
+
+![A due date typed in the add field](guide-images/android-addDueKeyboard.png "the add field with the text “Call the dentist due tomorrow 10:00”. The words “due tomorrow 10:00” are blue and underlined, and the first chip shows “Tomorrow, 10:00 ×”.")
 
 ## Keys
 

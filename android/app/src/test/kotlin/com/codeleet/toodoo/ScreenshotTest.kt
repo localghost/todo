@@ -91,7 +91,7 @@ abstract class Screens {
         override fun exactReminders() = true
         override fun messageShown() {}
         override fun refresh() {}
-        override suspend fun add(text: String, labels: List<String>, dueDate: String?) = true
+        override suspend fun add(text: String, labels: List<String>, dueDate: String?, dueTime: String) = true
         override fun toggle(item: Item) {}
         override fun delete(item: Item) {}
         override fun undo() {}
@@ -232,6 +232,35 @@ class ScreenshotTest : Screens() {
                 ListScreen(
                     screen(ListState(list = ItemList(todayItems, 2, 0, false), labels = sheetLabels, today = true)),
                     AddBarPreview("Buy flowers for mum", emptyList()),
+                )
+            }
+            Keyboard()
+        }
+    }
+
+    // A due date typed at the end of the text: the words are marked, and the
+    // date chip shows "Tomorrow, 10:00" (the guide image).
+    @Test
+    fun addDueKeyboard() = snap {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f)) {
+                ListScreen(
+                    screen(ListState(list = list, labels = sheetLabels)),
+                    AddBarPreview("Call the dentist due tomorrow 10:00", emptyList()),
+                )
+            }
+            Keyboard()
+        }
+    }
+
+    // A date picked with the chip: in the past, so the chip is red.
+    @Test
+    fun addDuePast() = snap {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f)) {
+                ListScreen(
+                    screen(ListState(list = list, labels = sheetLabels)),
+                    AddBarPreview("Pay the rent", listOf(home.id), dueDate = LocalDate.now().minusDays(1).toString()),
                 )
             }
             Keyboard()
