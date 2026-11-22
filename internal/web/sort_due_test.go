@@ -124,8 +124,8 @@ func TestAddInSortDueOrder(t *testing.T) {
 	assertOrder(t, body, "Water the plants", "Return library books", "Fix the bike")
 }
 
-// The API keeps the hand-made order, because the Android app drags items.
-func TestAPIItemsKeepHandOrder(t *testing.T) {
+// The API gives the same due date order as the web while sort_due is on.
+func TestAPIItemsFollowSortDue(t *testing.T) {
 	env, _ := sortDueEnv(t)
 	env.Auth.SetSortDue(context.Background(), env.User.ID, true)
 	rec := apiDo(t, env, "GET", "/api/v1/items", env.Token, "")
@@ -133,10 +133,10 @@ func TestAPIItemsKeepHandOrder(t *testing.T) {
 		t.Fatalf("api items: %d", rec.Code)
 	}
 	body, last := rec.Body.String(), -1
-	for _, text := range []string{"Return library books", "Call the dentist", "Pay the rent", "Water the plants", "Send the invoice"} {
+	for _, text := range []string{"Pay the rent", "Call the dentist", "Send the invoice", "Water the plants", "Return library books"} {
 		i := strings.Index(body, `"text":"`+text+`"`)
 		if i < last {
-			t.Fatalf("%q is out of the hand-made order: %s", text, body)
+			t.Fatalf("%q is out of the due date order: %s", text, body)
 		}
 		last = i
 	}

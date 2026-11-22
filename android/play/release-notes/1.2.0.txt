@@ -1,0 +1,5 @@
+<en-US>
+• New sort button right of "All · Today": sort the list by hand or by due date
+• The sort order is the same as on the web: change it on the phone, and the web shows the same order
+• By hand, you can now hold and move an overdue item too
+</en-US>

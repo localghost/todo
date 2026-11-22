@@ -54,6 +54,24 @@ class ApiClientTest {
 
     private val emptyList = """{"items":[],"open":0,"done":0,"hide_done":false,"label":null}"""
 
+    // Sort by hand or by due date (issue #17): the setting is the web's, and the
+    // server sends the items in that order.
+    @Test
+    fun sortDueSettingAndList() = runTest {
+        server.enqueue(MockResponse().setBody("""{"id":1,"username":"zbyszek","hide_done":false,"sort_due":true}"""))
+        server.enqueue(MockResponse().setBody("""{"items":[],"open":0,"done":0,"hide_done":false,"sort_due":true,"label":null}"""))
+        assertTrue(client().setSortDue(true).sortDue)
+        val req = server.takeRequest()
+        assertEquals("PUT", req.method)
+        assertEquals("/api/v1/settings", req.path)
+        assertEquals("""{"sort_due":true}""", req.body.readUtf8())
+        assertTrue(client().items().sortDue)
+        // An older server sends no sort_due: by hand.
+        server.enqueue(MockResponse().setBody(emptyList))
+        server.takeRequest()
+        assertEquals(false, client().items().sortDue)
+    }
+
     // The Today view (issue #15): the server filters, in the phone's zone.
     @Test
     fun itemsOfTheTodayView() = runTest {
