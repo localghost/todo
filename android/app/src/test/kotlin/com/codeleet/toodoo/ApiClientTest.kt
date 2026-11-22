@@ -101,6 +101,13 @@ class ApiClientTest {
         assertEquals("""{"text":"Buy flowers","labels":["home"],"due_date":"2026-11-05"}""", server.takeRequest().body.readUtf8())
     }
 
+    @Test
+    fun addItemWithDueTime() = runTest {
+        server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":1,"text":"Call the dentist","done":false}"""))
+        client().addItem("Call the dentist", emptyList(), dueDate = "2026-11-20", dueTime = "10:00")
+        assertEquals("""{"text":"Call the dentist","labels":[],"due_date":"2026-11-20","due_time":"10:00"}""", server.takeRequest().body.readUtf8())
+    }
+
     // Without a date the request stays as before.
     @Test
     fun addItemWithoutDueDate() = runTest {

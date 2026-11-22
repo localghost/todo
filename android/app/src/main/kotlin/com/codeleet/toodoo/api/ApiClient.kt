@@ -50,12 +50,13 @@ class ApiClient(private val http: OkHttpClient, server: String, private val toke
     suspend fun items(labelId: Long? = null, today: Boolean = false): ItemList =
         json.decodeFromString(call("GET", "items", query = viewQuery(labelId, today))!!)
 
-    /** Adds an item; [dueDate] ("2026-11-05") makes it due that day, all day. */
-    suspend fun addItem(text: String, labels: List<String> = emptyList(), dueDate: String? = null): Item =
+    /** Adds an item; [dueDate] ("2026-11-05") makes it due that day, at [dueTime] ("10:00") or all day (""). */
+    suspend fun addItem(text: String, labels: List<String> = emptyList(), dueDate: String? = null, dueTime: String = ""): Item =
         item("POST", "items", buildJsonObject {
             put("text", text)
             putJsonArray("labels") { labels.forEach { add(it) } }
             if (dueDate != null) put("due_date", dueDate)
+            if (dueDate != null && dueTime.isNotEmpty()) put("due_time", dueTime)
         })
 
     suspend fun setDone(id: Long, done: Boolean): Item =

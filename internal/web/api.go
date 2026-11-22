@@ -261,13 +261,14 @@ func (s *server) apiAddItem(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Text    string   `json:"text"`
 		Labels  []string `json:"labels"`
-		DueDate string   `json:"due_date"` // YYYY-MM-DD, all day; a new item in the Today view
+		DueDate string   `json:"due_date"` // YYYY-MM-DD in the phone's zone
+		DueTime string   `json:"due_time"` // HH:MM (or HHMM); empty is all day
 	}
 	if !readJSON(w, r, &in) {
 		return
 	}
 	// Label names cannot hold a comma (ParseLabels splits on it).
-	item, err := s.svc.AddItem(r.Context(), userID(r), todo.Input{Text: in.Text, DueDate: in.DueDate, Labels: strings.Join(in.Labels, ",")}, s.zoneFor(r))
+	item, err := s.svc.AddItem(r.Context(), userID(r), todo.Input{Text: in.Text, DueDate: in.DueDate, DueTime: in.DueTime, Labels: strings.Join(in.Labels, ",")}, s.zoneFor(r))
 	s.apiItemAnswer(w, r, http.StatusCreated, item, err)
 }
 
