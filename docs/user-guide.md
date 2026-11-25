@@ -409,9 +409,10 @@ web, so a change on the phone shows in the browser and the other way round.
   the time. Save sends the text and the due date.
 - **A due date for a new item:** when you tap the add field, a row of chips shows between the
   field and the keyboard. The first chip is "Date". Tap it and choose **Today**, **Tomorrow** or
-  **Pick a date…**. The chip then shows the date in blue, for example "Tomorrow". Tap the chip
-  again to change the date, or choose **Set a time…** to pick a time; without a time the item is
-  due all day. The × on the chip removes the date. A date that has passed shows in red.
+  **Pick a date and time…**. Today and Tomorrow set the day at once, all day. "Pick a date and
+  time…" opens the calendar and then the clock; tap **All day** on the clock if the item needs
+  no time. The chip then shows the date in blue, for example "Tomorrow, 10:00". Tap the chip
+  again to change the date, or choose **Set a time…** to change only the time. The × on the chip removes the date. A date that has passed shows in red.
   - You can also type the date at the end of the text, as on the web: "Call the dentist due
     tomorrow 10:00" or "Pay the rent @fri". The app knows the same forms as the web (see "Type
     the due date"). The date words turn blue and underlined, and the chip shows the date. The

@@ -34,9 +34,10 @@ All three put the result in the same place: a date chip, first in the chip row u
 **D1 (recommended): a "Date" chip in the chip row, with quick choices.**
 - While the keyboard is open, the chip row always starts with an outlined chip "📅 Date" (also
   when you have no labels, so the row now always shows while you type).
-- Tap it: a small menu opens above the chip: **Today**, **Tomorrow**, **Pick a date…**. Today and
-  Tomorrow set the date at once (all day). "Pick a date…" opens the date picker of the item
-  sheet.
+- Tap it: a small menu opens above the chip: **Today**, **Tomorrow**, **Pick a date and time…**.
+  Today and Tomorrow set the date at once (all day). "Pick a date and time…" opens the date
+  picker of the item sheet, and after OK its time picker at once ("All day" keeps no time).
+  (Changed 2026-11-25 at Zbyszek's request: one go for a date and a time.)
 - With a date, the chip turns blue: "Tomorrow ×". Tap the chip (not the ×) for the menu again,
   now with one more line, **Set a time…** (the time picker of the item sheet, with its "All day"
   button). Then the chip says "Tomorrow, 10:00 ×".

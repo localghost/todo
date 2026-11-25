@@ -886,8 +886,15 @@ private fun AddBar(
             confirmButton = {
                 TextButton(onClick = {
                     // The picker's days are UTC midnights.
-                    state.selectedDateMillis?.let { pick(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate(), due?.time ?: "") }
-                    close()
+                    val picked = state.selectedDateMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() }
+                    if (picked == null) {
+                        close()
+                    } else {
+                        pick(picked, due?.time ?: "")
+                        // The time picker follows at once, so a date and a time take one go ("All day" for none).
+                        pickingDate = false
+                        pickingTime = true
+                    }
                 }) { Text("OK") }
             },
             dismissButton = { TextButton(onClick = close) { Text("Cancel") } },
