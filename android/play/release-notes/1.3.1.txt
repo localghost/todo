@@ -1,0 +1,5 @@
+<en-US>
+• New "Date" chip above the keyboard: give a new item a due date with one tap (Today or Tomorrow), or pick a date and a time in one go
+• Or type the date at the end of the text, for example "Call the dentist due tomorrow 10:00" or "Pay the rent @fri"
+• Tap × on the chip to remove the date
+</en-US>
