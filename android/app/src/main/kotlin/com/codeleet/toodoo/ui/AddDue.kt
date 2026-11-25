@@ -2,7 +2,7 @@ package com.codeleet.toodoo.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -190,8 +190,9 @@ data class TypedDueMark(val start: Int, val end: Int, val color: Color) : Visual
 /**
  * The first chip of the row under the add field. Without a [due] date it is
  * an outlined "Date"; with one it is blue (red if [passed]) with a ×. A tap
- * opens the quick choices: Today, Tomorrow, Pick a date…, and with a date
- * also Set a time…. The × calls [onClear].
+ * opens the quick choices: Today, Tomorrow, Pick a date and time… (the date
+ * picker, then the time picker), and with a date also Set a time…. The ×
+ * calls [onClear].
  */
 @Composable
 fun NewDueChip(
@@ -214,7 +215,7 @@ fun NewDueChip(
                 leadingIcon = { Icon(Icons.Filled.DateRange, contentDescription = null, modifier = Modifier.size(InputChipDefaults.IconSize)) },
                 shape = RoundedCornerShape(50),
                 colors = InputChipDefaults.inputChipColors(containerColor = colors.surface, labelColor = colors.onSurface, leadingIconColor = colors.onSurfaceVariant),
-                modifier = Modifier.heightIn(min = 40.dp).semantics { contentDescription = "Due date: none. Double tap to pick" },
+                modifier = Modifier.height(40.dp).semantics { contentDescription = "Due date: none. Double tap to pick" },
             )
         } else {
             val text = newDueText(due, today)
@@ -232,7 +233,7 @@ fun NewDueChip(
                 },
                 colors = InputChipDefaults.inputChipColors(selectedContainerColor = fill, selectedLabelColor = ink, selectedTrailingIconColor = ink),
                 shape = RoundedCornerShape(50),
-                modifier = Modifier.heightIn(min = 40.dp).semantics {
+                modifier = Modifier.height(40.dp).semantics {
                     contentDescription = "Due date: ${text.lowercase()}. Double tap to change"
                     customActions = listOf(CustomAccessibilityAction("Remove the due date from the new item") { onClear(); true })
                 },
@@ -243,7 +244,7 @@ fun NewDueChip(
             val pick = { action: () -> Unit -> { open = false; action() } }
             DropdownMenuItem(text = { Text("Today") }, trailingIcon = { Text(dayLine(today), color = colors.onSurfaceVariant) }, onClick = pick { onDay(today) })
             DropdownMenuItem(text = { Text("Tomorrow") }, trailingIcon = { Text(dayLine(today.plusDays(1)), color = colors.onSurfaceVariant) }, onClick = pick { onDay(today.plusDays(1)) })
-            DropdownMenuItem(text = { Text("Pick a date…") }, onClick = pick(onPickDate))
+            DropdownMenuItem(text = { Text("Pick a date and time…") }, onClick = pick(onPickDate))
             if (due != null) {
                 HorizontalDivider()
                 DropdownMenuItem(text = { Text("Set a time…") }, onClick = pick(onPickTime))
